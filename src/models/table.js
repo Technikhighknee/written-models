@@ -3,13 +3,13 @@ import { getBounds } from "../toolbox/spatial/bounds.js";
 import { createBeamBetween } from "../toolbox/geometry/beams.js";
 
 export default {
-    create: createTable,
+    create,
     slug: "table",
     title: "Simple Table",
     description: "It all began with a table...",
 }
 
-function createTable() {
+function create() {
     const table = new THREE.Group();
     table.name = "TavernTable";
 
