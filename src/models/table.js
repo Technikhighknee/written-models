@@ -3,6 +3,7 @@ import { getBounds } from "../toolbox/spatial/queries/bounds.js";
 import { createBeamBetween } from "../toolbox/geometry/construction/beams.js";
 import { rectangle } from "../toolbox/shapes/primitives/rectangle.js";
 import { extrude } from "../toolbox/shapes/operations/extrude.js";
+import { mm, cm, m, } from "../toolbox/units/length.js";
 
 export default {
     create,
@@ -10,8 +11,6 @@ export default {
     title: "Simple Table",
     description: "It all began with a table...",
 }
-
-
 
 function create() {
     const table = new THREE.Group();
@@ -32,12 +31,12 @@ function create() {
 
 function createTop(material) {
     const geometry = extrude(
-        rectangle(2, 1.1),
+        rectangle(m(2), cm(110)),
         {
-            thickness: 0.14,
+            thickness: cm(14),
             bevel: {
-                size: 0.05,
-                thickness: 0.02
+                size: cm(5),
+                thickness: cm(2)
             }
         }
     );
@@ -53,10 +52,10 @@ function createTop(material) {
 function createLegs(top, material) {
     const bounds = getBounds(top);
 
-    const WIDTH = 0.12;
-    const DEPTH = 0.12;
-    const INSET = 0.12;
-    const FLOOR = 0;
+    const WIDTH = cm(12);
+    const DEPTH = cm(12);
+    const INSET = cm(12);
+    const FLOOR = m(0);
 
     const left = bounds.min.x + INSET + WIDTH / 2;
     const right = bounds.max.x - INSET - WIDTH / 2;
