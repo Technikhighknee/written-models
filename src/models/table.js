@@ -18,16 +18,6 @@ function createTable() {
         roughness: 0.9
     });
 
-    function addBox(name, size, position) {
-        const geometry = new THREE.BoxGeometry(...size);
-        const mesh = new THREE.Mesh(geometry, wood);
-
-        mesh.name = name;
-        mesh.position.set(...position);
-
-        table.add(mesh);
-    }
-
     const shape = new THREE.Shape();
 
     shape.moveTo(-1, -0.55);
