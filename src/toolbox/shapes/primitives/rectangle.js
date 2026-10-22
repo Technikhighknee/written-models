@@ -1,4 +1,4 @@
-import * as THREE from "three";
+import { polygon } from "./polygon.js";
 
 /**
  * @param {number} width 
@@ -8,13 +8,10 @@ export function rectangle(width, depth) {
     const hw = width / 2;
     const hd = depth / 2;
 
-    const shape = new THREE.Shape();
-
-    shape.moveTo(-hw, -hd);
-    shape.lineTo( hw, -hd);
-    shape.lineTo( hw,  hd);
-    shape.lineTo(-hw,  hd);
-    shape.closePath();
-
-    return shape;
+    return polygon([
+        [-hw, -hd],
+        [ hw, -hd],
+        [ hw,  hd],
+        [-hw,  hd]
+    ]);
 }
