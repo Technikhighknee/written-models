@@ -36,7 +36,7 @@ if (route.type === "home") {
             </span>
           </a>
         `).join("")}
-      </selection>
+      </section>
     </main>
   `;
 }
