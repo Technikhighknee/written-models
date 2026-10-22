@@ -1,6 +1,8 @@
 import * as THREE from "three";
-import { getBounds } from "../toolbox/spatial/bounds.js";
-import { createBeamBetween } from "../toolbox/geometry/beams.js";
+import { getBounds } from "../toolbox/spatial/queries/bounds.js";
+import { createBeamBetween } from "../toolbox/geometry/construction/beams.js";
+import { rectangle } from "../toolbox/shapes/primitives/rectangle.js";
+import { extrude } from "../toolbox/shapes/operations/extrude.js";
 
 export default {
     create,
@@ -8,6 +10,8 @@ export default {
     title: "Simple Table",
     description: "It all began with a table...",
 }
+
+
 
 function create() {
     const table = new THREE.Group();
@@ -18,61 +22,63 @@ function create() {
         roughness: 0.9
     });
 
-    const shape = new THREE.Shape();
+    const top = createTop(wood);
 
-    shape.moveTo(-1, -0.55);
-    shape.lineTo( 1, -0.55);
-    shape.lineTo( 1,  0.55);
-    shape.lineTo(-1,  0.55);
-    shape.closePath();
+    table.add(top);
+    table.add(...createLegs(top, wood));
 
-    const geometry = new THREE.ExtrudeGeometry(shape, {
-        depth: 0.10,
-        bevelEnabled: true,
-        bevelThickness: 0.02,
-        bevelSize: 0.05,
-        bevelSegments: 1,
-        steps: 1
-    });
+    return table;
+}
 
-    geometry.translate(0, 0, -0.05);
-    geometry.rotateX(-Math.PI / 2);
+function createTop(material) {
+    const geometry = extrude(
+        rectangle(2, 1.1),
+        {
+            thickness: 0.14,
+            bevel: {
+                size: 0.05,
+                thickness: 0.02
+            }
+        }
+    );
 
-    const tabletop = new THREE.Mesh(geometry, wood);
+    const tabletop = new THREE.Mesh(geometry, material);
 
     tabletop.name = "TableTop";
     tabletop.position.set(0, 1, 0);
 
-    table.add(tabletop);
+    return tabletop;
+}
 
-    const bounds = getBounds(tabletop);
+function createLegs(top, material) {
+    const bounds = getBounds(top);
 
-    const LEG_WIDTH = 0.12;
-    const LEG_DEPTH = 0.12;
-    const LEG_INSET = 0.12;
+    const WIDTH = 0.12;
+    const DEPTH = 0.12;
+    const INSET = 0.12;
+    const FLOOR = 0;
 
-    const FLOOR_Y = 0;
+    const left = bounds.min.x + INSET + WIDTH / 2;
+    const right = bounds.max.x - INSET - WIDTH / 2;
+    const front = bounds.max.z - INSET - DEPTH / 2;
+    const back = bounds.min.z + INSET + DEPTH / 2;
 
-    const left = bounds.min.x + LEG_INSET + LEG_WIDTH / 2;
-    const right = bounds.max.x - LEG_INSET - LEG_WIDTH / 2;
-    const front = bounds.max.z - LEG_INSET - LEG_DEPTH / 2;
-    const back = bounds.min.z + LEG_INSET + LEG_DEPTH / 2;
-
-    const legs = [
+    const positions =  [
         ["LegFL", left, front],
         ["LegFR", right, front],
         ["LegBL", left, back],
         ["LegBR", right, back]
     ];
 
-    for (const [name, x, z] of legs) {
-        const start = new THREE.Vector3(x, FLOOR_Y, z);
+    return positions.map(([name, x, z]) => {
+        const start = new THREE.Vector3(x, FLOOR, z);
         const end = new THREE.Vector3(x, bounds.min.y, z);
 
-        const leg = createBeamBetween(start, end, LEG_WIDTH, LEG_DEPTH, wood);
-        leg.name = name;
-        table.add(leg);
-    }
+        const leg = createBeamBetween(
+            start, end, WIDTH, DEPTH, material
+        );
 
-    return table;
+        leg.name = name;
+        return leg;
+    });
 }
