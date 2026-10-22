@@ -1,6 +1,13 @@
 import * as THREE from "three";
 
-export function createTable() {
+export default {
+    create: createTable,
+    slug: "table",
+    title: "Simple Table",
+    description: "It all began with a table...",
+}
+
+function createTable() {
     const table = new THREE.Group();
     table.name = "TavernTable";
 
