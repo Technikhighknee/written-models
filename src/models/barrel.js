@@ -14,6 +14,12 @@ function create() {
     const barrel = new THREE.Group();
     barrel.name = "Barrel";
 
+    const wood = new THREE.MeshStandardMaterial({
+        color: "#855632",
+        roughness: 0.9
+    });
+
+
     const profile = bulgedProfile({
         height: cm(90),
         bottomDiameter: cm(50),
@@ -23,27 +29,48 @@ function create() {
         curve: "quadratic"
     });
 
-    barrel.add(createBody(profile));
-    barrel.add(createHoop(profile, cm(10)));
-    barrel.add(createHoop(profile, cm(20)));
-    barrel.add(createHoop(profile, cm(70)));
-    barrel.add(createHoop(profile, cm(80)));
+    barrel.add(createBody(profile, wood));
+
+    barrel.add(createHead(profile, "top", cm(3), wood));
+    barrel.add(createHead(profile, "bottom", cm(3), wood));
+
+    for (const height of [10, 20, 70, 80]) {
+        barrel.add(createHoop(profile, cm(height)));
+    }
 
     return barrel;
 }
 
-function createBody(profile) {
+function createBody(profile, material) {
     const geometry = new THREE.LatheGeometry(profile, 32);
-
-    const material = new THREE.MeshStandardMaterial({
-        color: "#855632",
-        roughness: 0.9
-    });
-
+    
     const body = new THREE.Mesh(geometry, material);
     body.name = "Body";
 
     return body;
+}
+
+function createHead(profile, side, inset, material) {
+    const isTop = side == "top";
+
+    const rim = profile.at(!isTop - 1); // hehe javascript
+
+    const innerY = rim.y + (isTop ? -inset : inset);
+
+    const inner = new THREE.Vector2(rim.x, innerY);
+    const center = new THREE.Vector2(0, innerY);
+
+    const points = isTop
+        ? [rim.clone(), inner, center]
+        : [center, inner, rim.clone()];
+    
+    const geometry = new THREE.LatheGeometry(points, 32);
+
+    const head = new THREE.Mesh(geometry, material);
+
+    head.name = isTop ? "TopHead" : "BottomHead";
+
+    return head;
 }
 
 function createHoop(profile, y) {
