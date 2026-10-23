@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { cm } from "../toolbox/units/length.js";
+import { bulgedProfile } from "../toolbox/shapes/profiles/bulged.js";
 
 export default {
     create,
@@ -18,15 +19,14 @@ function create() {
 }
 
 function createBody() {
-    const profile = [
-        vector2(cm(25), cm(0)),
-        vector2(cm(27), cm(15)),
-        vector2(cm(29), cm(30)),
-        vector2(cm(30), cm(45)),
-        vector2(cm(29), cm(60)),
-        vector2(cm(27), cm(75)),
-        vector2(cm(25), cm(90)),
-    ];
+    const profile = bulgedProfile({
+        height: cm(90),
+        bottomDiameter: cm(50),
+        topDiameter: cm(50),
+        peakDiameter: cm(60),
+        points: 7,
+        curve: "quadratic"
+    });
 
     const geometry = new THREE.LatheGeometry(profile, 32);
 
@@ -39,10 +39,4 @@ function createBody() {
     body.name = "Body";
 
     return body;
-}
-
-
-// Helper function
-function vector2(x, y) {
-    return new THREE.Vector2(x, y);
 }
