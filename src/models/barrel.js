@@ -1,6 +1,8 @@
 import * as THREE from "three";
 import { cm } from "../toolbox/units/length.js";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged.js";
+import { ring } from "../toolbox/shapes/primitives/ring.js";
+import { extrude } from "../toolbox/shapes/operations/extrude.js";
 
 export default {
     create,
@@ -14,6 +16,7 @@ function create() {
     barrel.name = "Barrel";
 
     barrel.add(createBody());
+    barrel.add(createHoop());
 
     return barrel;
 }
@@ -39,4 +42,26 @@ function createBody() {
     body.name = "Body";
 
     return body;
+}
+
+function createHoop() {
+    const geometry = extrude(
+        ring(cm(27.7), cm(29)),
+        {
+            thickness: cm(4)
+        }
+    );
+
+    const material = new THREE.MeshStandardMaterial({
+        color: "#383b3f",
+        metalness: 0.8,
+        roughness: 0.35
+    });
+
+    const hoop = new THREE.Mesh(geometry, material);
+
+    hoop.name = "IronHoop";
+    hoop.position.y = cm(15);
+
+    return hoop;
 }

@@ -1,7 +1,10 @@
 import * as THREE from "three";
 
-
-export function extrude(shape, { thickness, bevel = null } = {}) {
+export function extrude(shape, {
+    thickness, 
+    bevel = null,
+    curveSegments = 32 
+} = {}) {
     const bevelSize = bevel?.size ?? 0;
     const bevelThickness = bevel?.thickness ?? 0;
 
@@ -17,9 +20,9 @@ export function extrude(shape, { thickness, bevel = null } = {}) {
     }
 
     const geometry = new THREE.ExtrudeGeometry(shape, {
-        depth, bevelSize, bevelThickness,
+        depth, bevelSize, bevelThickness, curveSegments,
         bevelEnabled: bevelSize > 0 && bevelThickness > 0,
-        bevelSegments: 1
+        bevelSegments: 1,
     });
 
     geometry.translate(0, 0, -depth / 2);
