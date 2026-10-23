@@ -81,14 +81,19 @@ export class ModelViewer {
 
 
     setModel(model) {
+        const wasWireframe = this.wireframe;
+
         if (this.model) {
+            this.setWireframe(false);
             this.scene.remove(this.model);
         }
 
+        this.originalMaterials.clear();
+
         this.model = model;
         this.scene.add(model);
-        this.setWireframe(this.wireframe);
 
+        this.setWireframe(wasWireframe);
 
         const bounds = new THREE.Box3().setFromObject(model);
 
