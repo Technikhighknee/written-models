@@ -32,7 +32,7 @@ function create() {
 
     const thickness = mm(0.8);
 
-    const geometry = extrude(shape, { thickness });
+    const geometry = extrude(shape, { thickness, curveSegments: 4 });
 
     assignMaterialsByNormal(geometry, 
         normal => normal.y > 0.9 ? 0 : 1
