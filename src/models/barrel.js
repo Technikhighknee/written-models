@@ -1,8 +1,7 @@
 import * as THREE from "three";
-import { cm } from "../toolbox/units/length.js";
+import { mm, cm } from "../toolbox/units/length.js";
+import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile.js";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged.js";
-import { ring } from "../toolbox/shapes/primitives/ring.js";
-import { extrude } from "../toolbox/shapes/operations/extrude.js";
 
 export default {
     create,
@@ -15,13 +14,6 @@ function create() {
     const barrel = new THREE.Group();
     barrel.name = "Barrel";
 
-    barrel.add(createBody());
-    barrel.add(createHoop());
-
-    return barrel;
-}
-
-function createBody() {
     const profile = bulgedProfile({
         height: cm(90),
         bottomDiameter: cm(50),
@@ -31,6 +23,16 @@ function createBody() {
         curve: "quadratic"
     });
 
+    barrel.add(createBody(profile));
+    barrel.add(createHoop(profile, cm(10)));
+    barrel.add(createHoop(profile, cm(20)));
+    barrel.add(createHoop(profile, cm(70)));
+    barrel.add(createHoop(profile, cm(80)));
+
+    return barrel;
+}
+
+function createBody(profile) {
     const geometry = new THREE.LatheGeometry(profile, 32);
 
     const material = new THREE.MeshStandardMaterial({
@@ -44,13 +46,13 @@ function createBody() {
     return body;
 }
 
-function createHoop() {
-    const geometry = extrude(
-        ring(cm(27.7), cm(29)),
-        {
-            thickness: cm(4)
-        }
-    );
+function createHoop(profile, y) {
+    const geometry = bandAroundProfile(profile, {
+        y,
+        width: cm(4),
+        thickness: mm(5),
+        overlap: mm(1)
+    });
 
     const material = new THREE.MeshStandardMaterial({
         color: "#383b3f",
@@ -59,9 +61,7 @@ function createHoop() {
     });
 
     const hoop = new THREE.Mesh(geometry, material);
-
     hoop.name = "IronHoop";
-    hoop.position.y = cm(15);
 
     return hoop;
 }
