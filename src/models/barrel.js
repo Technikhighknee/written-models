@@ -42,7 +42,22 @@ function create() {
 }
 
 function createBody(profile, material) {
-    const geometry = new THREE.LatheGeometry(profile, 32);
+    const wallThickness = cm(2);
+
+    const innerProfile = [...profile]
+        .reverse()
+        .map(p => new THREE.Vector2(
+            p.x - wallThickness,
+            p.y
+        ));
+    
+    const section = [
+        ...profile,
+        ...innerProfile,
+        profile[0].clone()
+    ];
+
+    const geometry = new THREE.LatheGeometry(section, 32);
     
     const body = new THREE.Mesh(geometry, material);
     body.name = "Body";
