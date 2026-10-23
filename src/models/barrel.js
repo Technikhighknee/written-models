@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { mm, cm } from "../toolbox/units/length.js";
 import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile.js";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged.js";
+import { revolveShell } from "../toolbox/shapes/operations/revolveShell.js";
 
 export default {
     create,
@@ -42,22 +43,9 @@ function create() {
 }
 
 function createBody(profile, material) {
-    const wallThickness = cm(2);
-
-    const innerProfile = [...profile]
-        .reverse()
-        .map(p => new THREE.Vector2(
-            p.x - wallThickness,
-            p.y
-        ));
-    
-    const section = [
-        ...profile,
-        ...innerProfile,
-        profile[0].clone()
-    ];
-
-    const geometry = new THREE.LatheGeometry(section, 32);
+    const geometry = revolveShell(profile, {
+        thickness: cm(2)
+    });
     
     const body = new THREE.Mesh(geometry, material);
     body.name = "Body";
