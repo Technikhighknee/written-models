@@ -9,9 +9,9 @@ export const m = value => value;
 export const km = value => value * 1000;
 
 // Aliases; not sure if I will ever use them; they're cool tho ^^
-export const millimeter = value => mm(value);
-export const centimeter = value => cm(value);
-export const meter = value => m(value);
-export const kilometer = value => km(value);
+export const millimeter = mm;
+export const centimeter = cm;
+export const meter = m;
+export const kilometer = km;
 
 // Let's see if the inaccuracy of floating-point arithmetic will throw a wrench in my plans :D
