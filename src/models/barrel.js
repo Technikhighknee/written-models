@@ -44,7 +44,9 @@ function create() {
 
 function createBody(profile, material) {
     const geometry = revolveShell(profile, {
-        thickness: cm(2)
+        thickness: cm(2),
+        roundedRims: true,
+        rimSegments: 8
     });
     
     const body = new THREE.Mesh(geometry, material);
