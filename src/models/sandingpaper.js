@@ -3,12 +3,13 @@ import * as THREE from "three";
 import { mm, cm } from "../toolbox/units/length.js";
 import { roundedRectangle } from "../toolbox/shapes/primitives/roundedRectangle.js";
 import { extrude } from "../toolbox/shapes/operations/extrude.js";
+import { assignMaterialsByNormal } from "../toolbox/geometry/materials/assignMaterialsByNormal.js";
 
 export default {
     create,
     slug: "sandingpaper",
     title: "Sanding Paper",
-    description: "Rough around the edges."
+    description: "The backbone of modern society."
 }
 
 function create() {
@@ -26,33 +27,26 @@ function create() {
 
     const abrasive = new THREE.MeshStandardMaterial({
         color: "#554d40",
-        roughness: 1
+        roughness: 1,
     });
 
     const thickness = mm(0.8);
 
+    const geometry = extrude(shape, { thickness });
+
+    assignMaterialsByNormal(geometry, 
+        normal => normal.y > 0.9 ? 0 : 1
+    );
+
     const paper = new THREE.Mesh(
-        extrude(shape, { thickness }),
-        backing
+        geometry,
+        [abrasive, backing]
     );
 
-    paper.name = "PaperBacking";
+    paper.position.y = thickness / 2 + mm(1);
+
+    paper.name = "SandingPaper";
     sandingpaper.add(paper);
-
-    const surfaceGeometry = new THREE.ShapeGeometry(shape, 16);
-    surfaceGeometry.rotateX(-Math.PI / 2);
-
-    const surface = new THREE.Mesh(
-        surfaceGeometry,
-        abrasive
-    );
-
-    surface.name = "AbrasiveSurface";
-    surface.position.y = thickness / 2 + mm(0.01);
-
-    sandingpaper.add(surface);
-
-    sandingpaper.position.y = mm(1);
 
     return sandingpaper;
 }
