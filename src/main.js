@@ -61,6 +61,15 @@ else if (route.type === "model") {
         </button>
       </header>
 
+      <div class="viewer-toolbar">
+        <label>
+          <input id="wireframe-toggle" type="checkbox">
+          Wireframe
+        </label>
+
+        <span id="triangle-count">Tris: 0</span>
+      </div>
+
       <div id="viewer" class="viewer"></div>
     </main>
   `;
@@ -70,11 +79,24 @@ else if (route.type === "model") {
 
   const asset = model.create();
   viewer.setModel(asset);
+  
+  const wireframeToggle = document.querySelector("#wireframe-toggle");
+  const triangleCount = document.querySelector("#triangle-count");
+
+  wireframeToggle.addEventListener("change", () => {
+    viewer.setWireframe(wireframeToggle.checked);
+  });
+
+  triangleCount.textContent = 
+    `Tris: ${viewer.getTriangleCount().toLocaleString("en-US")}`;
 
   const exportButton = document.querySelector("#export-button");
   
   exportButton.addEventListener("click", async () => {
     exportButton.disabled = true
+    const wasWireframe = viewer.wireframe;
+
+    viewer.setWireframe(false);
 
     try {
       await exportGlb(asset, `${model.slug}.glb`);
@@ -82,6 +104,7 @@ else if (route.type === "model") {
       console.error("GLB-Export failed:", error);
       alert("GLB-Export failes. See console for details.");
     } finally {
+      viewer.setWireframe(wasWireframe)
       exportButton.disabled = false;
     }
   });

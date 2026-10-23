@@ -54,8 +54,15 @@ export class ModelViewer {
 
         this.scene.add(this.grid);
 
-
         this.model = null;
+        this.wireframe = false;
+        this.originalMaterials = new Map();
+
+        this.wireframeMaterial = new THREE.MeshBasicMaterial({
+            color: "#79baff",
+            wireframe: true,
+            side: THREE.DoubleSide
+        });
 
 
         this.resizeObserver = new ResizeObserver(() => {
@@ -80,6 +87,7 @@ export class ModelViewer {
 
         this.model = model;
         this.scene.add(model);
+        this.setWireframe(this.wireframe);
 
 
         const bounds = new THREE.Box3().setFromObject(model);
@@ -113,6 +121,49 @@ export class ModelViewer {
         this.controls.target.copy(center);
         this.controls.update();
     }
+    
+
+    setWireframe(enabled) {
+        this.wireframe = enabled;
+
+        if (!this.model) return;
+
+        this.model.traverse(object => {
+            if (!object.isMesh) return;
+
+            if (enabled) {
+                if (!this.originalMaterials.has(object)) {
+                    this.originalMaterials.set(object, object.material);
+                }
+
+                object.material = this.wireframeMaterial;
+            } else if (this.originalMaterials.has(object)) {
+                object.material = this.originalMaterials.get(object);
+                this.originalMaterials.delete(object);
+            }
+        });
+    }
+
+
+    getTriangleCount() {
+        if (!this.model) return 0;
+
+        let triangles = 0;
+
+        this.model.traverse(object => {
+            if (!object.isMesh) return;
+
+            const geometry = object.geometry;
+
+            if (geometry.index) {
+                triangles += geometry.index.count / 3;
+            } else {
+                triangles += geometry.attributes.position.count / 3;
+            }
+        });
+
+        return triangles;
+    }
 
 
     resize() {
@@ -133,6 +184,7 @@ export class ModelViewer {
     dispose() {
         this.renderer.setAnimationLoop(null);
         this.resizeObserver.disconnect();
+        this.wireframeMaterial.dispose();
         this.controls.dispose();
         this.renderer.dispose();
         this.renderer.domElement.remove();
