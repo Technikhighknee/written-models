@@ -24,7 +24,7 @@ export function rectangleCornerMounts({
         throw new RangeError("Invalid mounting dimentsions");
     }
 
-    if (face != "top" && face !== "bottom") {
+    if (face !== "top" && face !== "bottom") {
         throw new RangeError("Face must be top or bottom");
     }
 
