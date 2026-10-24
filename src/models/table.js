@@ -1,9 +1,11 @@
 import * as THREE from "three";
-import { getBounds } from "../toolbox/spatial/queries/bounds.js";
 import { createBeamBetween } from "../toolbox/geometry/construction/beams.js";
 import { rectangle } from "../toolbox/shapes/primitives/rectangle.js";
 import { extrude } from "../toolbox/shapes/operations/extrude.js";
-import { mm, cm, m, } from "../toolbox/units/length.js";
+import { cm, m, } from "../toolbox/units/length.js";
+import { rectangleCornerMounts } from "../toolbox/geometry/features/rectangleCornerMounts.js";
+import { attachByFrames } from "../toolbox/spatial/relationships/attachByFrames.js";
+import { createFrame } from "../toolbox/spatial/frames/frames.js";
 
 export default {
     create,
@@ -21,64 +23,98 @@ function create() {
         roughness: 0.9
     });
 
-    const top = createTop(wood);
+    const topSpec = {
+        width: m(2),
+        depth: cm(110),
+        thickness: cm(14),
+        height: m(1),
+
+        bevel: {
+            size: cm(5),
+            thickness: cm(2)
+        }
+    };
+
+    const legSpec = {
+        width: cm(12),
+        depth: cm(12),
+        inset: cm(12)
+    };
+
+    const top = createTop(topSpec, wood);
 
     table.add(top);
-    table.add(...createLegs(top, wood));
+
+    createLegs(top, topSpec, legSpec, wood);
+
+    top.rotateZ(Math.PI / 2 + 20);
+    top.rotateX(1);
 
     return table;
 }
 
-function createTop(material) {
-    const geometry = extrude(
-        rectangle(m(2), cm(110)),
-        {
-            thickness: cm(14),
-            bevel: {
-                size: cm(5),
-                thickness: cm(2)
-            }
-        }
+function createTop(spec, material) {
+    const shape = rectangle(
+        spec.width, spec.depth
     );
 
-    const tabletop = new THREE.Mesh(geometry, material);
+    const geometry = extrude(shape, {
+        thickness: spec.thickness,
+        bevel: spec.bevel
+    });
 
-    tabletop.name = "TableTop";
-    tabletop.position.set(0, 1, 0);
-    tabletop.rotateY(Math.PI / 2 + 20);
+    const top = new THREE.Mesh(geometry, material);
 
-    return tabletop;
+    top.name = "TableTop";
+    top.position.y = spec.height;
+
+    return top;
 }
 
-function createLegs(top, material) {
-    const bounds = getBounds(top);
+function createLegs(top, topSpec, legSpec, material) {
+    const mounts = rectangleCornerMounts({
+        width: topSpec.width,
+        depth: topSpec.depth,
+        thickness: topSpec.thickness,
 
-    const WIDTH = cm(12);
-    const DEPTH = cm(12);
-    const INSET = cm(12);
-    const FLOOR = m(0);
+        footprintWidth: legSpec.width,
+        footprintDepth: legSpec.depth,
 
-    const left = bounds.min.x + INSET + WIDTH / 2;
-    const right = bounds.max.x - INSET - WIDTH / 2;
-    const front = bounds.max.z - INSET - DEPTH / 2;
-    const back = bounds.min.z + INSET + DEPTH / 2;
+        inset: legSpec.inset,
+        face: "bottom"
+    });
 
-    const positions =  [
-        ["LegFL", left, front],
-        ["LegFR", right, front],
-        ["LegBL", left, back],
-        ["LegBR", right, back]
-    ];
+    const length = topSpec.height - topSpec.thickness / 2;
 
-    return positions.map(([name, x, z]) => {
-        const start = new THREE.Vector3(x, FLOOR, z);
-        const end = new THREE.Vector3(x, bounds.min.y, z);
+    if (!Number.isFinite(length) || length <= 0) {
+        throw new RangeError("Invalid table leg length");
+    }
 
+    const halfLength = length / 2;
+
+    const legFrame = createFrame(
+        new THREE.Vector3(0, halfLength, 0),
+        new THREE.Quaternion().setFromAxisAngle(
+            new THREE.Vector3(1, 0, 0),
+            Math.PI
+        )
+    );
+
+    for (const mount of mounts) {
         const leg = createBeamBetween(
-            start, end, WIDTH, DEPTH, material
+            new THREE.Vector3(0, -halfLength, 0),
+            new THREE.Vector3(0, halfLength, 0),
+            legSpec.width,
+            legSpec.depth,
+            material
         );
 
-        leg.name = name;
-        return leg;
-    });
+        leg.name = `Leg${mount.name}`;
+
+        attachByFrames(
+            top, leg,
+            mount.frame,
+            legFrame
+        );
+    }
 }
