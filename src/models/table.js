@@ -45,6 +45,7 @@ function createTop(material) {
 
     tabletop.name = "TableTop";
     tabletop.position.set(0, 1, 0);
+    tabletop.rotateY(Math.PI / 2 + 20);
 
     return tabletop;
 }
