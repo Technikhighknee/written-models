@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
 import { mm, cm } from "../toolbox/units/length";
+import { positionsFromEnds } from "../toolbox/spatial/layout/positionsFromEnds";
 import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
 import { revolveShell } from "../toolbox/shapes/operations/revolveShell";
@@ -25,21 +26,28 @@ function create(): THREE.Group {
 
 
     const profile = bulgedProfile({
-        height: cm(90),
-        bottomDiameter: cm(50),
-        topDiameter: cm(50),
-        peakDiameter: cm(60),
+        height: cm(50),
+        bottomDiameter: cm(30),
+        topDiameter: cm(30),
+        peakDiameter: cm(36),
         points: 7,
         curve: "quadratic"
     });
 
     barrel.add(createBody(profile, wood));
 
-    barrel.add(createHead(profile, "top", cm(3), wood));
-    barrel.add(createHead(profile, "bottom", cm(3), wood));
+    barrel.add(createHead(profile, "top", mm(8), wood));
+    barrel.add(createHead(profile, "bottom", mm(8), wood));
 
-    for (const height of [10, 20, 70, 80]) {
-        barrel.add(createHoop(profile, cm(height)));
+    const hoopPositions = positionsFromEnds({
+        start: profile[0]!.y,
+        end: profile.at(-1)!.y,
+        fromStart: [cm(8)],
+        fromEnd: [cm(8)]
+    });
+
+    for (const y of hoopPositions) {
+        barrel.add(createHoop(profile, y))
     }
 
     return barrel;
