@@ -4,13 +4,14 @@ import * as THREE from "three";
 // This is find for the current use case, but it's something to keep in mind if the
 // function later encounters geometries that have already been transformed.
 // TODO: Reread this at some point before you find yourself wondering, "WTF is going on here?"
+// TODO: Reread again at _another_ time.
 
-/**
- * @param {THREE.BufferGeometry} geometry 
- * @param {(normal: THREE.Vector3) => number} resolveMaterial
- * @returns {THREE.BufferGeometry} 
- */
-export function assignMaterialsByNormal(geometry, resolveMaterial) {
+export type MaterialResolver = (normal: THREE.Vector3) => number;
+
+export function assignMaterialsByNormal<T extends THREE.BufferGeometry>(
+    geometry: T,
+    resolveMaterial: MaterialResolver
+): T {
     const positions = geometry.getAttribute("position");
     const originalIndex = geometry.getIndex();
 
@@ -24,7 +25,7 @@ export function assignMaterialsByNormal(geometry, resolveMaterial) {
         throw new Error("Geometry must contain triangles");
     }
 
-    const groups = new Map();
+    const groups = new Map<number, number[]>();
 
     const a = new THREE.Vector3();
     const b = new THREE.Vector3();
@@ -36,7 +37,7 @@ export function assignMaterialsByNormal(geometry, resolveMaterial) {
 
     for (let i = 0; i < count; i += 3) {
         const ia = originalIndex?.getX(i) ?? i;
-        const ib = originalIndex?.getX(i +1 ) ?? i + 1;
+        const ib = originalIndex?.getX(i + 1) ?? i + 1;
         const ic = originalIndex?.getX(i + 2) ?? i + 2;
 
         a.fromBufferAttribute(positions, ia);
@@ -58,10 +59,10 @@ export function assignMaterialsByNormal(geometry, resolveMaterial) {
             groups.set(materialIndex, []);
         }
 
-        groups.get(materialIndex).push(ia, ib, ic);
+        groups.get(materialIndex)!.push(ia, ib, ic);
     }
 
-    const indices = [];
+    const indices: number[] = [];
 
     geometry.clearGroups();
 

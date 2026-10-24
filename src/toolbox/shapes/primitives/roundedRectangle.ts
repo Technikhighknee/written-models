@@ -1,12 +1,12 @@
 import * as THREE from "three";
-import { rectangle } from "./rectangle.js";
+import { rectangle } from "./rectangle";
 
-/**
- * @param {number} width 
- * @param {number} depth 
- * @param {number} radius 
- */
-export function roundedRectangle(width, depth, radius) {
+
+export function roundedRectangle(
+    width: number,
+    depth: number,
+    radius: number
+): THREE.Shape {
     if (
         width <= 0 ||
         depth <= 0 ||
@@ -17,7 +17,11 @@ export function roundedRectangle(width, depth, radius) {
     }
 
     if (radius === 0) {
-        console.warn("Could just use a normal rectangle roughly", Error().stack.split("\n")[2] || "at ... you know what? nevermind");
+        console.warn(
+            "Could just use a normal rectangle roughly",
+            new Error().stack?.split("\n")[2] ?? "at ... you know what? nevermind"
+        );
+
         return rectangle(width, depth);
     }
 
@@ -53,5 +57,6 @@ export function roundedRectangle(width, depth, radius) {
     );
 
     shape.closePath();
+
     return shape;
 }

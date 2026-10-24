@@ -2,17 +2,35 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 export class ModelViewer {
-    constructor(container) {
+    readonly container: HTMLElement;
+    readonly scene: THREE.Scene;
+    readonly camera: THREE.PerspectiveCamera;
+    readonly renderer: THREE.WebGLRenderer;
+    readonly controls: OrbitControls;
+    readonly grid: THREE.GridHelper;
+
+    private model: THREE.Object3D | null = null;
+    private readonly originalMaterials =
+        new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
+    
+    private readonly wireframeMaterial: THREE.MeshBasicMaterial;
+    private readonly resizeObserver: ResizeObserver;
+
+    wireframe = false;
+
+    constructor(container: HTMLElement) {
         this.container = container;
         
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color("#30343a");
         
+        this.camera = new THREE.PerspectiveCamera(
+            50, 1, 0.01, 1000
+        );
         
-        this.camera = new THREE.PerspectiveCamera(50, 1, 0.01, 1000);
-        
-        
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer = new THREE.WebGLRenderer({
+            antialias: true
+        });
         
         this.renderer.setPixelRatio(
             Math.min(window.devicePixelRatio, 2)
@@ -54,16 +72,11 @@ export class ModelViewer {
 
         this.scene.add(this.grid);
 
-        this.model = null;
-        this.wireframe = false;
-        this.originalMaterials = new Map();
-
         this.wireframeMaterial = new THREE.MeshBasicMaterial({
             color: "#79baff",
             wireframe: true,
             side: THREE.DoubleSide
         });
-
 
         this.resizeObserver = new ResizeObserver(() => {
             this.resize();
@@ -80,7 +93,7 @@ export class ModelViewer {
     }
 
 
-    setModel(model) {
+    setModel(model: THREE.Object3D): void {
         const wasWireframe = this.wireframe;
 
         if (this.model) {
@@ -128,35 +141,43 @@ export class ModelViewer {
     }
     
 
-    setWireframe(enabled) {
+    setWireframe(enabled: boolean): void {
         this.wireframe = enabled;
 
         if (!this.model) return;
 
         this.model.traverse(object => {
-            if (!object.isMesh) return;
+            if (!(object instanceof THREE.Mesh)) return;
 
             if (enabled) {
                 if (!this.originalMaterials.has(object)) {
-                    this.originalMaterials.set(object, object.material);
+                    this.originalMaterials.set(
+                        object,
+                        object.material
+                    );
                 }
 
                 object.material = this.wireframeMaterial;
-            } else if (this.originalMaterials.has(object)) {
-                object.material = this.originalMaterials.get(object);
-                this.originalMaterials.delete(object);
+
+            } else {
+                const original = this.originalMaterials.get(object);
+                
+                if (original) {
+                    object.material = original;
+                    this.originalMaterials.delete(object);
+                }
             }
         });
     }
 
 
-    getTriangleCount() {
+    getTriangleCount(): number {
         if (!this.model) return 0;
 
         let triangles = 0;
 
         this.model.traverse(object => {
-            if (!object.isMesh) return;
+            if (!(object instanceof THREE.Mesh)) return;
 
             const geometry = object.geometry;
 
@@ -171,7 +192,7 @@ export class ModelViewer {
     }
 
 
-    resize() {
+    resize(): void {
         const width = this.container.clientWidth;
         const height = this.container.clientHeight;
 
@@ -186,7 +207,7 @@ export class ModelViewer {
     }
 
 
-    dispose() {
+    dispose(): void {
         this.renderer.setAnimationLoop(null);
         this.resizeObserver.disconnect();
         this.wireframeMaterial.dispose();

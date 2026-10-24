@@ -1,11 +1,9 @@
 import * as THREE from "three";
 
-/**
- * @param {number} innerRadius 
- * @param {number} outerRadius
- * @returns {THREE.Shape} 
- */
-export function ring(innerRadius, outerRadius) {
+export function ring(
+    innerRadius: number,
+    outerRadius: number
+): THREE.Shape {
     if (
         !Number.isFinite(innerRadius) ||
         !Number.isFinite(outerRadius) ||

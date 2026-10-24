@@ -1,9 +1,10 @@
 
 import * as THREE from "three";
-import { mm, cm } from "../toolbox/units/length.js";
-import { roundedRectangle } from "../toolbox/shapes/primitives/roundedRectangle.js";
-import { extrude } from "../toolbox/shapes/operations/extrude.js";
-import { assignMaterialsByNormal } from "../toolbox/geometry/materials/assignMaterialsByNormal.js";
+
+import { mm, cm } from "../toolbox/units/length";
+import { roundedRectangle } from "../toolbox/shapes/primitives/roundedRectangle";
+import { extrude } from "../toolbox/shapes/operations/extrude";
+import { assignMaterialsByNormal } from "../toolbox/geometry/materials/assignMaterialsByNormal";
 
 export default {
     create,
@@ -12,12 +13,14 @@ export default {
     description: "The backbone of modern society."
 }
 
-function create() {
+function create(): THREE.Group {
     const sandingpaper = new THREE.Group();
     sandingpaper.name = "SandingPaper";
 
     const shape = roundedRectangle(
-        cm(23), cm(28), mm(3)
+        cm(23),
+        cm(28),
+        mm(3)
     );
 
     const backing = new THREE.MeshStandardMaterial({
@@ -32,9 +35,13 @@ function create() {
 
     const thickness = mm(0.8);
 
-    const geometry = extrude(shape, { thickness, curveSegments: 4 });
+    const geometry = extrude(shape, {
+        thickness,
+        curveSegments: 4
+    });
 
-    assignMaterialsByNormal(geometry, 
+    assignMaterialsByNormal(
+        geometry, 
         normal => normal.y > 0.9 ? 0 : 1
     );
 

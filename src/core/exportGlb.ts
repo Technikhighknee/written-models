@@ -1,7 +1,10 @@
 import * as THREE from "three";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
-export async function exportGlb(model, filename) {
+export async function exportGlb(
+    model: THREE.Object3D,
+    filename: string
+): Promise<void> {
     const exportScene = new THREE.Scene();
     exportScene.add(model.clone(true));
 
@@ -11,6 +14,10 @@ export async function exportGlb(model, filename) {
         exportScene,
         { binary: true }
     );
+
+    if(!(buffer instanceof ArrayBuffer)) {
+        throw new Error("Expected binary GLB export");
+    }
 
     const blob = new Blob(
         [buffer],

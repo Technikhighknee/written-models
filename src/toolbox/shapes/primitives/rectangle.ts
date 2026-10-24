@@ -1,10 +1,10 @@
-import { polygon } from "./polygon.js";
+import type { Shape } from "three";
+import { polygon } from "./polygon";
 
-/**
- * @param {number} width 
- * @param {number} depth 
- */
-export function rectangle(width, depth) {
+export function rectangle(
+    width: number, 
+    depth: number
+): Shape {
     const hw = width / 2;
     const hd = depth / 2;
 

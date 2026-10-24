@@ -1,6 +1,20 @@
 import * as THREE from "three";
 
-const ALLOWED_CURVES = ["quadratic", "smoothstep"];
+export type BulgeCurve = "quadratic" | "smoothstep";
+
+export interface BulgedProfileOptions {
+    height: number;
+    bottomDiameter: number;
+    topDiameter: number;
+    peakDiameter: number;
+    points?: number;
+    curve?: BulgeCurve;
+}
+
+const ALLOWED_CURVES: readonly string[] = [
+    "quadratic",
+    "smoothstep",
+]
 
 export function bulgedProfile({
     height,
@@ -9,16 +23,18 @@ export function bulgedProfile({
     peakDiameter, 
     points = 7,
     curve = "quadratic"
-}) {
+}: BulgedProfileOptions): THREE.Vector2[] {
     if (!Number.isInteger(points) || points < 3) {
         throw new RangeError("At least 3 points required");
     }
 
     if (!ALLOWED_CURVES.includes(curve)) {
-        throw new Error(`Option curve allows ${ALLOWED_CURVES.join(" or ")}, but was ${curve}`);
+        throw new Error(
+            `Option curve allows ${ALLOWED_CURVES.join(" or ")}, but was ${curve}`
+        );
     }
 
-    const profile = [];
+    const profile: THREE.Vector2[] = [];
 
     for (let i = 0; i < points; i++) {
         const t = i / (points - 1);
@@ -29,7 +45,7 @@ export function bulgedProfile({
 
         const progress = lower ? t * 2 : (t - 0.5) * 2;
 
-        let factor;
+        let factor: number;
 
         switch (curve) {
             case "smoothstep":

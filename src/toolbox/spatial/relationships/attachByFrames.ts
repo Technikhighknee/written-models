@@ -1,24 +1,11 @@
 import * as THREE from "three";
 
-/**
- * Attaches a child to a parent by aligning two local frames.
- * 
- * parentFrame is expressed in the parent's local space.
- * childFrame is expressed in the child's local space.
- * 
- * The child becomes a child of the parent, so the attachment
- * remains intact under subsequent parent transformations.
- * 
- * @param {THREE.Object3D} parent 
- * @param {THREE.Object3D} child 
- * @param {THREE.Matrix4} parentFrame 
- * @param {THREE.Matrix4} childFrame
- * @returns {THREE.Object3D} 
- */
-export function attachByFrames(
-    parent, child,
-    parentFrame, childFrame
-) {
+export function attachByFrames<T extends THREE.Object3D>(
+    parent: THREE.Object3D, 
+    child: T,
+    parentFrame: THREE.Matrix4, 
+    childFrame: THREE.Matrix4
+): T {
     if (parent === child) {
         throw new Error("Nope. Refusing to glue an object to itself");
     }

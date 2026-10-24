@@ -1,15 +1,39 @@
 import * as THREE from "three";
-import { createFrame } from "../../spatial/frames/frames.js";
+import { createFrame } from "../../spatial/frames/frames";
+
+export type MountFace = "top" | "bottom";
+
+export interface RectangleCornerMountOptions {
+    width: number;
+    depth: number;
+    thickness: number;
+    footprintWidth: number;
+    footprintDepth: number;
+    inset?: number;
+    face?: MountFace;
+}
+
+export interface RectangleCornerMount {
+    name: string;
+    frame: THREE.Matrix4;
+}
 
 export function rectangleCornerMounts({
-    width, depth, thickness,
-    footprintWidth, footprintDepth,
+    width,
+    depth,
+    thickness,
+    footprintWidth,
+    footprintDepth,
     inset = 0,
     face = "bottom"
-}) {
+}: RectangleCornerMountOptions): RectangleCornerMount[] {
     const values = [
-        width, depth, thickness,
-        footprintWidth, footprintDepth, inset
+        width,
+        depth,
+        thickness,
+        footprintWidth,
+        footprintDepth,
+        inset
     ];
 
     if (
@@ -21,7 +45,7 @@ export function rectangleCornerMounts({
         footprintDepth <= 0 ||
         inset < 0
     ) {
-        throw new RangeError("Invalid mounting dimentsions");
+        throw new RangeError("Invalid mounting dimensions");
     }
 
     if (face !== "top" && face !== "bottom") {
@@ -50,7 +74,7 @@ export function rectangleCornerMounts({
         );
     }
 
-    const corners = [
+    const corners: [string, number, number][] = [
         ["FrontLeft", -x,  z],
         ["FrontRight", x,  z],
         ["BackLeft",  -x, -z],

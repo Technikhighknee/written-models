@@ -1,19 +1,29 @@
 import * as THREE from "three";
 
-// Confession: I don't know how to JSDoc object properties [yet].
-export function revolveShell(profile, {
-    thickness,
-    radialSegments = 32,
-    roundedRims = false,
-    rimSegments = 8
-}) {
+export interface RevolveShellOptions {
+    thickness: number,
+    radialSegments?: number;
+    roundedRims?: boolean;
+    rimSegments?: number;
+}
+
+
+export function revolveShell(
+    profile: readonly THREE.Vector2[],
+    {
+        thickness,
+        radialSegments = 32,
+        roundedRims = false,
+        rimSegments = 8
+    }: RevolveShellOptions
+): THREE.LatheGeometry {
     if (
         !Number.isFinite(thickness) ||
         thickness <= 0 ||
         profile.length < 2 ||
         profile.some((p, i) => 
             p.x <= thickness ||
-            (i > 0 && p.y <= profile[i - 1].y)
+            (i > 0 && p.y <= profile[i - 1]!.y)
         )
     ) {
         throw new RangeError("Invalid shell profile");
@@ -30,15 +40,21 @@ export function revolveShell(profile, {
             p.y
         ));
     
-    let section;
+    let section: THREE.Vector2[];
 
     if (roundedRims) {
         const topRim = createRoundedRim(
-            profile.at(-1), thickness, true, rimSegments
+            profile.at(-1)!, 
+            thickness, 
+            true, 
+            rimSegments
         );
 
         const bottomRim = createRoundedRim(
-            profile[0], thickness, false, rimSegments
+            profile[0]!,
+            thickness,
+            false,
+            rimSegments
         );
 
         section = [
@@ -51,19 +67,24 @@ export function revolveShell(profile, {
         section = [
             ...profile,
             ...innerProfile,
-            profile[0].clone()
+            profile[0]!.clone()
         ];
     }
     
     return new THREE.LatheGeometry(section, radialSegments);
 }
 
-function createRoundedRim(point, thickness, top, segments) {
+function createRoundedRim(
+    point: THREE.Vector2,
+    thickness: number,
+    top: boolean,
+    segments: number
+): THREE.Vector2[] {
     const radius = thickness / 2;
     const centerX = point.x - radius;
     const startAngle = top ? 0 : Math.PI;
 
-    const points = [];
+    const points: THREE.Vector2[] = [];
 
     for (let i = 1; i <= segments; i++) {
         const angle = startAngle + (i / segments) * Math.PI;

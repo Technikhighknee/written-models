@@ -1,11 +1,23 @@
 import "./style.css";
 
-import { models } from "./models/index.js";
-import { resolveRoute } from "./core/router.js";
-import { ModelViewer } from "./core/ModelViewer.js";
-import { exportGlb } from "./core/exportGlb.js";
+import { models } from "./models/index";
+import { resolveRoute } from "./core/router";
+import { ModelViewer } from "./core/ModelViewer";
+import { exportGlb } from "./core/exportGlb";
 
-const app = document.querySelector("#app");
+function requireElement<T extends HTMLElement>(
+  selector: string
+): T {
+  const element = document.querySelector<T>(selector);
+
+  if (!element) {
+    throw new Error(`Required element not found: ${selector}`);
+  }
+
+  return element;
+}
+
+const app = requireElement<HTMLElement>("#app");
 const route = resolveRoute(window.location.pathname);
 
 if (route.type === "home") {
@@ -74,14 +86,18 @@ else if (route.type === "model") {
     </main>
   `;
 
-  const container = document.querySelector("#viewer");
+  const container = requireElement<HTMLElement>("#viewer");
   const viewer = new ModelViewer(container);
 
   const asset = model.create();
   viewer.setModel(asset);
   
-  const wireframeToggle = document.querySelector("#wireframe-toggle");
-  const triangleCount = document.querySelector("#triangle-count");
+  const wireframeToggle = requireElement<HTMLInputElement>(
+    "#wireframe-toggle"
+  );
+  const triangleCount = requireElement<HTMLElement>(
+    "#triangle-count"
+  );
 
   wireframeToggle.addEventListener("change", () => {
     viewer.setWireframe(wireframeToggle.checked);
@@ -90,10 +106,13 @@ else if (route.type === "model") {
   triangleCount.textContent = 
     `Tris: ${viewer.getTriangleCount().toLocaleString("en-US")}`;
 
-  const exportButton = document.querySelector("#export-button");
+  const exportButton = requireElement<HTMLButtonElement>(
+    "#export-button"
+  );
   
   exportButton.addEventListener("click", async () => {
     exportButton.disabled = true
+
     const wasWireframe = viewer.wireframe;
 
     viewer.setWireframe(false);

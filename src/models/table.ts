@@ -1,11 +1,30 @@
 import * as THREE from "three";
-import { createBeamBetween } from "../toolbox/geometry/construction/beams.js";
-import { rectangle } from "../toolbox/shapes/primitives/rectangle.js";
-import { extrude } from "../toolbox/shapes/operations/extrude.js";
-import { cm, m, } from "../toolbox/units/length.js";
-import { rectangleCornerMounts } from "../toolbox/geometry/features/rectangleCornerMounts.js";
-import { attachByFrames } from "../toolbox/spatial/relationships/attachByFrames.js";
-import { createFrame } from "../toolbox/spatial/frames/frames.js";
+
+import { createBeamBetween } from "../toolbox/geometry/construction/beams";
+import { rectangle } from "../toolbox/shapes/primitives/rectangle";
+import { extrude } from "../toolbox/shapes/operations/extrude";
+import { cm, m, } from "../toolbox/units/length";
+import { rectangleCornerMounts } from "../toolbox/geometry/features/rectangleCornerMounts";
+import { attachByFrames } from "../toolbox/spatial/relationships/attachByFrames";
+import { createFrame } from "../toolbox/spatial/frames/frames";
+
+interface TopSpec {
+    width: number;
+    depth: number;
+    thickness: number;
+    height: number;
+
+    bevel: {
+        size: number;
+        thickness: number;
+    };
+}
+
+interface LegSpec {
+    width: number;
+    depth: number;
+    inset: number;
+}
 
 export default {
     create,
@@ -14,7 +33,7 @@ export default {
     description: "It all began with a table...",
 }
 
-function create() {
+function create(): THREE.Group {
     const table = new THREE.Group();
     table.name = "TavernTable";
 
@@ -23,7 +42,7 @@ function create() {
         roughness: 0.9
     });
 
-    const topSpec = {
+    const topSpec: TopSpec = {
         width: m(2),
         depth: cm(110),
         thickness: cm(14),
@@ -35,7 +54,7 @@ function create() {
         }
     };
 
-    const legSpec = {
+    const legSpec: LegSpec = {
         width: cm(12),
         depth: cm(12),
         inset: cm(12)
@@ -53,9 +72,13 @@ function create() {
     return table;
 }
 
-function createTop(spec, material) {
+function createTop(
+    spec: TopSpec,
+    material: THREE.Material
+): THREE.Mesh {
     const shape = rectangle(
-        spec.width, spec.depth
+        spec.width,
+        spec.depth
     );
 
     const geometry = extrude(shape, {
@@ -71,7 +94,12 @@ function createTop(spec, material) {
     return top;
 }
 
-function createLegs(top, topSpec, legSpec, material) {
+function createLegs(
+    top: THREE.Mesh,
+    topSpec: TopSpec,
+    legSpec: LegSpec,
+    material: THREE.Material
+): void {
     const mounts = rectangleCornerMounts({
         width: topSpec.width,
         depth: topSpec.depth,
@@ -103,7 +131,7 @@ function createLegs(top, topSpec, legSpec, material) {
     for (const mount of mounts) {
         const leg = createBeamBetween(
             new THREE.Vector3(0, -halfLength, 0),
-            new THREE.Vector3(0, halfLength, 0),
+            new THREE.Vector3(0,  halfLength, 0),
             legSpec.width,
             legSpec.depth,
             material

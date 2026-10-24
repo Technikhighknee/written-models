@@ -1,10 +1,23 @@
 import * as THREE from "three";
 
-export function bandAroundProfile(profile, {
-    y, width, thickness,
-    overlap = 0,
-    radialSegments = 32
-}) {
+export interface BandAroundProfileOptions {
+    y: number;
+    width: number;
+    thickness: number;
+    overlap?: number;
+    radialSegments?: number;
+}
+
+export function bandAroundProfile(
+    profile: readonly THREE.Vector2[],
+    {
+        y,
+        width,
+        thickness,
+        overlap = 0,
+        radialSegments = 32
+    }: BandAroundProfileOptions
+): THREE.LatheGeometry {
     const bottom = y - width / 2;
     const top = y + width / 2;
 
@@ -14,8 +27,8 @@ export function bandAroundProfile(profile, {
         thickness <= 0 ||
         overlap < 0 ||
         overlap >= thickness ||
-        bottom < profile[0].y ||
-        top > profile.at(-1).y
+        bottom < profile[0]!.y ||
+        top > profile.at(-1)!.y
     ) {
         throw new RangeError("Invalid band dimensions");
     }
@@ -49,7 +62,7 @@ export function bandAroundProfile(profile, {
     const outline = [
         ...outer,
         ...inner,
-        outer[0].clone()
+        outer[0]!.clone()
     ];
 
     return new THREE.LatheGeometry(
@@ -58,10 +71,13 @@ export function bandAroundProfile(profile, {
     );
 }
 
-function radiusAtHeight(profile, height) {
+function radiusAtHeight(
+    profile: readonly THREE.Vector2[],
+    height: number
+): number {
     for (let i = 1; i < profile.length; i++) {
-        const a = profile[i - 1];
-        const b = profile[i];
+        const a = profile[i - 1]!;
+        const b = profile[i]!;
 
         if (height <= b.y) {
             const t = (height - a.y) / (b.y - a.y);

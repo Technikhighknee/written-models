@@ -1,14 +1,12 @@
 import * as THREE from "three";
 
-/**
- * @param {THREE.Vector3Like} start 
- * @param {THREE.Vector3Like} end 
- * @param {number} width 
- * @param {number} depth 
- * @param {THREE.Material} material 
- * @returns {THREE.Mesh}
- */
-export function createBeamBetween(start, end, width, depth, material) {
+export function createBeamBetween(
+    start: THREE.Vector3Like,
+    end: THREE.Vector3Like,
+    width: number,
+    depth: number,
+    material: THREE.Material
+): THREE.Mesh {
     const direction = new THREE.Vector3()
         .subVectors(end, start);
     
@@ -18,7 +16,11 @@ export function createBeamBetween(start, end, width, depth, material) {
         throw new Error("Beam requires two distinct points");
     }
 
-    const geometry = new THREE.BoxGeometry(width, length, depth);
+    const geometry = new THREE.BoxGeometry(
+        width,
+        length,
+        depth
+    );
 
     const beam = new THREE.Mesh(geometry, material);
 

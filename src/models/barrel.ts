@@ -1,8 +1,11 @@
 import * as THREE from "three";
-import { mm, cm } from "../toolbox/units/length.js";
-import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile.js";
-import { bulgedProfile } from "../toolbox/shapes/profiles/bulged.js";
-import { revolveShell } from "../toolbox/shapes/operations/revolveShell.js";
+
+import { mm, cm } from "../toolbox/units/length";
+import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile";
+import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
+import { revolveShell } from "../toolbox/shapes/operations/revolveShell";
+
+type BarrelHeadSide = "top" | "bottom";
 
 export default {
     create,
@@ -11,7 +14,7 @@ export default {
     description: "A barrel of possibilities.",
 }
 
-function create() {
+function create(): THREE.Group {
     const barrel = new THREE.Group();
     barrel.name = "Barrel";
 
@@ -42,7 +45,10 @@ function create() {
     return barrel;
 }
 
-function createBody(profile, material) {
+function createBody(
+    profile: readonly THREE.Vector2[],
+    material: THREE.Material
+): THREE.Mesh {
     const geometry = revolveShell(profile, {
         thickness: cm(2),
         roundedRims: true,
@@ -55,11 +61,22 @@ function createBody(profile, material) {
     return body;
 }
 
-function createHead(profile, side, inset, material) {
+function createHead(
+    profile: readonly THREE.Vector2[],
+    side: BarrelHeadSide,
+    inset: number,
+    material: THREE.Material
+): THREE.Mesh {
     const isTop = side == "top";
 
-    const rim = profile.at(!isTop - 1); // hehe javascript
+    const rim = isTop // RIP boolean arithmetic
+        ? profile.at(-1)
+        : profile.at(0);
 
+    if (!rim) {
+        throw new RangeError("Barrel profile is empty");
+    }
+    
     const innerY = rim.y + (isTop ? -inset : inset);
 
     const inner = new THREE.Vector2(rim.x, innerY);
@@ -78,7 +95,10 @@ function createHead(profile, side, inset, material) {
     return head;
 }
 
-function createHoop(profile, y) {
+function createHoop(
+    profile: readonly THREE.Vector2[],
+    y: number
+): THREE.Mesh {
     const geometry = bandAroundProfile(profile, {
         y,
         width: cm(4),
