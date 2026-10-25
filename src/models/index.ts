@@ -3,6 +3,7 @@ import type { Object3D } from "three";
 import table from "./table";
 import barrel from "./barrel";
 import sandingpaper from "./sandingpaper";
+import plank from "./plank";
 
 export interface ModelDefinition {
     slug: string;
@@ -14,5 +15,6 @@ export interface ModelDefinition {
 export const models: readonly ModelDefinition[] = [
     table,
     barrel,
-    sandingpaper
+    sandingpaper,
+    plank
 ];
