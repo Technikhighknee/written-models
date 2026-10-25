@@ -79,6 +79,7 @@ export function loftSections(
             quads.push({
                 corners: [a, b, c, d],
                 surface: `side-${side}`,
+                smoothingGroup: `side-${side}`,
                 uvs: [
                     new THREE.Vector2(0, distances[i]!),
                     new THREE.Vector2(widthStart, distances[i]!),

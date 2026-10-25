@@ -4,6 +4,7 @@ export interface QuadFace {
     corners: [number, number, number, number];
     uvs: [THREE.Vector2, THREE.Vector2, THREE.Vector2, THREE.Vector2];
     surface: string;
+    smoothingGroup?: string;
 }
 
 export interface MeshData {
