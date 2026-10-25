@@ -7,6 +7,17 @@ const TRIANGLES = [
     [0, 2, 3]
 ] as const;
 
+const controlMeshes = new WeakMap<
+    THREE.BufferGeometry,
+    MeshData
+>();
+
+export function getControlMesh(
+    geometry: THREE.BufferGeometry
+): MeshData | undefined {
+    return controlMeshes.get(geometry);
+}
+
 export function toBufferGeometry(
     mesh: MeshData,
     materialBySurface: Readonly<Record<string, number>>
@@ -245,6 +256,8 @@ export function toBufferGeometry(
 
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
+
+    controlMeshes.set(geometry, mesh);
 
     return geometry;
 }

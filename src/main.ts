@@ -55,7 +55,7 @@ if (route.type === "home") {
 
 else if (route.type === "model") {
   const { model } = route;
-  
+
   app.innerHTML = `
     <main class="layout">
       <header class="viewer-header">
@@ -78,8 +78,13 @@ else if (route.type === "model") {
           <input id="wireframe-toggle" type="checkbox">
           Wireframe
         </label>
+        <label>
+          <input id="quad-toggle" type="checkbox">
+          Quad View
+        </label>
 
         <span id="triangle-count">Tris: 0</span>
+        <span id="quad-count">Quads: 0</span>
       </div>
 
       <div id="viewer" class="viewer"></div>
@@ -91,30 +96,56 @@ else if (route.type === "model") {
 
   const asset = model.create();
   viewer.setModel(asset);
-  
+
   const wireframeToggle = requireElement<HTMLInputElement>(
     "#wireframe-toggle"
   );
+
+  const quadToggle = requireElement<HTMLInputElement>(
+    "#quad-toggle"
+  );
+
+  const quadCount = requireElement<HTMLElement>(
+    "#quad-count"
+  );
+
+  const quads = viewer.getQuadCount();
+
+  quadToggle.disabled = quads === 0;
+
+  quadCount.textContent =
+    `Quads: ${quads.toLocaleString("en-US")}`;
+
+  quadToggle.addEventListener("change", () => {
+    viewer.setQuadView(quadToggle.checked);
+
+    wireframeToggle.checked = viewer.wireframe;
+  });
+
   const triangleCount = requireElement<HTMLElement>(
     "#triangle-count"
   );
 
   wireframeToggle.addEventListener("change", () => {
     viewer.setWireframe(wireframeToggle.checked);
+
+    quadToggle.checked = viewer.quadView;
   });
 
-  triangleCount.textContent = 
+  triangleCount.textContent =
     `Tris: ${viewer.getTriangleCount().toLocaleString("en-US")}`;
 
   const exportButton = requireElement<HTMLButtonElement>(
     "#export-button"
   );
-  
+
   exportButton.addEventListener("click", async () => {
     exportButton.disabled = true
 
     const wasWireframe = viewer.wireframe;
+    const wasQuadView = viewer.quadView;
 
+    viewer.setQuadView(false);
     viewer.setWireframe(false);
 
     try {
@@ -123,7 +154,9 @@ else if (route.type === "model") {
       console.error("GLB-Export failed:", error);
       alert("GLB-Export failes. See console for details.");
     } finally {
-      viewer.setWireframe(wasWireframe)
+      viewer.setWireframe(wasWireframe);
+      viewer.setQuadView(wasQuadView);
+
       exportButton.disabled = false;
     }
   });

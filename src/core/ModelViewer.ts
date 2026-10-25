@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { getControlMesh } from "../toolbox/geometry/mesh/toBufferGeometry";
+import type { MeshData } from "../toolbox/geometry/mesh/MeshData";
 
 export class ModelViewer {
     readonly container: HTMLElement;
@@ -12,33 +14,48 @@ export class ModelViewer {
     private model: THREE.Object3D | null = null;
     private readonly originalMaterials =
         new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
-    
+
     private readonly wireframeMaterial: THREE.MeshBasicMaterial;
+
+    private readonly quadMaterial = new THREE.LineBasicMaterial({
+        color: "#79baff",
+        depthTest: true,
+        depthWrite: false
+    });
+
+    private readonly quadEntries: {
+        mesh: THREE.Mesh;
+        originalMaterial: THREE.Material | THREE.Material[];
+        outline: THREE.LineSegments;
+    }[] = [];
+
+    quadView = false;
+
     private readonly resizeObserver: ResizeObserver;
 
     wireframe = false;
 
     constructor(container: HTMLElement) {
         this.container = container;
-        
+
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color("#30343a");
-        
+
         this.camera = new THREE.PerspectiveCamera(
             50, 1, 0.01, 1000
         );
-        
+
         this.renderer = new THREE.WebGLRenderer({
             antialias: true
         });
-        
+
         this.renderer.setPixelRatio(
             Math.min(window.devicePixelRatio, 2)
         );
-        
+
         this.container.appendChild(this.renderer.domElement);
 
-        
+
         this.controls = new OrbitControls(
             this.camera,
             this.renderer.domElement
@@ -66,7 +83,7 @@ export class ModelViewer {
 
         this.grid = new THREE.GridHelper(
             10, 20,
-            0x627082, 
+            0x627082,
             0x39424d
         );
 
@@ -88,6 +105,17 @@ export class ModelViewer {
 
         this.renderer.setAnimationLoop(() => {
             this.controls.update();
+
+            this.model?.updateWorldMatrix(true, true);
+
+            for (const entry of this.quadEntries) {
+                entry.outline.matrix.copy(
+                    entry.mesh.matrixWorld
+                );
+
+                entry.outline.matrixWorldNeedsUpdate = true;
+            }
+
             this.renderer.render(this.scene, this.camera);
         });
     }
@@ -95,9 +123,11 @@ export class ModelViewer {
 
     setModel(model: THREE.Object3D): void {
         const wasWireframe = this.wireframe;
+        const wasQuadView = this.quadView;
 
         if (this.model) {
             this.setWireframe(false);
+            this.setQuadView(false);
             this.scene.remove(this.model);
         }
 
@@ -107,6 +137,10 @@ export class ModelViewer {
         this.scene.add(model);
 
         this.setWireframe(wasWireframe);
+
+        this.setQuadView(
+            wasQuadView && this.getQuadCount() > 0
+        );
 
         const bounds = new THREE.Box3().setFromObject(model);
 
@@ -139,12 +173,16 @@ export class ModelViewer {
         this.controls.target.copy(center);
         this.controls.update();
     }
-    
+
 
     setWireframe(enabled: boolean): void {
         this.wireframe = enabled;
 
         if (!this.model) return;
+
+        if (enabled && this.quadView) {
+            this.setQuadView(false);
+        }
 
         this.model.traverse(object => {
             if (!(object instanceof THREE.Mesh)) return;
@@ -161,7 +199,7 @@ export class ModelViewer {
 
             } else {
                 const original = this.originalMaterials.get(object);
-                
+
                 if (original) {
                     object.material = original;
                     this.originalMaterials.delete(object);
@@ -170,6 +208,99 @@ export class ModelViewer {
         });
     }
 
+    setQuadView(enabled: boolean): void {
+        if (this.quadView === enabled) return;
+
+        if (enabled && this.wireframe) {
+            this.setWireframe(false);
+        }
+
+        for (const entry of this.quadEntries) {
+            const preview = entry.mesh.material;
+
+            entry.mesh.material = entry.originalMaterial;
+
+            const materials = Array.isArray(preview)
+                ? preview
+                : [preview];
+
+            for (const material of materials) {
+                material.dispose();
+            }
+
+            this.scene.remove(entry.outline);
+            entry.outline.geometry.dispose();
+        }
+
+        this.quadEntries.length = 0;
+        this.quadView = enabled;
+
+        if (!enabled || !this.model) return;
+
+        this.model.traverse(object => {
+            if (!(object instanceof THREE.Mesh)) return;
+
+            const data = getControlMesh(object.geometry);
+
+            if (!data) return;
+
+            const originalMaterial = object.material;
+
+            const materials = Array.isArray(originalMaterial)
+                ? originalMaterial
+                : [originalMaterial];
+
+            const previewMaterials = materials.map(material => {
+                const preview = material.clone();
+
+                preview.polygonOffset = true;
+                preview.polygonOffsetFactor = 1;
+                preview.polygonOffsetUnits = 1;
+
+                return preview;
+            });
+
+            object.material = Array.isArray(originalMaterial)
+                ? previewMaterials
+                : previewMaterials[0]!;
+
+            const outline = createQuadOutline(
+                data,
+                this.quadMaterial
+            );
+
+            outline.matrixAutoUpdate = false;
+            outline.renderOrder = 1;
+            outline.frustumCulled = false;
+
+            this.scene.add(outline);
+
+
+            this.quadEntries.push({
+                mesh: object,
+                originalMaterial,
+                outline
+            });
+        });
+    }
+
+    getQuadCount(): number {
+        if (!this.model) return 0;
+
+        let quads = 0;
+
+        this.model.traverse(object => {
+            if (!(object instanceof THREE.Mesh)) return;
+
+            const data = getControlMesh(object.geometry);
+
+            if (data) {
+                quads += data.quads.length;
+            }
+        });
+
+        return quads;
+    }
 
     getTriangleCount(): number {
         if (!this.model) return 0;
@@ -208,6 +339,9 @@ export class ModelViewer {
 
 
     dispose(): void {
+        this.setQuadView(false);
+        this.setWireframe(false);
+        this.quadMaterial.dispose();
         this.renderer.setAnimationLoop(null);
         this.resizeObserver.disconnect();
         this.wireframeMaterial.dispose();
@@ -215,4 +349,48 @@ export class ModelViewer {
         this.renderer.dispose();
         this.renderer.domElement.remove();
     }
+}
+
+function createQuadOutline(
+    mesh: MeshData,
+    material: THREE.LineBasicMaterial
+): THREE.LineSegments {
+    const positions: number[] = [];
+    const edges = new Set<string>();
+
+    for (const quad of mesh.quads) {
+        for (let i = 0; i < 4; i++) {
+            const a = quad.corners[i]!;
+            const b = quad.corners[(i + 1) % 4]!;
+
+            const key = [
+                Math.min(a, b),
+                Math.max(a, b)
+            ].join(":");
+
+            if (edges.has(key)) continue;
+
+            edges.add(key);
+
+            const start = mesh.vertices[a]!;
+            const end = mesh.vertices[b]!;
+
+            positions.push(
+                start.x, start.y, start.z,
+                end.x, end.y, end.z
+            );
+        }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+
+    geometry.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(positions, 3)
+    );
+
+    return new THREE.LineSegments(
+        geometry,
+        material
+    );
 }
