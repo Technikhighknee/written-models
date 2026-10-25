@@ -3,6 +3,7 @@ import * as THREE from "three";
 
 import { mm, cm } from "../toolbox/units/length";
 import { warpGeometry } from "../toolbox/geometry/deformation/warpGeometry";
+import { simplifyGeometry } from "../toolbox/geometry/topology/simplifyGeometry";
 import { assignMaterialsByNormal } from "../toolbox/geometry/materials/assignMaterialsByNormal";
 
 export default {
@@ -75,14 +76,22 @@ function create(): THREE.Group {
         point.y += fold + bow + curl + wave;
     });
 
+    const optimized = simplifyGeometry(geometry, {
+        targetTriangles: 450,
+        maxLocalDeviation: mm(0.5),
+        minNormalDot: 0.75
+    });
+
+    geometry.dispose();
+
     const paper = new THREE.Mesh(
-        geometry,
+        optimized,
         [abrasive, backing]
     );
 
     // Keep the lowest part slightly above the ground.
     paper.position.y = 
-        mm(1) - geometry.boundingBox!.min.y;
+        mm(1) - optimized.boundingBox!.min.y;
 
     sandingpaper.add(paper);
 
