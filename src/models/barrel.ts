@@ -26,34 +26,38 @@ function create(): THREE.Group {
     const barrel = new THREE.Group();
     barrel.name = "Barrel";
 
+    // Medium coopered ale cask (~160 L inside), standing upright.
+    // 1 world unit = 1 meter; its crown, hoops and heads are modeled in
+    // actual dimensions rather than stretched from the old small prop.
     const profile = bulgedProfile({
-        height: cm(50),
-        bottomDiameter: cm(30),
-        topDiameter: cm(30),
-        peakDiameter: cm(36),
+        height: cm(78),
+        bottomDiameter: cm(52),
+        topDiameter: cm(52),
+        peakDiameter: cm(60),
         points: 9,
         curve: "quadratic"
     });
 
     const staveCount = 24;
-    barrel.add(createBody(profile, staveCount));
-    barrel.add(createHead(profile, "top", cm(2)));
-    barrel.add(createHead(profile, "bottom", cm(2)));
+    const staveThickness = cm(2.4);
+    barrel.add(createBody(profile, staveCount, staveThickness));
+    barrel.add(createHead(profile, "top", staveThickness));
+    barrel.add(createHead(profile, "bottom", staveThickness));
 
     // End (chime) hoops and the lighter quarter hoops sit on different
     // radii of the barrel. Both are driven tightly over the staves.
     const hoopPositions = positionsFromEnds({
         start: profile[0]!.y,
         end: profile.at(-1)!.y,
-        fromStart: [cm(5.5), cm(15)],
-        fromEnd: [cm(5.5), cm(15)]
+        fromStart: [cm(8), cm(23)],
+        fromEnd: [cm(8), cm(23)]
     });
 
     const iron = wroughtIron();
 
     for (let i = 0; i < hoopPositions.length; i++) {
         const isChime = i === 0 || i === hoopPositions.length - 1;
-        const width = isChime ? cm(2.2) : cm(1.8);
+        const width = isChime ? cm(2.8) : cm(2.2);
         barrel.add(createHoop(profile, hoopPositions[i]!, width, staveCount, iron));
     }
 
@@ -62,14 +66,15 @@ function create(): THREE.Group {
 
 function createBody(
     profile: readonly THREE.Vector2[],
-    staveCount: number
+    staveCount: number,
+    staveThickness: number
 ): THREE.Group {
     const body = new THREE.Group();
     body.name = "Body";
 
     const staves = radialStaves(profile, {
         count: staveCount,
-        thickness: cm(2),
+        thickness: staveThickness,
         // Sink the OUTER corners into the wood to create a narrow,
         // shadow-catching V-seam. Adjacent stave sidewalls still meet
         // at the same angle, so the barrel stays closed and watertight.
@@ -136,8 +141,8 @@ function createHead(
     const head = new THREE.Group();
     head.name = isTop ? "TopHead" : "BottomHead";
 
-    const thickness = cm(1.6);
-    const inset = cm(1.6);
+    const thickness = cm(2);
+    const inset = cm(2.1);
 
     // A little of the rim sits inside the staves, as a real head does
     // in its croze. The visible face is recessed below the stave ends.
@@ -212,9 +217,9 @@ function createHoop(
     const geometry = bandAroundProfile(profile, {
         y,
         width,
-        thickness: mm(3.6),
-        overlap: mm(0.5),
-        bevel: mm(0.55),
+        thickness: mm(4),
+        overlap: mm(0.6),
+        bevel: mm(0.6),
         radialSegments: staveCount,
         // Each polygon vertex rests over the middle of a stave;
         // the faces bridge the joints without exposing the wood.

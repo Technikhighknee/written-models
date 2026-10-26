@@ -38,11 +38,13 @@ function create(): THREE.Group {
     const table = new THREE.Group();
     table.name = "TavernTable";
 
+    // A six-person tavern table, built at real-world meter scale.
+    // The slab and its two trestles are sized together, not scaled afterward.
     const topSpec: TopSpec = {
-        length: m(2),
-        depth: cm(92),
-        thickness: cm(6),
-        surfaceHeight: cm(78),
+        length: m(1.8),
+        depth: cm(90),
+        thickness: cm(5),
+        surfaceHeight: cm(76),
         boardWeights: [1.07, 0.94, 1.03, 0.96],
         chamfer: mm(3),
         crown: mm(0.6)
@@ -170,7 +172,7 @@ function buildTrestles(
         braceSize: cm(7)
     };
 
-    const supportX = cm(66);
+    const supportX = cm(60);
 
     for (const [name, x] of [
         ["LeftTrestle", -supportX],
