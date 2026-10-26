@@ -50,9 +50,12 @@ export function radialStaves(
     const step = (2 * Math.PI) / count;
     const boards: MeshData[] = [];
 
-    // Extra stations near each edge give the board an actual little
-    // roundover, rather than hiding sharp edges with a normal map.
-    const widthSamples = [0, 0.055, 0.2, 0.35, 0.5, 0.65, 0.8, 0.945, 1];
+    // Three samples already capture the stave's transverse curvature.
+    // Add edge support loops only when a real roundover is requested.
+    // Keeping the center sample prevents the board from becoming a flat wedge.
+    const widthSamples = edgeRoundover > 0
+        ? [0, 0.055, 0.5, 0.945, 1]
+        : [0, 0.5, 1];
 
     function polar(radius: number, y: number, theta: number): THREE.Vector3 {
         return new THREE.Vector3(

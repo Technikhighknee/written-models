@@ -30,7 +30,7 @@ function create(): THREE.Group {
         bottomDiameter: cm(30),
         topDiameter: cm(30),
         peakDiameter: cm(36),
-        points: 13,
+        points: 9,
         curve: "quadratic"
     });
 
@@ -73,9 +73,7 @@ function createBody(
 
     const staves = radialStaves(profile, {
         count: 24,
-        thickness: cm(2),
-        seamGap: mm(0.45),
-        edgeRoundover: mm(0.7)
+        thickness: cm(2)
     });
 
     const surfaceMaterials = {
