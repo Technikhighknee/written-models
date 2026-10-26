@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-import { getControlMesh } from "../toolbox/geometry/mesh/toBufferGeometry";
-import type { MeshData } from "../toolbox/geometry/mesh/MeshData";
+import { getControlOutline } from "../toolbox/geometry/mesh/controlOutline";
+import type { ControlOutline } from "../toolbox/geometry/mesh/controlOutline";
 
 export class ModelViewer {
     readonly container: HTMLElement;
@@ -240,7 +240,7 @@ export class ModelViewer {
         this.model.traverse(object => {
             if (!(object instanceof THREE.Mesh)) return;
 
-            const data = getControlMesh(object.geometry);
+            const data = getControlOutline(object.geometry);
 
             if (!data) return;
 
@@ -292,10 +292,10 @@ export class ModelViewer {
         this.model.traverse(object => {
             if (!(object instanceof THREE.Mesh)) return;
 
-            const data = getControlMesh(object.geometry);
+            const data = getControlOutline(object.geometry);
 
             if (data) {
-                quads += data.quads.length;
+                quads += data.quadCount;
             }
         });
 
@@ -352,45 +352,15 @@ export class ModelViewer {
 }
 
 function createQuadOutline(
-    mesh: MeshData,
+    outline: ControlOutline,
     material: THREE.LineBasicMaterial
 ): THREE.LineSegments {
-    const positions: number[] = [];
-    const edges = new Set<string>();
-
-    for (const quad of mesh.quads) {
-        for (let i = 0; i < 4; i++) {
-            const a = quad.corners[i]!;
-            const b = quad.corners[(i + 1) % 4]!;
-
-            const key = [
-                Math.min(a, b),
-                Math.max(a, b)
-            ].join(":");
-
-            if (edges.has(key)) continue;
-
-            edges.add(key);
-
-            const start = mesh.vertices[a]!;
-            const end = mesh.vertices[b]!;
-
-            positions.push(
-                start.x, start.y, start.z,
-                end.x, end.y, end.z
-            );
-        }
-    }
-
     const geometry = new THREE.BufferGeometry();
 
     geometry.setAttribute(
         "position",
-        new THREE.Float32BufferAttribute(positions, 3)
+        new THREE.Float32BufferAttribute(outline.positions, 3)
     );
 
-    return new THREE.LineSegments(
-        geometry,
-        material
-    );
+    return new THREE.LineSegments(geometry, material);
 }
