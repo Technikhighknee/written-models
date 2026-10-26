@@ -1,6 +1,9 @@
 import * as THREE from "three";
 import { extrude } from "../../shapes/operations/extrude";
-import { seamedPlankExtrusion } from "./seamedPlankExtrusion";
+import {
+    seamedPlankExtrusion,
+    getPlankLongitudinalStations
+} from "./seamedPlankExtrusion";
 
 export interface HandFittedPanelOptions {
     seed: number;
@@ -12,6 +15,8 @@ export interface HandFittedPanelOptions {
     edgeWear: number;
     /** Longitudinal control divisions to support the worked surface. */
     longitudinalSegments?: number;
+    /** Max world-space deviation of the fitted surface from its mesh. */
+    maxDeviation?: number;
 }
 
 export interface CircularPlankPanelOptions {
@@ -112,7 +117,8 @@ export function groovedCircularPlankPanel(
     const outlines = circularPlankOutlines(radius, planks, radialSegments, widthWeights);
 
     if (handFitted) {
-        const { seed, edgeWander, crown, edgeWear, longitudinalSegments = 8 } = handFitted;
+        const { seed, edgeWander, crown, edgeWear, longitudinalSegments = 8,
+            maxDeviation } = handFitted;
         const smallestWidth = Math.min(
             ...cuts.slice(1).map((cut, i) => cut - cuts[i]!)
         );
@@ -123,7 +129,9 @@ export function groovedCircularPlankPanel(
             crown < 0 || crown >= thickness * 0.2 ||
             edgeWear < 0 || edgeWear >= thickness / 2 - recessDepth ||
             !Number.isInteger(longitudinalSegments) ||
-            longitudinalSegments < 2 || longitudinalSegments > 32
+            longitudinalSegments < 2 || longitudinalSegments > 32 ||
+            (maxDeviation !== undefined &&
+                (!Number.isFinite(maxDeviation) || maxDeviation <= 0))
         ) {
             throw new RangeError("Invalid hand-fitted panel dimensions");
         }
@@ -156,7 +164,8 @@ export function groovedCircularPlankPanel(
         );
     };
 
-    return outlines.map((outline, index) => {
+    const build = (sharedStations?: readonly number[]): THREE.BufferGeometry[] =>
+        outlines.map((outline, index) => {
         const left = cuts[index]!;
         const right = cuts[index + 1]!;
 
@@ -167,7 +176,15 @@ export function groovedCircularPlankPanel(
             grooveFloorWidth,
             seamAtStart: index > 0,
             seamAtEnd: index < planks - 1,
-            longitudinalSegments: handFitted?.longitudinalSegments ?? 1,
+            longitudinalSegments: handFitted?.maxDeviation === undefined
+                ? (handFitted?.longitudinalSegments ?? 1) : 1,
+            ...(sharedStations ? { longitudinalStations: sharedStations }
+                : handFitted && handFitted.maxDeviation !== undefined ? {
+                    adaptiveLongitudinal: {
+                        maxDeviation: handFitted.maxDeviation,
+                        maxDepth: 5
+                    }
+                } : {}),
             deform: handFitted ? p => {
                 const t = Math.max(0, Math.min(1, (p.x - left) / (right - left)));
                 // Preserve the exact circular trim: all deformation fades
@@ -210,6 +227,31 @@ export function groovedCircularPlankPanel(
             } : undefined
         });
     });
+
+    const firstPass = build();
+    if (!handFitted || handFitted.maxDeviation === undefined) {
+        return firstPass;
+    }
+
+    // Collect the adaptive stations of every board before assembling the
+    // panel. Shared joinery cannot use separate longitudinal partitions:
+    // differently tessellated contact faces create tiny T-junctions.
+    const shared = [...new Set(
+        firstPass.flatMap(geometry =>
+            getPlankLongitudinalStations(geometry) ?? []
+        )
+    )].sort((a, b) => a - b);
+
+    if (firstPass.every(geometry => {
+        const own = getPlankLongitudinalStations(geometry) ?? [];
+        return own.length === shared.length &&
+            own.every((t, i) => t === shared[i]);
+    })) {
+        return firstPass;
+    }
+
+    for (const geometry of firstPass) geometry.dispose();
+    return build(shared);
 }
 
 /**

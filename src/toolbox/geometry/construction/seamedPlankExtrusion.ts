@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { registerControlOutline } from "../mesh/controlOutline";
+import { adaptiveStations } from "../topology/adaptiveStations";
 
 /** A point in the X/Z plane. The board's grain runs along Z. */
 export type PanelPoint = readonly [x: number, z: number];
@@ -9,6 +10,15 @@ export interface PlankVertex {
     x: number;
     y: number;
     z: number;
+}
+
+const tessellation = new WeakMap<THREE.BufferGeometry, readonly number[]>();
+
+/** Stations used to construct the actual surface, in increasing 0..1 order. */
+export function getPlankLongitudinalStations(
+    geometry: THREE.BufferGeometry
+): readonly number[] | undefined {
+    return tessellation.get(geometry);
 }
 
 export interface SeamedPlankOptions {
@@ -31,6 +41,19 @@ export interface SeamedPlankOptions {
     cutThreshold?: number;
     /** Extra stations along the grain: real edge loops, not wireframe guesses. */
     longitudinalSegments?: number;
+    /**
+     * Tolerance-driven stations along the grain. Shared by every face of
+     * this plank, so neighboring quad strips cannot develop T-junctions.
+     */
+    adaptiveLongitudinal?: {
+        maxDeviation: number;
+        maxDepth?: number;
+    };
+    /**
+     * Externally coordinated stations for joined panels. All neighboring
+     * boards must use the same stations where they touch.
+     */
+    longitudinalStations?: readonly number[];
     /** Shape the finished timber while its faces and control edges are authored. */
     deform?: (vertex: Readonly<PlankVertex>) => PlankVertex;
 }
@@ -71,6 +94,8 @@ export function seamedPlankExtrusion(
         seamAtEnd,
         cutThreshold = 0.68,
         longitudinalSegments = 1,
+        adaptiveLongitudinal,
+        longitudinalStations,
         deform
     }: SeamedPlankOptions
 ): THREE.BufferGeometry {
@@ -84,6 +109,18 @@ export function seamedPlankExtrusion(
         cutThreshold <= 0 || cutThreshold >= 1 ||
         !Number.isInteger(longitudinalSegments) ||
         longitudinalSegments < 1 || longitudinalSegments > 32 ||
+        (adaptiveLongitudinal !== undefined && longitudinalSegments !== 1) ||
+        (longitudinalStations !== undefined && (
+            adaptiveLongitudinal !== undefined ||
+            longitudinalSegments !== 1 ||
+            longitudinalStations.length < 2 ||
+            longitudinalStations[0] !== 0 ||
+            longitudinalStations.at(-1) !== 1 ||
+            longitudinalStations.some((t, i) =>
+                !Number.isFinite(t) ||
+                (i > 0 && t <= longitudinalStations[i - 1]!)
+            )
+        )) ||
         outline.some(p => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))
     ) {
         throw new RangeError("Invalid fitted plank or seam relief");
@@ -272,6 +309,25 @@ export function seamedPlankExtrusion(
         }
     }
 
+    // All width stations use the SAME longitudinal partition. Adaptive
+    // sampling is based on the finished displaced vertices (both faces,
+    // every width station), not the unworked rectangular source surface.
+    // This keeps shared edges watertight and the control mesh truthful.
+    const fractions = longitudinalStations ? [...longitudinalStations]
+        : adaptiveLongitudinal ? adaptiveStations(
+            t => stations.flatMap(station => {
+                const z = station.low + (station.high - station.low) * t;
+                return [
+                    worked(point(station.x, station.top, z)),
+                    worked(point(station.x, station.bottom, z))
+                ];
+            }),
+            adaptiveLongitudinal
+        ) : Array.from(
+            { length: longitudinalSegments + 1 },
+            (_, i) => i / longitudinalSegments
+        );
+
     function quad(
         a: Vertex, b: Vertex, c: Vertex, d: Vertex,
         material: 0 | 1 | 2,
@@ -279,14 +335,14 @@ export function seamedPlankExtrusion(
         // Which two opposite edges run along the grain?
         longitudinal?: "ab" | "ad"
     ): void {
-        if (!longitudinal || longitudinalSegments === 1) {
+        if (!longitudinal || fractions.length === 2) {
             emitQuad(a, b, c, d, material, sidewall);
             return;
         }
 
-        for (let i = 0; i < longitudinalSegments; i++) {
-            const t0 = i / longitudinalSegments;
-            const t1 = (i + 1) / longitudinalSegments;
+        for (let i = 0; i < fractions.length - 1; i++) {
+            const t0 = fractions[i]!;
+            const t1 = fractions[i + 1]!;
 
             if (longitudinal === "ab") {
                 emitQuad(
@@ -420,6 +476,7 @@ export function seamedPlankExtrusion(
         positions: outlinePositions,
         quadCount
     });
+    tessellation.set(geometry, fractions);
 
     return geometry;
 }

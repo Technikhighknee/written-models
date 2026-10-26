@@ -166,7 +166,9 @@ function createHead(
             edgeWander: mm(1.9),
             crown: mm(1.1),
             edgeWear: mm(0.65),
-            longitudinalSegments: 9
+            // Follow surface curvature instead of creating nine loops
+            // through every perfectly good flat piece of oak.
+            maxDeviation: mm(0.7)
         }
     });
 
