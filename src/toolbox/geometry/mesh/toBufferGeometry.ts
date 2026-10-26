@@ -125,7 +125,7 @@ export function toBufferGeometry(
         const start = indices.length;
 
         for (const face of faces) {
-            const tris: readonly (readonly number[])[] =
+            const tris: readonly (readonly [number, number, number])[] =
                 face.corners.length === 4 ? QUAD_TRIANGLES : [[0, 1, 2]];
 
             for (const triangle of tris) {
