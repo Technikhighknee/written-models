@@ -7,6 +7,34 @@ export interface ControlOutline {
 }
 
 /**
+ * Attach authored construction edges to a custom BufferGeometry.
+ *
+ * A triangle soup cannot reveal which two triangles were a real quad.
+ * Constructors that know their original faces register that information
+ * explicitly, rather than asking the viewer to guess from coplanarity.
+ */
+const authoredOutlines = new WeakMap<THREE.BufferGeometry, ControlOutline>();
+
+export function registerControlOutline(
+    geometry: THREE.BufferGeometry,
+    outline: ControlOutline
+): void {
+    if (
+        !Number.isInteger(outline.quadCount) ||
+        outline.quadCount < 0 ||
+        outline.positions.length % 6 !== 0 ||
+        outline.positions.some(value => !Number.isFinite(value))
+    ) {
+        throw new RangeError("Invalid authored control outline");
+    }
+
+    authoredOutlines.set(geometry, {
+        positions: [...outline.positions],
+        quadCount: outline.quadCount
+    });
+}
+
+/**
  * Returns the construction edges, not the triangulation wireframe.
  * Built-in Three.js generators keep a regular vertex layout that we
  * can read without modifying the original render geometry.
@@ -14,6 +42,9 @@ export interface ControlOutline {
 export function getControlOutline(
     geometry: THREE.BufferGeometry
 ): ControlOutline | null {
+    const authored = authoredOutlines.get(geometry);
+    if (authored) return authored;
+
     const controlMesh = getControlMesh(geometry);
     const attribute = geometry.getAttribute("position");
 

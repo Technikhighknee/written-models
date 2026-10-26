@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { registerControlOutline } from "../mesh/controlOutline";
 
 /** A point in the X/Z plane. The board's grain runs along Z. */
 export type PanelPoint = readonly [x: number, z: number];
@@ -148,18 +149,41 @@ export function seamedPlankExtrusion(
         [] as number[], [] as number[]
     ];
 
+    // Actual construction edges, not the diagonal created by triangulation.
+    // When a circular outline tapers to a single point, the strip ends in
+    // one genuine triangle; that triangle must not be counted as a quad.
     type Vertex = { x: number; y: number; z: number };
+    const controlEdges = new Map<string, readonly [Vertex, Vertex]>();
+    let quadCount = 0;
+
+    function recordFace(corners: readonly Vertex[]): void {
+        const keyOf = (p: Vertex): string =>
+            [p.x, p.y, p.z].map(v => Math.round(v * 1e9)).join(":");
+
+        for (let i = 0; i < corners.length; i++) {
+            const a = corners[i]!;
+            const b = corners[(i + 1) % corners.length]!;
+            const ka = keyOf(a);
+            const kb = keyOf(b);
+            if (ka === kb) continue;
+
+            const key = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
+            if (!controlEdges.has(key)) controlEdges.set(key, [a, b]);
+        }
+    }
+
+
     const point = (x: number, y: number, z: number): Vertex => ({ x, y, z });
 
     function triangle(
         a: Vertex, b: Vertex, c: Vertex,
         material: 0 | 1,
         sidewall = false
-    ): void {
+    ): boolean {
         const ab = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
         const ac = new THREE.Vector3(c.x - a.x, c.y - a.y, c.z - a.z);
         const n = ab.cross(ac);
-        if (n.lengthSq() < 1e-18) return;
+        if (n.lengthSq() < 1e-18) return false;
         n.normalize();
 
         for (const p of [a, b, c]) {
@@ -173,6 +197,7 @@ export function seamedPlankExtrusion(
                 material === 1 ? p.y : p.z
             );
         }
+        return true;
     }
 
     function quad(
@@ -180,8 +205,17 @@ export function seamedPlankExtrusion(
         material: 0 | 1,
         sidewall = false
     ): void {
-        triangle(a, b, c, material, sidewall);
-        triangle(a, c, d, material, sidewall);
+        const first = triangle(a, b, c, material, sidewall);
+        const second = triangle(a, c, d, material, sidewall);
+
+        if (first && second) {
+            quadCount++;
+            recordFace([a, b, c, d]);
+        } else if (first) {
+            recordFace([a, b, c]);
+        } else if (second) {
+            recordFace([a, c, d]);
+        }
     }
 
     // The upper and lower surfaces follow the same shallow seam profile,
@@ -270,6 +304,18 @@ export function seamedPlankExtrusion(
     }
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
+
+    const outlinePositions: number[] = [];
+    for (const [a, b] of controlEdges.values()) {
+        outlinePositions.push(
+            a.x, a.y, a.z,
+            b.x, b.y, b.z
+        );
+    }
+    registerControlOutline(geometry, {
+        positions: outlinePositions,
+        quadCount
+    });
 
     return geometry;
 }
