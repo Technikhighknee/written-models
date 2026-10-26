@@ -72,3 +72,28 @@ fiber direction must remain plausible. More random colors are not the solution.
 When evaluating surface variation, inspect repeated rows of planks and the
 24-stave barrel, not just a single attractive texture swatch. In the browser
 GLB export carries the baked texture maps and material assignments.
+
+## Broad board faces versus longitudinal grain
+
+A tabletop is not a barrel stave enlarged by a factor of four. Oak needs
+different **cut orientations** while keeping the same species-wide palette,
+physical UV scale, roughness and PBR maps per cut.
+
+- `oakVariant(seed).tinted.face`: longitudinal/rift-style grain for narrow
+  sides, aprons, legs and barrel staves.
+- `oakBoardFace(seed)`: a plain-/flat-sawn **broad face**, with softly
+  feathered cathedral arches, lower ring contrast and lengthwise fiber detail.
+  It is vertex-tinted, GLB-compatible, and uses the same seed and UV scale.
+  Board-face maps are **created lazily and cached by seed**; a barrel never
+  has to generate tabletop textures.
+- `oakVariant(seed).tinted.endGrain`: actual transverse timber ends.
+
+`archedRingField()` is a reusable texturing-toolbox feature field. Its broad
+off-center arcs fade to zero value and slope at all four tile boundaries,
+allowing coherent color, roughness and normal maps without visible seams.
+The material recipe determines the oak-specific color and porosity response.
+
+In a quad board made with `loftBoard()`, material slots should map
+`outer` (upper face) to the board-face cut, `inner` and both long edges
+to longitudinal grain, and `cap-start/cap-end` to end grain. Do not
+reorient the shared grain map merely to make the tabletop look different.

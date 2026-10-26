@@ -10,7 +10,7 @@ import { cm, m, mm } from "../toolbox/units/length";
 import { rectangleCornerMounts } from "../toolbox/geometry/features/rectangleCornerMounts";
 import { attachByFrames } from "../toolbox/spatial/relationships/attachByFrames";
 import { createFrame } from "../toolbox/spatial/frames/frames";
-import { oakVariant } from "../materials/wood/oak";
+import { oakVariant, oakBoardFace } from "../materials/wood/oak";
 
 interface TopSpec {
     width: number;
@@ -89,18 +89,21 @@ function createTopBoards(
     });
 
     const surfaceMaterials = {
+        // Only the broad, upward-facing surface shows plain-sawn figure.
         outer: 0,
-        inner: 0,
-        "edge-left": 0,
-        "edge-right": 0,
-        "cap-start": 1,
-        "cap-end": 1
+        inner: 1,
+        "edge-left": 1,
+        "edge-right": 1,
+        "cap-start": 2,
+        "cap-end": 2
     };
 
     for (let i = 0; i < boards.length; i++) {
         // Every board has its own deterministic oak cut, but all share
         // the species palette. This 2 m board stays inside one 2.6 m tile.
-        const wood = oakVariant((i * 3 + 2) % 8);
+        const seed = (i * 3 + 2) % 8;
+        const wood = oakVariant(seed);
+        const topFace = oakBoardFace(seed);
         const meshData = offsetMeshUvs(
             boards[i]!,
             0.015 + i * 0.032,
@@ -114,6 +117,7 @@ function createTopBoards(
         );
 
         const board = new THREE.Mesh(geometry, [
+            topFace,
             wood.tinted.face,
             wood.tinted.endGrain
         ]);

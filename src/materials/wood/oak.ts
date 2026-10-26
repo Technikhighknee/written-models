@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { bakePbrMaps } from "../../toolbox/texturing/bakePbrMaps";
-import { makeOakFace, makeOakEndGrain } from "./oakSurface";
+import { makeOakFace, makeOakEndGrain, makeOakBoardFace } from "./oakSurface";
 
 export interface OakMaterials {
     /** U across the fibers, V along them. Both UVs are measured in meters. */
@@ -94,4 +94,39 @@ export function oakVariant(seed: number): OakMaterials {
 
     cuts.set(seed, family);
     return family;
+}
+
+/**
+ * Flat-sawn broad face for a tabletop or other wide, planed timber.
+ *
+ * This has a different grain FIGURE, not a different wood species.
+ * The narrow sides still use oakVariant(seed).tinted.face and cut ends
+ * use oakVariant(seed).tinted.endGrain.
+ *
+ * Create these maps lazily: barrel staves should not pay for a tabletop
+ * texture, and materials for equal seeds are shared across models.
+ */
+const boardFaceCuts = new Map<number, THREE.MeshStandardMaterial>();
+
+export function oakBoardFace(seed: number): THREE.MeshStandardMaterial {
+    const existing = boardFaceCuts.get(seed);
+    if (existing) return existing;
+
+    const oakCut = oakVariant(seed); // Also validates seed.
+    const maps = bakePbrMaps({
+        width: 320,
+        height: 768,
+        tileWidth: 0.48,
+        tileLength: 2.6,
+        sample: makeOakBoardFace(seed)
+    });
+
+    const face = oakCut.tinted.face.clone();
+    face.name = `Oak Cut ${seed} · Plain-Sawn Board Face`;
+    face.map = maps.color;
+    face.roughnessMap = maps.roughness;
+    face.normalMap = maps.normal;
+    // Inherits vertexColors and the same PBR/normal strength as the family.
+    boardFaceCuts.set(seed, face);
+    return face;
 }
