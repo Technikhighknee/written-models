@@ -1,0 +1,108 @@
+# Toolbox
+
+Reusable building blocks for creating hand-authored 3D assets in TypeScript.
+
+Models live in `../models/` – Materials live in `../materials/` **outside** the toolbox. The toolbox provides the geometry, topology, spatial operations, and texturing capabilities they need.
+
+## Principles
+
+- **Generic over specific.** Toolbox functions describe reusable operations, not individual models.
+- **Composable over monolithic.** Prefer small capabilities that work together.
+- **Build capabilities through models.** Implement what a model needs, then make it reusable.
+- **Preserve artistic control.** Geometry, topology, materials, and imperfections should be intentional and editable.
+- **No hidden workarounds.** Solve geometric problems in the geometry, not through viewer-specific tricks.
+
+One Three.js world unit equals **one meter**. Use `mm()`, `cm()`, `m()`, and `km()` from `units/length.ts`.
+
+## Directory Map
+
+| Directory | Responsibility |
+|---|---|
+| `shapes/primitives/` | 2D shapes such as rectangles, polygons, and rings |
+| `shapes/operations/` | Shape operations such as extrusion and revolution |
+| `shapes/profiles/` | Reusable profiles and curves |
+| `geometry/construction/` | Boards, beams, lofts, panels, staves, bands, and solids |
+| `geometry/mesh/` | Mesh representation, conversion, and control topology |
+| `geometry/topology/` | Topology planning and adaptive subdivisions |
+| `geometry/deformation/` | Vertex deformation |
+| `geometry/uv/` | UV mapping and transformations |
+| `geometry/materials/` | Material assignment and vertex colors |
+| `spatial/` | Anchors, frames, relationships, layouts, and queries |
+| `texturing/` | Texture fields, noise, grain, and PBR baking |
+| `units/` | Physical length units |
+
+## Geometry Architecture
+
+**Construction topology is the source of truth.**
+
+`geometry/mesh/MeshData.ts` defines:
+
+- `vertices`: Shared construction vertices.
+- `quads`: Authored quadrilateral faces.
+- `triangles`: Genuine triangular faces.
+- Each face has corner indices, UVs, a surface identifier, and optionally a smoothing group.
+
+`toBufferGeometry()` converts `MeshData` into renderable Three.js geometry.
+
+The same construction data also powers the Quad View through `getControlOutline()`.
+
+**Do not reconstruct original quads from rendered triangles.** Triangulation is an output operation, not the source topology.
+
+Some constructors return `MeshData` directly. Others return a `BufferGeometry` already converted through the common pipeline.
+
+### Important rules
+
+- Quads are preferred where appropriate; genuine triangles are valid.
+- Material boundaries, UV seams, and smoothing boundaries are independent.
+- Surface identifiers map to material slots during conversion.
+- Geometry must retain its authored topology for Quad View.
+- Deformation must keep render vertices and control vertices synchronized.
+- Never add unnecessary subdivisions to surfaces that do not need them.
+
+## Typical Usage
+
+```ts
+import { straightBoard } from "./geometry/construction/straightBoard";
+import { toBufferGeometry } from "./geometry/mesh/toBufferGeometry";
+import { m, cm, mm } from "./units/length";
+
+const board = straightBoard({
+    length: m(1.2),
+    width: cm(20),
+    thickness: cm(3),
+    chamfer: mm(2)
+});
+
+const geometry = toBufferGeometry(board, {
+    outer: 0,
+    inner: 0,
+    "edge-left": 0,
+    "edge-right": 0,
+    "cap-start": 1,
+    "cap-end": 1
+});
+```
+
+The resulting geometry is ready for a Three.js mesh, material assignment, Quad View, and GLB export.
+
+## Adding a Capability
+
+1. Identify the underlying geometric or spatial operation.
+2. Check whether an existing toolbox function already solves it.
+3. Implement a reusable operation with explicit inputs and predictable results.
+4. Preserve topology, UVs, material surfaces, and physical dimensions.
+5. Integrate it into the model that motivated the addition, and all other models that could benefit from this.
+
+Do not introduce model-specific functions into the toolbox simply to make one asset work.
+
+## Relationship to Models
+
+Models decide **what to build**.
+
+The toolbox determines **how geometry and other reusable operations work**.
+
+Materials and their visual characteristics are primarily defined in `src/materials/`.
+
+The viewer displays the result. It should not be responsible for repairing incomplete geometry or recovering construction information that was discarded.
+
+**The goal is not to generate many models automatically. The goal is to make increasingly sophisticated, individually designed models easier to build.**
