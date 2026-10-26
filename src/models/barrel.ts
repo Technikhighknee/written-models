@@ -164,6 +164,10 @@ function createHead(
     const boards = groovedCircularPlankPanel(radius, {
         planks: 5,
         thickness,
+        // Only the outward-facing head gets the fitted grain and relief.
+        // The inward-facing solid surface remains closed but deliberately
+        // sparse. Top head faces +Y; bottom head faces -Y.
+        detailedFace: isTop ? "top" : "bottom",
         // The stave-built rim has 24 facets; 36 segments retain a
         // smooth enough wooden head without excessive cut-line loops.
         radialSegments: 36,

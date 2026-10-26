@@ -89,12 +89,15 @@ export function groovedCircularPlankPanel(
         shoulderWidth,
         recessDepth,
         grooveFloorWidth = 0,
-        handFitted
+        handFitted,
+        detailedFace = "both"
     }: CircularPlankPanelOptions & {
         shoulderWidth: number;
         recessDepth: number;
         grooveFloorWidth?: number;
         handFitted?: HandFittedPanelOptions;
+        /** The outward-facing side; the other side is simpler. */
+        detailedFace?: "top" | "bottom" | "both";
     }
 ): THREE.BufferGeometry[] {
     validatePanel(radius, planks, thickness, radialSegments, widthWeights);
@@ -102,6 +105,7 @@ export function groovedCircularPlankPanel(
     if (
         !Number.isFinite(shoulderWidth) ||
         !Number.isFinite(recessDepth) ||
+        !["top", "bottom", "both"].includes(detailedFace) ||
         shoulderWidth <= 0 ||
         recessDepth <= 0 ||
         recessDepth >= thickness / 2 ||
@@ -177,6 +181,7 @@ export function groovedCircularPlankPanel(
             grooveFloorWidth,
             seamAtStart: index > 0,
             seamAtEnd: index < planks - 1,
+            detailedFace,
             longitudinalSegments: handFitted?.maxDeviation === undefined
                 ? (handFitted?.longitudinalSegments ?? 1) : 1,
             ...(sharedStations ? { longitudinalStations: sharedStations }
@@ -221,9 +226,15 @@ export function groovedCircularPlankPanel(
                     index < planks - 1 ? Math.pow(t, 7) * wearAt(index + 1) : 0
                 );
 
+                // A recessed face is still geometrically closed, but its
+                // unseen back needs neither cupping nor worn groove relief.
+                const workedFace = detailedFace === "both" ||
+                    (detailedFace === "top" ? p.y > 0 : p.y < 0);
+
                 return {
                     x,
-                    y: p.y + bow * fade - Math.sign(p.y) * wear,
+                    y: p.y + (workedFace
+                        ? bow * fade - Math.sign(p.y) * wear : 0),
                     z: p.z
                 };
             }

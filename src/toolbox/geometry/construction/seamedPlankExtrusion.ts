@@ -37,6 +37,11 @@ export interface SeamedPlankOptions {
     seamAtStart: boolean;
     /** The maximum-X edge is a board seam (not the outer outline). */
     seamAtEnd: boolean;
+    /**
+     * Which face needs the fitted surface detail? Both is the default.
+     * The opposite face stays planar and uses no grain-wise subdivision.
+     */
+    detailedFace?: "top" | "bottom" | "both";
     /** Dot-product threshold for distinguishing true end grain. */
     cutThreshold?: number;
     /** Extra stations along the grain: real edge loops, not wireframe guesses. */
@@ -92,6 +97,7 @@ export function seamedPlankExtrusion(
         grooveFloorWidth = 0,
         seamAtStart,
         seamAtEnd,
+        detailedFace = "both",
         cutThreshold = 0.68,
         longitudinalSegments = 1,
         adaptiveLongitudinal,
@@ -104,6 +110,7 @@ export function seamedPlankExtrusion(
         ![thickness, shoulderWidth, recessDepth, grooveFloorWidth, cutThreshold]
             .every(Number.isFinite) ||
         thickness <= 0 || shoulderWidth <= 0 ||
+        !["top", "bottom", "both"].includes(detailedFace) ||
         recessDepth <= 0 || recessDepth >= thickness / 2 ||
         grooveFloorWidth < 0 || grooveFloorWidth >= shoulderWidth ||
         cutThreshold <= 0 || cutThreshold >= 1 ||
@@ -202,8 +209,8 @@ export function seamedPlankExtrusion(
         const inset = insetAt(x);
         return {
             x, low, high,
-            top: thickness / 2 - inset,
-            bottom: -thickness / 2 + inset
+            top: thickness / 2 - (detailedFace === "bottom" ? 0 : inset),
+            bottom: -thickness / 2 + (detailedFace === "top" ? 0 : inset)
         };
     });
 
@@ -266,6 +273,19 @@ export function seamedPlankExtrusion(
             );
         }
         return true;
+    }
+
+    function emitTriangle(
+        a: Vertex, b: Vertex, c: Vertex,
+        material: 0 | 1 | 2,
+        sidewall = false
+    ): void {
+        const wa = worked(a);
+        const wb = worked(b);
+        const wc = worked(c);
+        if (triangle(wa, wb, wc, material, sidewall)) {
+            recordFace([wa, wb, wc]);
+        }
     }
 
     function worked(p: Vertex): Vertex {
@@ -376,19 +396,25 @@ export function seamedPlankExtrusion(
             (seamAtStart && b.x <= start + grooveFloorWidth + EPSILON) ||
             (seamAtEnd && a.x >= end - grooveFloorWidth - EPSILON)
         );
-        const faceMaterial: 0 | 2 = grooveFloor ? 2 : 0;
+        // There is no dark groove floor on a deliberately plain reverse.
+        const topMaterial: 0 | 2 = grooveFloor &&
+            detailedFace !== "bottom" ? 2 : 0;
+        const bottomMaterial: 0 | 2 = grooveFloor &&
+            detailedFace !== "top" ? 2 : 0;
 
         quad(
             point(a.x, a.top, a.low),
             point(a.x, a.top, a.high),
             point(b.x, b.top, b.high),
-            point(b.x, b.top, b.low), faceMaterial, false, "ab"
+            point(b.x, b.top, b.low), topMaterial, false,
+            detailedFace === "bottom" ? undefined : "ab"
         );
         quad(
             point(a.x, a.bottom, a.low),
             point(b.x, b.bottom, b.low),
             point(b.x, b.bottom, b.high),
-            point(a.x, a.bottom, a.high), faceMaterial, false, "ad"
+            point(a.x, a.bottom, a.high), bottomMaterial, false,
+            detailedFace === "top" ? undefined : "ad"
         );
 
         for (const [z0, z1, highSide] of [
@@ -422,21 +448,76 @@ export function seamedPlankExtrusion(
     const first = stations[0]!;
     const last = stations[stations.length - 1]!;
 
-    // The two long board-to-board contacts remain filled throughout the
-    // central thickness. At a tapered circular tip, the cap is degenerate
-    // and is skipped by triangle() without introducing an open boundary.
-    quad(
-        point(first.x, first.top, first.low),
-        point(first.x, first.bottom, first.low),
-        point(first.x, first.bottom, first.high),
-        point(first.x, first.top, first.high), 0, true, "ad"
-    );
-    quad(
-        point(last.x, last.top, last.low),
-        point(last.x, last.top, last.high),
-        point(last.x, last.bottom, last.high),
-        point(last.x, last.bottom, last.low), 0, true, "ab"
-    );
+    // The joinery sidewalls and circular trim remain closed. At the two
+    // end caps, bridge the detailed perimeter to the SIMPLE hidden edge
+    // using real triangles rather than adding hidden support loops.
+    const first = stations[0]!;
+    const last = stations[stations.length - 1]!;
+
+    function cap(station: Station, atStart: boolean): void {
+        const topAt = (t: number): Vertex =>
+            point(station.x, station.top,
+                station.low + (station.high - station.low) * t);
+        const bottomAt = (t: number): Vertex =>
+            point(station.x, station.bottom,
+                station.low + (station.high - station.low) * t);
+
+        if (detailedFace === "both" || fractions.length === 2) {
+            if (atStart) {
+                quad(
+                    topAt(0), bottomAt(0),
+                    bottomAt(1), topAt(1), 0, true, "ad"
+                );
+            } else {
+                quad(
+                    topAt(0), topAt(1),
+                    bottomAt(1), bottomAt(0), 0, true, "ab"
+                );
+            }
+            return;
+        }
+
+        if (detailedFace === "top") {
+            if (atStart) {
+                for (let i = 0; i < fractions.length - 1; i++) {
+                    emitTriangle(
+                        topAt(fractions[i]!), bottomAt(0),
+                        topAt(fractions[i + 1]!), 0, true
+                    );
+                }
+                emitTriangle(bottomAt(0), bottomAt(1), topAt(1), 0, true);
+            } else {
+                for (let i = 0; i < fractions.length - 1; i++) {
+                    emitTriangle(
+                        bottomAt(1), topAt(fractions[i]!),
+                        topAt(fractions[i + 1]!), 0, true
+                    );
+                }
+                emitTriangle(topAt(0), bottomAt(1), bottomAt(0), 0, true);
+            }
+        } else {
+            if (atStart) {
+                for (let i = 0; i < fractions.length - 1; i++) {
+                    emitTriangle(
+                        topAt(0), bottomAt(fractions[i]!),
+                        bottomAt(fractions[i + 1]!), 0, true
+                    );
+                }
+                emitTriangle(topAt(0), bottomAt(1), topAt(1), 0, true);
+            } else {
+                for (let i = 0; i < fractions.length - 1; i++) {
+                    emitTriangle(
+                        topAt(1), bottomAt(fractions[i + 1]!),
+                        bottomAt(fractions[i]!), 0, true
+                    );
+                }
+                emitTriangle(topAt(0), topAt(1), bottomAt(0), 0, true);
+            }
+        }
+    }
+
+    cap(first, true);
+    cap(last, false);
 
     const geometry = new THREE.BufferGeometry();
     const positions = verts[0]!.concat(verts[1]!, verts[2]!);

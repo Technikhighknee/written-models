@@ -191,6 +191,48 @@ export function getControlOutline(
                 addQuad(a, b, b + 1, a + 1);
             }
         }
+    } else if (geometry instanceof THREE.CylinderGeometry) {
+        // The real rivet heads are ordinary CylinderGeometry. Three.js
+        // authors a quad grid on the cylindrical side, then triangle fans
+        // on both caps. Respect that topology instead of guessing quads
+        // from the final GLB triangle mesh.
+        const index = geometry.getIndex();
+        if (!index) return null;
+
+        for (const group of geometry.groups) {
+            const end = group.start + group.count;
+
+            if (group.materialIndex === 0) {
+                // The torso is stored as two triangles (a,b,d),(b,c,d)
+                // per quad, even when heightSegments exceeds one.
+                if (group.count % 6 !== 0) {
+                    throw new Error("Unexpected cylinder sidewall layout");
+                }
+
+                for (let i = group.start; i < end; i += 6) {
+                    addQuad(
+                        index.getX(i),
+                        index.getX(i + 1),
+                        index.getX(i + 4),
+                        index.getX(i + 2)
+                    );
+                }
+            } else {
+                // End caps are genuine triangles. Include their radial
+                // edges in Quad View but never count fake cap quads.
+                if (group.count % 3 !== 0) {
+                    throw new Error("Unexpected cylinder cap layout");
+                }
+
+                for (let i = group.start; i < end; i += 3) {
+                    for (let j = 0; j < 3; j++) {
+                        const a = vertex(index.getX(i + j));
+                        const b = vertex(index.getX(i + (j + 1) % 3));
+                        addEdge(a, b, keyOf(a), keyOf(b));
+                    }
+                }
+            }
+        }
     } else if (geometry instanceof THREE.ExtrudeGeometry) {
         if (geometry.getIndex() !== null) {
             throw new Error(
