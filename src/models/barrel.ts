@@ -101,21 +101,22 @@ function createBody(
     });
 
     for (let i = 0; i < staves.length; i++) {
-        const wood = oakVariant((i * 5 + 3) % 8);
-        // Unique slices through 2.6m-long material cuts. None of these
-        // 50cm staves runs through a complete repeating texture interval.
+        const seed = (i * 5 + 3) % 8;
+        const wood = oakVariant(seed);
+        // Each stave samples a different part of the shared oak family.
+        // The quieter planed grain avoids barcode-like stripes.
         const section = offsetMeshUvs(
             staves[i]!,
             0.018 + (i * 0.027) % 0.31,
             0.12 + ((i * 17) % 24) * 0.075
         );
-        const tone = 0.955 + 0.045 * variations[i]!;
+        const tone = 0.965 + 0.025 * variations[i]!;
         const geometry = tintVertices(
             toBufferGeometry(section, surfaceMaterials),
             new THREE.Color(tone, tone, tone)
         );
         const stave = new THREE.Mesh(geometry, [
-            wood.tinted.face,
+            oakBoardFace(seed),
             wood.tinted.endGrain
         ]);
 
