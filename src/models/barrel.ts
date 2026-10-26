@@ -35,19 +35,30 @@ function create(): THREE.Group {
         curve: "quadratic"
     });
 
-    barrel.add(createBody(profile, wood));
+    const staveCount = 24;
+    barrel.add(createBody(profile, wood, staveCount));
     barrel.add(createHead(profile, "top", cm(2)));
     barrel.add(createHead(profile, "bottom", cm(2)));
 
+    // End (chime) hoops and the lighter quarter hoops sit on different
+    // radii of the barrel. Both are driven tightly over the staves.
     const hoopPositions = positionsFromEnds({
         start: profile[0]!.y,
         end: profile.at(-1)!.y,
-        fromStart: [cm(8)],
-        fromEnd: [cm(8)]
+        fromStart: [cm(5.5), cm(15)],
+        fromEnd: [cm(5.5), cm(15)]
     });
 
-    for (const y of hoopPositions) {
-        barrel.add(createHoop(profile, y));
+    const iron = new THREE.MeshStandardMaterial({
+        color: "#484b4d",
+        metalness: 0.8,
+        roughness: 0.4
+    });
+
+    for (let i = 0; i < hoopPositions.length; i++) {
+        const isChime = i === 0 || i === hoopPositions.length - 1;
+        const width = isChime ? cm(2.2) : cm(1.8);
+        barrel.add(createHoop(profile, hoopPositions[i]!, width, staveCount, iron));
     }
 
     return barrel;
@@ -55,7 +66,8 @@ function create(): THREE.Group {
 
 function createBody(
     profile: readonly THREE.Vector2[],
-    wood: THREE.Material
+    wood: THREE.Material,
+    staveCount: number
 ): THREE.Group {
     const body = new THREE.Group();
     body.name = "Body";
@@ -73,7 +85,7 @@ function createBody(
     });
 
     const staves = radialStaves(profile, {
-        count: 24,
+        count: staveCount,
         thickness: cm(2)
     });
 
@@ -160,22 +172,24 @@ function createHead(
 
 function createHoop(
     profile: readonly THREE.Vector2[],
-    y: number
+    y: number,
+    width: number,
+    staveCount: number,
+    iron: THREE.Material
 ): THREE.Mesh {
     const geometry = bandAroundProfile(profile, {
         y,
-        width: cm(4),
-        thickness: mm(5),
-        overlap: mm(1)
+        width,
+        thickness: mm(3.6),
+        overlap: mm(0.5),
+        bevel: mm(0.55),
+        radialSegments: staveCount,
+        // Each polygon vertex rests over the middle of a stave;
+        // the faces bridge the joints without exposing the wood.
+        angleOffset: Math.PI / staveCount
     });
 
-    const material = new THREE.MeshStandardMaterial({
-        color: "#383b3f",
-        metalness: 0.8,
-        roughness: 0.35
-    });
-
-    const hoop = new THREE.Mesh(geometry, material);
+    const hoop = new THREE.Mesh(geometry, iron);
     hoop.name = "IronHoop";
     return hoop;
 }
