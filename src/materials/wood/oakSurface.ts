@@ -7,15 +7,15 @@ const TAU = Math.PI * 2;
 const fract = (value: number): number => value - Math.floor(value);
 const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 
-// One species-wide palette: every oak cut (long grain, planed face,
-// end grain) inherits the same deeper, tavern-worn color family.
-// Adjust these stops once instead of tinting individual models.
+// Deep, warm oak shared by every cut: broad faces, long grain and
+// end grain. Darken the sRGB stops themselves, not the material lighting,
+// so the same look survives texture baking and GLB export.
 const OAK_COLORS = [
-    [0, [74, 57, 41]],
-    [0.28, [103, 80, 56]],
-    [0.53, [135, 108, 77]],
-    [0.78, [157, 132, 97]],
-    [1, [173, 149, 113]]
+    [0, [53, 41, 30]],
+    [0.28, [75, 58, 41]],
+    [0.53, [98, 78, 56]],
+    [0.78, [114, 96, 70]],
+    [1, [126, 108, 82]]
 ] as const;
 
 function random(seed: number, salt: number): number {
