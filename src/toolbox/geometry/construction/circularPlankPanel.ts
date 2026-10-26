@@ -48,11 +48,11 @@ export function circularPlankPanel(
         radialSegments = 48,
         widthWeights
     }: CircularPlankPanelOptions
-): THREE.ExtrudeGeometry[] {
+): THREE.BufferGeometry[] {
     validatePanel(radius, planks, thickness, radialSegments, widthWeights);
 
     const outlines = circularPlankOutlines(radius, planks, radialSegments, widthWeights);
-    const pieces: THREE.ExtrudeGeometry[] = [];
+    const pieces: THREE.BufferGeometry[] = [];
 
     for (const outline of outlines) {
         const shape = new THREE.Shape();

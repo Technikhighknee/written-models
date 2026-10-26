@@ -5,12 +5,12 @@ import * as THREE from "three";
  * Cap faces are broad grain. Only sidewall edges pointing ALONG the
  * grain axis expose a true cut end; parallel sidewalls remain long grain.
  *
- * Preserves the nonindexed triangle order and stores the original sidewall
- * range so the Quads viewer can still recover the extrusion's control edges.
+ * Only changes draw groups, never construction faces: the source
+ * geometry already contains the real side quads and cap triangles.
  *
  * Material slot 0 = long grain, slot 1 = end grain.
  */
-export function assignExtrudedTimberSurfaces<T extends THREE.ExtrudeGeometry>(
+export function assignExtrudedTimberSurfaces<T extends THREE.BufferGeometry>(
     geometry: T,
     grainAxis: THREE.Vector3Like,
     cutThreshold = 0.68
@@ -23,7 +23,6 @@ export function assignExtrudedTimberSurfaces<T extends THREE.ExtrudeGeometry>(
         ![axis.x, axis.y, axis.z].every(Number.isFinite) ||
         !Number.isFinite(cutThreshold) ||
         cutThreshold <= 0 || cutThreshold >= 1 ||
-        geometry.getIndex() !== null ||
         !position
     ) {
         throw new RangeError("Invalid extruded timber");
@@ -37,12 +36,10 @@ export function assignExtrudedTimberSurfaces<T extends THREE.ExtrudeGeometry>(
         throw new Error("Expected ordinary ExtrudeGeometry cap and sidewall groups");
     }
 
-    geometry.userData.controlSidewalls = {
-        start: side.start,
-        count: side.count
-    };
     geometry.clearGroups();
     geometry.addGroup(cap.start, cap.count, 0);
+
+    const indexed = geometry.getIndex();
 
     const a = new THREE.Vector3();
     const b = new THREE.Vector3();
@@ -55,9 +52,9 @@ export function assignExtrudedTimberSurfaces<T extends THREE.ExtrudeGeometry>(
     let previous = -1;
 
     for (let i = side.start; i < side.start + side.count; i += 6) {
-        a.fromBufferAttribute(position, i);
-        b.fromBufferAttribute(position, i + 1);
-        c.fromBufferAttribute(position, i + 2);
+        a.fromBufferAttribute(position, indexed?.getX(i) ?? i);
+        b.fromBufferAttribute(position, indexed?.getX(i + 1) ?? i + 1);
+        c.fromBufferAttribute(position, indexed?.getX(i + 2) ?? i + 2);
         normal.crossVectors(
             edge1.subVectors(b, a),
             edge2.subVectors(c, a)
