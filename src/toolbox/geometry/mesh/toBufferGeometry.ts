@@ -1,16 +1,14 @@
-
 import * as THREE from "three";
-import type { MeshData, QuadFace } from "./MeshData";
+import type { MeshData, QuadFace, TriangleFace } from "./MeshData";
 
-const TRIANGLES = [
+type Face = QuadFace | TriangleFace;
+
+const QUAD_TRIANGLES = [
     [0, 1, 2],
     [0, 2, 3]
 ] as const;
 
-const controlMeshes = new WeakMap<
-    THREE.BufferGeometry,
-    MeshData
->();
+const controlMeshes = new WeakMap<THREE.BufferGeometry, MeshData>();
 
 export function getControlMesh(
     geometry: THREE.BufferGeometry
@@ -18,246 +16,174 @@ export function getControlMesh(
     return controlMeshes.get(geometry);
 }
 
+/**
+ * Render authored quads and genuine triangles with the same UV, material
+ * and smoothing rules. A triangle from a mismatched loft cap remains a
+ * triangle in the control mesh; no fake degenerates are introduced.
+ */
 export function toBufferGeometry(
     mesh: MeshData,
     materialBySurface: Readonly<Record<string, number>>
 ): THREE.BufferGeometry {
-    const byMaterial = new Map<number, QuadFace[]>();
+    const byMaterial = new Map<number, Face[]>();
+    const smoothNormals = new Map<string, Map<number, THREE.Vector3>>();
 
-    const smoothNormals = new Map<
-        string,
-        Map<number, THREE.Vector3>
-    >();
-
-    // First pass: validate quads and calculate smooth normals.
-    for (const quad of mesh.quads) {
-        const materialIndex = materialBySurface[quad.surface];
-
+    for (const face of [...mesh.quads, ...(mesh.triangles ?? [])]) {
+        const materialIndex = materialBySurface[face.surface];
         if (
             typeof materialIndex !== "number" ||
             !Number.isInteger(materialIndex) ||
             materialIndex < 0
         ) {
-            throw new RangeError(
-                `Invalid material for surface ${quad.surface}`
-            );
+            throw new RangeError(`Invalid material for surface ${face.surface}`);
         }
 
-        for (const index of quad.corners) {
+        for (const index of face.corners) {
             const vertex = mesh.vertices[index];
-
             if (
                 !Number.isInteger(index) ||
                 !vertex ||
-                ![vertex.x, vertex.y, vertex.z]
-                    .every(Number.isFinite)
+                ![vertex.x, vertex.y, vertex.z].every(Number.isFinite)
             ) {
                 throw new RangeError("Invalid mesh vertex");
             }
         }
 
-        for (const uv of quad.uvs) {
-            if (
-                !Number.isFinite(uv.x) ||
-                !Number.isFinite(uv.y)
-            ) {
+        for (const uv of face.uvs) {
+            if (!Number.isFinite(uv.x) || !Number.isFinite(uv.y)) {
                 throw new RangeError("Invalid mesh UV");
             }
         }
 
-        const [ia, ib, ic, id] = quad.corners;
-
+        const [ia, ib, ic] = face.corners;
         const a = mesh.vertices[ia]!;
         const b = mesh.vertices[ib]!;
         const c = mesh.vertices[ic]!;
-        const d = mesh.vertices[id]!;
+        const normal = new THREE.Vector3()
+            .subVectors(b, a)
+            .cross(new THREE.Vector3().subVectors(c, a));
 
-        const ab = new THREE.Vector3().subVectors(b, a);
-        const ac = new THREE.Vector3().subVectors(c, a);
-        const ad = new THREE.Vector3().subVectors(d, a);
-
-        const first = new THREE.Vector3()
-            .crossVectors(ab, ac);
-
-        const second = new THREE.Vector3()
-            .crossVectors(ac, ad);
-
-        if (
-            !Number.isFinite(first.lengthSq()) ||
-            !Number.isFinite(second.lengthSq()) ||
-            first.lengthSq() === 0 ||
-            second.lengthSq() === 0
-        ) {
-            throw new RangeError("Degenerate mesh quad");
+        if (!Number.isFinite(normal.lengthSq()) || normal.lengthSq() === 0) {
+            throw new RangeError("Degenerate mesh face");
         }
 
-        const group = quad.smoothingGroup;
+        if (face.corners.length === 4) {
+            const d = mesh.vertices[face.corners[3]]!;
+            const second = new THREE.Vector3()
+                .subVectors(c, a)
+                .cross(new THREE.Vector3().subVectors(d, a));
 
-        if (group !== undefined) {
-            // Both triangles contribute one area-weighted
-            // normal for the original quad.
-            const normal = first.add(second);
+            if (!Number.isFinite(second.lengthSq()) || second.lengthSq() === 0) {
+                throw new RangeError("Degenerate mesh quad");
+            }
+            normal.add(second);
+        }
 
-            if (
-                !Number.isFinite(normal.lengthSq()) ||
-                normal.lengthSq() === 0
-            ) {
-                throw new RangeError("Invalid quad normal");
+        if (face.smoothingGroup !== undefined) {
+            if (!Number.isFinite(normal.lengthSq()) || normal.lengthSq() === 0) {
+                throw new RangeError("Invalid face normal");
             }
 
-            let accumulated = smoothNormals.get(group);
-
+            let accumulated = smoothNormals.get(face.smoothingGroup);
             if (!accumulated) {
                 accumulated = new Map();
-                smoothNormals.set(group, accumulated);
+                smoothNormals.set(face.smoothingGroup, accumulated);
             }
 
-            for (const index of quad.corners) {
-                const existing = accumulated.get(index);
-
-                if (existing) {
-                    existing.add(normal);
-                } else {
-                    accumulated.set(index, normal.clone());
-                }
+            for (const index of face.corners) {
+                const previous = accumulated.get(index);
+                if (previous) previous.add(normal);
+                else accumulated.set(index, normal.clone());
             }
         }
 
-        let faces = byMaterial.get(materialIndex);
-
-        if (!faces) {
-            faces = [];
-            byMaterial.set(materialIndex, faces);
+        let surfaces = byMaterial.get(materialIndex);
+        if (!surfaces) {
+            surfaces = [];
+            byMaterial.set(materialIndex, surfaces);
         }
-
-        faces.push(quad);
+        surfaces.push(face);
     }
 
-    // Normalize after all adjacent quads contributed.
-    for (const group of smoothNormals.values()) {
-        for (const normal of group.values()) {
-            if (
-                !Number.isFinite(normal.lengthSq()) ||
-                normal.lengthSq() === 0
-            ) {
-                throw new RangeError(
-                    "Cannot calculate smooth normal"
-                );
+    for (const accumulated of smoothNormals.values()) {
+        for (const normal of accumulated.values()) {
+            if (!Number.isFinite(normal.lengthSq()) || normal.lengthSq() === 0) {
+                throw new RangeError("Cannot calculate smooth normal");
             }
-
             normal.normalize();
         }
     }
 
-    // Second pass: build the render mesh.
     const positions: number[] = [];
     const normals: number[] = [];
     const uvs: number[] = [];
     const indices: number[] = [];
-
     const vertexCache = new Map<string, number>();
     const geometry = new THREE.BufferGeometry();
 
-    for (const [materialIndex, quads] of byMaterial) {
+    for (const [materialIndex, faces] of byMaterial) {
         const start = indices.length;
 
-        for (const quad of quads) {
-            for (const triangle of TRIANGLES) {
-                const [i0, i1, i2] = triangle;
+        for (const face of faces) {
+            const tris: readonly (readonly number[])[] =
+                face.corners.length === 4 ? QUAD_TRIANGLES : [[0, 1, 2]];
 
-                const a = mesh.vertices[quad.corners[i0]]!;
-                const b = mesh.vertices[quad.corners[i1]]!;
-                const c = mesh.vertices[quad.corners[i2]]!;
+            for (const triangle of tris) {
+                const [i0, i1, i2] = triangle;
+                const a = mesh.vertices[face.corners[i0]!]!;
+                const b = mesh.vertices[face.corners[i1]!]!;
+                const c = mesh.vertices[face.corners[i2]!]!;
 
                 const flatNormal = new THREE.Vector3()
                     .subVectors(b, a)
-                    .cross(
-                        new THREE.Vector3().subVectors(c, a)
-                    )
+                    .cross(new THREE.Vector3().subVectors(c, a))
                     .normalize();
 
                 for (const corner of triangle) {
-                    const vertexIndex = quad.corners[corner];
+                    const vertexIndex = face.corners[corner]!;
                     const vertex = mesh.vertices[vertexIndex]!;
-                    const uv = quad.uvs[corner];
-
-                    const group = quad.smoothingGroup;
-
-                    const normal = group === undefined
+                    const uv = face.uvs[corner]!;
+                    const smoothing = face.smoothingGroup;
+                    const normal = smoothing === undefined
                         ? flatNormal
-                        : smoothNormals.get(group)!.get(vertexIndex)!;
+                        : smoothNormals.get(smoothing)!.get(vertexIndex)!;
 
-                    // Different UVs, materials or smoothing
-                    // groups require separate render vertices.
-                    const key = group === undefined
+                    // Smooth vertices may be shared only if all authored
+                    // vertex identities, materials, groups and UVs agree.
+                    const key = smoothing === undefined
                         ? null
                         : JSON.stringify([
-                            materialIndex,
-                            group,
-                            vertexIndex,
-                            uv.x,
-                            uv.y
+                            materialIndex, smoothing, vertexIndex, uv.x, uv.y
                         ]);
 
-                    let index = key === null
-                        ? undefined
-                        : vertexCache.get(key);
-
+                    let index = key === null ? undefined : vertexCache.get(key);
                     if (index === undefined) {
                         index = positions.length / 3;
-
-                        positions.push(
-                            vertex.x,
-                            vertex.y,
-                            vertex.z
-                        );
-
-                        normals.push(
-                            normal.x,
-                            normal.y,
-                            normal.z
-                        );
-
+                        positions.push(vertex.x, vertex.y, vertex.z);
+                        normals.push(normal.x, normal.y, normal.z);
                         uvs.push(uv.x, uv.y);
-
-                        if (key !== null) {
-                            vertexCache.set(key, index);
-                        }
+                        if (key !== null) vertexCache.set(key, index);
                     }
-
                     indices.push(index);
                 }
             }
         }
 
-        geometry.addGroup(
-            start,
-            indices.length - start,
-            materialIndex
-        );
+        geometry.addGroup(start, indices.length - start, materialIndex);
     }
 
     geometry.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(positions, 3)
+        "position", new THREE.Float32BufferAttribute(positions, 3)
     );
-
     geometry.setAttribute(
-        "normal",
-        new THREE.Float32BufferAttribute(normals, 3)
+        "normal", new THREE.Float32BufferAttribute(normals, 3)
     );
-
     geometry.setAttribute(
-        "uv",
-        new THREE.Float32BufferAttribute(uvs, 2)
+        "uv", new THREE.Float32BufferAttribute(uvs, 2)
     );
-
     geometry.setIndex(indices);
-
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
-
     controlMeshes.set(geometry, mesh);
-
     return geometry;
 }

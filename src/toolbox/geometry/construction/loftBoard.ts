@@ -1,10 +1,11 @@
 import * as THREE from "three";
-import type { MeshData, QuadFace } from "../mesh/MeshData";
+import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
 
 /**
- * A board section viewed across its width. Both rows run left to right.
- * The sections must follow the board's length in a consistent direction;
- * viewed along that direction, outer and inner describe its two faces.
+ * A cross-section of one closed board, viewed across its width.
+ * Outer and inner run in the SAME left-to-right direction but may have
+ * different numbers of support points. Longitudinal sections must agree
+ * within each surface, so every shared edge joins without T-junctions.
  */
 export interface BoardSection {
     outer: readonly THREE.Vector3Like[];
@@ -12,30 +13,34 @@ export interface BoardSection {
 }
 
 /**
- * Connects paired surface strips into one closed, quad-only board.
- * Each section may have a different width, bend, and thickness.
- * Outer and inner faces are smoothly shaded independently, while
- * the seams and end grain stay sharp.
+ * Loft a watertight board from independently sampled surface rows.
+ *
+ * The visible face can retain a detailed edge bevel while a hidden face
+ * uses a single broad quad. Sidewalls remain quads, and end caps are
+ * stitched without inventing hidden subdivisions of the inner surface.
+ * Caps with matching rows preserve the original quad strips; caps with
+ * mismatched rows use genuine authored transition triangles.
  */
 export function loftBoard(
     sections: readonly BoardSection[]
 ): MeshData {
-    const widthPoints = sections[0]?.outer.length ?? 0;
+    const outerPoints = sections[0]?.outer.length ?? 0;
+    const innerPoints = sections[0]?.inner.length ?? 0;
 
     if (
-        sections.length < 2 ||
-        widthPoints < 2 ||
+        sections.length < 2 || outerPoints < 2 || innerPoints < 2 ||
         sections.some(section =>
-            section.outer.length !== widthPoints ||
-            section.inner.length !== widthPoints
+            section.outer.length !== outerPoints ||
+            section.inner.length !== innerPoints
         )
     ) {
         throw new RangeError(
-            "Board requires at least two sections with matching surface rows"
+            "Board needs at least two matching longitudinal sections, " +
+            "with at least two points on each independent surface"
         );
     }
 
-    const ringSize = widthPoints * 2;
+    const ringSize = outerPoints + innerPoints;
     const vertices: THREE.Vector3[] = [];
     const rings: THREE.Vector3[][] = [];
 
@@ -69,31 +74,27 @@ export function loftBoard(
         for (let j = 1; j <= ringSize; j++) {
             const a = ring[j - 1]!;
             const b = ring[j % ringSize]!;
-            const length = a.distanceTo(b);
+            const distance = a.distanceTo(b);
 
-            if (!(length > 0)) {
+            if (!(distance > 0)) {
                 throw new RangeError("Board section has collapsed edges");
             }
-
-            perimeter.push(perimeter[j - 1]! + length);
+            perimeter.push(perimeter[j - 1]! + distance);
         }
 
         perimeters.push(perimeter);
 
         if (i > 0) {
-            const a = rings[i - 1]![0]!;
-            const b = ring[0]!;
-            const distance = a.distanceTo(b);
-
-            if (!(distance > 0)) {
+            const travel = ring[0]!.distanceTo(rings[i - 1]![0]!);
+            if (!(travel > 0)) {
                 throw new RangeError("Consecutive board sections must differ");
             }
-
-            lengths.push(lengths[i - 1]! + distance);
+            lengths.push(lengths[i - 1]! + travel);
         }
     }
 
     const quads: QuadFace[] = [];
+    const triangles: TriangleFace[] = [];
 
     for (let i = 0; i < rings.length - 1; i++) {
         const lower = i * ringSize;
@@ -101,16 +102,19 @@ export function loftBoard(
 
         for (let j = 0; j < ringSize; j++) {
             const next = (j + 1) % ringSize;
-            const surface = j < widthPoints - 1
+            const surface = j < outerPoints - 1
                 ? "outer"
-                : j === widthPoints - 1
+                : j === outerPoints - 1
                     ? "edge-right"
                     : j < ringSize - 1
                         ? "inner"
                         : "edge-left";
 
             quads.push({
-                corners: [lower + j, lower + next, upper + next, upper + j],
+                corners: [
+                    lower + j, lower + next,
+                    upper + next, upper + j
+                ],
                 surface,
                 ...(surface === "outer" || surface === "inner"
                     ? { smoothingGroup: surface }
@@ -125,8 +129,6 @@ export function loftBoard(
         }
     }
 
-    // The end grain is divided into strips so it remains all-quads,
-    // even when either surface bends across the width.
     for (const [sectionIndex, surface] of [
         [0, "cap-start"],
         [rings.length - 1, "cap-end"]
@@ -135,37 +137,107 @@ export function loftBoard(
         const offset = sectionIndex * ringSize;
         const start = sectionIndex === 0;
 
-        for (let j = 0; j < widthPoints - 1; j++) {
-            const outerA = offset + j;
-            const outerB = outerA + 1;
-            const innerA = offset + ringSize - 1 - j;
-            const innerB = innerA - 1;
-            const uA = perimeters[sectionIndex]![j]!;
-            const uB = perimeters[sectionIndex]![j + 1]!;
-            const thicknessA = ring[j]!.distanceTo(ring[ringSize - 1 - j]!);
-            const thicknessB = ring[j + 1]!.distanceTo(ring[ringSize - 2 - j]!);
+        // Retain the original all-quad end grain for the many existing
+        // boards whose two surfaces have matching topology.
+        if (outerPoints === innerPoints) {
+            for (let j = 0; j < outerPoints - 1; j++) {
+                const outerA = offset + j;
+                const outerB = outerA + 1;
+                const innerA = offset + ringSize - 1 - j;
+                const innerB = innerA - 1;
+                const uA = perimeters[sectionIndex]![j]!;
+                const uB = perimeters[sectionIndex]![j + 1]!;
+                const thicknessA = ring[j]!.distanceTo(
+                    ring[ringSize - 1 - j]!
+                );
+                const thicknessB = ring[j + 1]!.distanceTo(
+                    ring[ringSize - 2 - j]!
+                );
 
-            quads.push(start ? {
-                corners: [outerA, innerA, innerB, outerB],
+                quads.push(start ? {
+                    corners: [outerA, innerA, innerB, outerB],
+                    surface,
+                    uvs: [
+                        new THREE.Vector2(uA, 0),
+                        new THREE.Vector2(uA, thicknessA),
+                        new THREE.Vector2(uB, thicknessB),
+                        new THREE.Vector2(uB, 0)
+                    ]
+                } : {
+                    corners: [outerA, outerB, innerB, innerA],
+                    surface,
+                    uvs: [
+                        new THREE.Vector2(uA, 0),
+                        new THREE.Vector2(uB, 0),
+                        new THREE.Vector2(uB, thicknessB),
+                        new THREE.Vector2(uA, thicknessA)
+                    ]
+                });
+            }
+            continue;
+        }
+
+        // An end face spans TWO polylines of different resolutions. Stitch
+        // them monotonically: every boundary vertex is used exactly once
+        // and no extra vertex is inserted on the low-poly inner surface.
+        const origin = ring[0]!;
+        const across = ring[outerPoints - 1]!.clone().sub(origin);
+        const depth = ring[ringSize - 1]!.clone().sub(origin);
+
+        if (across.lengthSq() === 0) {
+            throw new RangeError("Collapsed board cap width");
+        }
+        across.normalize();
+        depth.addScaledVector(across, -depth.dot(across));
+
+        if (depth.lengthSq() === 0) {
+            throw new RangeError("Collapsed board cap thickness");
+        }
+        depth.normalize();
+
+        function uv(index: number): THREE.Vector2 {
+            const local = vertices[index]!.clone().sub(origin);
+            return new THREE.Vector2(
+                local.dot(across),
+                local.dot(depth)
+            );
+        }
+
+        function addTriangle(a: number, b: number, c: number): void {
+            triangles.push({
+                corners: [a, b, c],
                 surface,
-                uvs: [
-                    new THREE.Vector2(uA, 0),
-                    new THREE.Vector2(uA, thicknessA),
-                    new THREE.Vector2(uB, thicknessB),
-                    new THREE.Vector2(uB, 0)
-                ]
-            } : {
-                corners: [outerA, outerB, innerB, innerA],
-                surface,
-                uvs: [
-                    new THREE.Vector2(uA, 0),
-                    new THREE.Vector2(uB, 0),
-                    new THREE.Vector2(uB, thicknessB),
-                    new THREE.Vector2(uA, thicknessA)
-                ]
+                uvs: [uv(a), uv(b), uv(c)]
             });
+        }
+
+        let outer = 0;
+        let inner = 0;
+
+        while (outer < outerPoints - 1 || inner < innerPoints - 1) {
+            const outerA = offset + outer;
+            const innerA = offset + ringSize - 1 - inner;
+
+            const advanceOuter = outer < outerPoints - 1 &&
+                (inner === innerPoints - 1 ||
+                    (outer + 1) / (outerPoints - 1) <
+                    (inner + 1) / (innerPoints - 1));
+
+            if (advanceOuter) {
+                const outerB = outerA + 1;
+                if (start) addTriangle(outerA, innerA, outerB);
+                else addTriangle(outerA, outerB, innerA);
+                outer++;
+            } else {
+                const innerB = innerA - 1;
+                if (start) addTriangle(outerA, innerA, innerB);
+                else addTriangle(outerA, innerB, innerA);
+                inner++;
+            }
         }
     }
 
-    return { vertices, quads };
+    return triangles.length
+        ? { vertices, quads, triangles }
+        : { vertices, quads };
 }

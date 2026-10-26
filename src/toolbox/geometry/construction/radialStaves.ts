@@ -8,6 +8,12 @@ export interface RadialStavesOptions {
     seamGap?: number;
     edgeRoundover?: number;
     angleOffset?: number;
+    /**
+     * Independent normalized width stations for the hidden face.
+     * Omitting this preserves the original symmetric section topology.
+     * [0, 1] is the lowest-density closed inner surface.
+     */
+    innerWidthSamples?: readonly number[];
 }
 
 /**
@@ -22,7 +28,8 @@ export function radialStaves(
         thickness,
         seamGap = 0,
         edgeRoundover = 0,
-        angleOffset = 0
+        angleOffset = 0,
+        innerWidthSamples
     }: RadialStavesOptions
 ): MeshData[] {
     const values = [thickness, seamGap, edgeRoundover, angleOffset];
@@ -57,6 +64,20 @@ export function radialStaves(
         ? [0, 0.055, 0.5, 0.945, 1]
         : [0, 0.5, 1];
 
+    const innerSamples = innerWidthSamples ?? widthSamples;
+    if (
+        innerSamples.length < 2 ||
+        innerSamples[0] !== 0 ||
+        innerSamples[innerSamples.length - 1] !== 1 ||
+        innerSamples.some((value, i) =>
+            !Number.isFinite(value) ||
+            value < 0 || value > 1 ||
+            (i > 0 && value <= innerSamples[i - 1]!)
+        )
+    ) {
+        throw new RangeError("Invalid inner width stations");
+    }
+
     function polar(radius: number, y: number, theta: number): THREE.Vector3 {
         return new THREE.Vector3(
             radius * Math.sin(theta),
@@ -79,7 +100,9 @@ export function radialStaves(
                 return polar(r, y, start + u * span);
             });
 
-            const inner = widthSamples.map(u =>
+            // Unlike the outer shoulder loops, the hidden surface needs
+            // only the samples that express its actual interior shape.
+            const inner = innerSamples.map(u =>
                 polar(radius - thickness, y, start + u * span)
             );
 

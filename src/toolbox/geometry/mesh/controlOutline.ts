@@ -94,6 +94,21 @@ export function getControlOutline(
             }
         }
 
+        // An authored triangle is a real control face. Draw its three
+        // boundary edges, but do not pretend it was an authored quad.
+        for (const triangle of controlMesh.triangles ?? []) {
+            for (let i = 0; i < 3; i++) {
+                const a = triangle.corners[i]!;
+                const b = triangle.corners[(i + 1) % 3]!;
+                addEdge(
+                    controlMesh.vertices[a]!,
+                    controlMesh.vertices[b]!,
+                    String(a),
+                    String(b)
+                );
+            }
+        }
+
         return { positions, quadCount };
     }
 

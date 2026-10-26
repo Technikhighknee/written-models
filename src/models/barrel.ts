@@ -81,6 +81,10 @@ function createBody(
     const staves = radialStaves(profile, {
         count: staveCount,
         thickness: staveThickness,
+        // The roundover belongs to the exterior. The interior has a
+        // simple planar cross-section (two points), not five copies of
+        // the outer bevel loops. Closed loft caps bridge the two densities.
+        innerWidthSamples: [0, 1],
         // Sink the OUTER corners into the wood to create a narrow,
         // shadow-catching V-seam. Adjacent stave sidewalls still meet
         // at the same angle, so the barrel stays closed and watertight.
