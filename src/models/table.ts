@@ -69,9 +69,6 @@ function create(): THREE.Group {
         wood.endGrain, wood.face, wood.face
     ]);
 
-    top.rotateZ(Math.PI / 2 + 20);
-    top.rotateX(1);
-
     return table;
 }
 
