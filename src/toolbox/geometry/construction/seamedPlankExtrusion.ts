@@ -445,9 +445,6 @@ export function seamedPlankExtrusion(
         }
     }
 
-    const first = stations[0]!;
-    const last = stations[stations.length - 1]!;
-
     // The joinery sidewalls and circular trim remain closed. At the two
     // end caps, bridge the detailed perimeter to the SIMPLE hidden edge
     // using real triangles rather than adding hidden support loops.
