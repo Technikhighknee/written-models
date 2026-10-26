@@ -10,6 +10,12 @@ export interface SeamedPlankOptions {
     shoulderWidth: number;
     /** Depth of the recess at the actual board-to-board contact. */
     recessDepth: number;
+    /**
+     * Width of the flat, recessed seam floor on each plank edge.
+     * Zero keeps the original pointed V-groove and two material slots.
+     * Positive values add a third material slot for the shaded floor.
+     */
+    grooveFloorWidth?: number;
     /** The minimum-X edge is a board seam (not the outer outline). */
     seamAtStart: boolean;
     /** The maximum-X edge is a board seam (not the outer outline). */
@@ -49,6 +55,7 @@ export function seamedPlankExtrusion(
         thickness,
         shoulderWidth,
         recessDepth,
+        grooveFloorWidth = 0,
         seamAtStart,
         seamAtEnd,
         cutThreshold = 0.68
@@ -56,9 +63,11 @@ export function seamedPlankExtrusion(
 ): THREE.BufferGeometry {
     if (
         outline.length < 3 ||
-        ![thickness, shoulderWidth, recessDepth, cutThreshold].every(Number.isFinite) ||
+        ![thickness, shoulderWidth, recessDepth, grooveFloorWidth, cutThreshold]
+            .every(Number.isFinite) ||
         thickness <= 0 || shoulderWidth <= 0 ||
         recessDepth <= 0 || recessDepth >= thickness / 2 ||
+        grooveFloorWidth < 0 || grooveFloorWidth >= shoulderWidth ||
         cutThreshold <= 0 || cutThreshold >= 1 ||
         outline.some(p => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))
     ) {
@@ -80,8 +89,14 @@ export function seamedPlankExtrusion(
     // per seam, then subdivide at every original polygon vertex to preserve
     // exactly the original trimmed outline, including the circular perimeter.
     const stationsX = [...xs];
-    if (seamAtStart) stationsX.push(start + shoulderWidth);
-    if (seamAtEnd) stationsX.push(end - shoulderWidth);
+    if (seamAtStart) {
+        if (grooveFloorWidth > 0) stationsX.push(start + grooveFloorWidth);
+        stationsX.push(start + shoulderWidth);
+    }
+    if (seamAtEnd) {
+        stationsX.push(end - shoulderWidth);
+        if (grooveFloorWidth > 0) stationsX.push(end - grooveFloorWidth);
+    }
     stationsX.sort((a, b) => a - b);
 
     const uniqueX: number[] = [];
@@ -120,13 +135,14 @@ export function seamedPlankExtrusion(
     }
 
     function insetAt(x: number): number {
+        const ramp = shoulderWidth - grooveFloorWidth;
         const a = seamAtStart
-            ? Math.max(0, (start + shoulderWidth - x) / shoulderWidth)
+            ? (start + shoulderWidth - x) / ramp
             : 0;
         const b = seamAtEnd
-            ? Math.max(0, (x - (end - shoulderWidth)) / shoulderWidth)
+            ? (x - (end - shoulderWidth)) / ramp
             : 0;
-        return recessDepth * Math.min(1, Math.max(a, b));
+        return recessDepth * Math.max(0, Math.min(1, Math.max(a, b)));
     }
 
     const stations: Station[] = uniqueX.map(x => {
@@ -140,13 +156,13 @@ export function seamedPlankExtrusion(
     });
 
     const verts = [
-        [] as number[], [] as number[]
+        [] as number[], [] as number[], [] as number[]
     ];
     const normals = [
-        [] as number[], [] as number[]
+        [] as number[], [] as number[], [] as number[]
     ];
     const uvSets = [
-        [] as number[], [] as number[]
+        [] as number[], [] as number[], [] as number[]
     ];
 
     // Actual construction edges, not the diagonal created by triangulation.
@@ -177,7 +193,7 @@ export function seamedPlankExtrusion(
 
     function triangle(
         a: Vertex, b: Vertex, c: Vertex,
-        material: 0 | 1,
+        material: 0 | 1 | 2,
         sidewall = false
     ): boolean {
         const ab = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
@@ -202,7 +218,7 @@ export function seamedPlankExtrusion(
 
     function quad(
         a: Vertex, b: Vertex, c: Vertex, d: Vertex,
-        material: 0 | 1,
+        material: 0 | 1 | 2,
         sidewall = false
     ): void {
         const first = triangle(a, b, c, material, sidewall);
@@ -224,17 +240,25 @@ export function seamedPlankExtrusion(
         const a = stations[i]!;
         const b = stations[i + 1]!;
 
+        // Only the narrow horizontal groove floor is darkened.
+        // Both sloping shoulders retain the same grain as the board.
+        const grooveFloor = grooveFloorWidth > 0 && (
+            (seamAtStart && b.x <= start + grooveFloorWidth + EPSILON) ||
+            (seamAtEnd && a.x >= end - grooveFloorWidth - EPSILON)
+        );
+        const faceMaterial: 0 | 2 = grooveFloor ? 2 : 0;
+
         quad(
             point(a.x, a.top, a.low),
             point(a.x, a.top, a.high),
             point(b.x, b.top, b.high),
-            point(b.x, b.top, b.low), 0
+            point(b.x, b.top, b.low), faceMaterial
         );
         quad(
             point(a.x, a.bottom, a.low),
             point(b.x, b.bottom, b.low),
             point(b.x, b.bottom, b.high),
-            point(a.x, a.bottom, a.high), 0
+            point(a.x, a.bottom, a.high), faceMaterial
         );
 
         for (const [z0, z1, highSide] of [
@@ -285,9 +309,9 @@ export function seamedPlankExtrusion(
     );
 
     const geometry = new THREE.BufferGeometry();
-    const positions = verts[0]!.concat(verts[1]!);
-    const normalValues = normals[0]!.concat(normals[1]!);
-    const uvs = uvSets[0]!.concat(uvSets[1]!);
+    const positions = verts[0]!.concat(verts[1]!, verts[2]!);
+    const normalValues = normals[0]!.concat(normals[1]!, normals[2]!);
+    const uvs = uvSets[0]!.concat(uvSets[1]!, uvSets[2]!);
 
     geometry.setAttribute(
         "position", new THREE.Float32BufferAttribute(positions, 3)
@@ -301,6 +325,12 @@ export function seamedPlankExtrusion(
     geometry.addGroup(0, verts[0]!.length / 3, 0);
     if (verts[1]!.length) {
         geometry.addGroup(verts[0]!.length / 3, verts[1]!.length / 3, 1);
+    }
+    if (verts[2]!.length) {
+        geometry.addGroup(
+            (verts[0]!.length + verts[1]!.length) / 3,
+            verts[2]!.length / 3, 2
+        );
     }
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();

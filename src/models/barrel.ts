@@ -10,7 +10,7 @@ import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 import { offsetMeshUvs } from "../toolbox/geometry/uv/offsetMeshUvs";
 import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
-import { oakVariant } from "../materials/wood/oak";
+import { oakVariant, oakBoardFace, oakGrooveFace } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
 
 type BarrelHeadSide = "top" | "bottom";
@@ -148,30 +148,41 @@ function createHead(
     const boards = groovedCircularPlankPanel(radius, {
         planks: 5,
         thickness,
-        radialSegments: 48,
-        // A shallow V-joint on BOTH faces makes the five head boards
-        // readable, while their touching sidewalls still seal the disk.
-        shoulderWidth: mm(3.2),
-        recessDepth: mm(1.5)
+        // The stave-built rim has 24 facets; 36 segments retain a
+        // smooth enough wooden head without excessive cut-line loops.
+        radialSegments: 36,
+        // These boards were fitted and trimmed as one circular head,
+        // but their widths don't look machine-divided into fifths.
+        widthWeights: [0.94, 1.08, 1.03, 0.92, 1.03],
+        // Sloped wooden shoulders, a narrow shadowed groove floor,
+        // and a continuous solid contact below it on BOTH faces.
+        shoulderWidth: mm(4.2),
+        recessDepth: mm(2.4),
+        grooveFloorWidth: mm(0.95)
     });
 
     // Heads are linear rows of timber, not random swatch arrangements.
     const variations = coherentVariation({
         count: boards.length,
         seed: isTop ? 31 : 47,
-        radius: 3
+        radius: 2
     });
 
     for (let i = 0; i < boards.length; i++) {
-        const wood = oakVariant((i * 3 + (isTop ? 1 : 5)) % 8);
-        const tone = 0.97 + 0.02 * variations[i]!;
+        const seed = (i * 3 + (isTop ? 1 : 5)) % 8;
+        const wood = oakVariant(seed);
+        // Subtle board-to-board color shifts, not a single flat disk.
+        const tone = 0.92 + 0.085 * variations[i]!;
         const geometry = tintVertices(
             boards[i]!,
             new THREE.Color(tone, tone, tone)
         );
         const board = new THREE.Mesh(geometry, [
-            wood.tinted.face,
-            wood.tinted.endGrain
+            // Planed broad oak: its quieter flowed grain also avoids
+            // the long straight stripes of the raw stave texture.
+            oakBoardFace(seed),
+            wood.tinted.endGrain,
+            oakGrooveFace(seed)
         ]);
         board.name = `HeadBoard${i + 1}`;
         head.add(board);

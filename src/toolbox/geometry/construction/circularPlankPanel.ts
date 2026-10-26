@@ -6,6 +6,8 @@ export interface CircularPlankPanelOptions {
     planks: number;
     thickness: number;
     radialSegments?: number;
+    /** Relative widths of the fitted boards; normalized to fill the disk. */
+    widthWeights?: readonly number[];
 }
 
 type Point = readonly [number, number];
@@ -25,12 +27,13 @@ export function circularPlankPanel(
     {
         planks,
         thickness,
-        radialSegments = 48
+        radialSegments = 48,
+        widthWeights
     }: CircularPlankPanelOptions
 ): THREE.ExtrudeGeometry[] {
-    validatePanel(radius, planks, thickness, radialSegments);
+    validatePanel(radius, planks, thickness, radialSegments, widthWeights);
 
-    const outlines = circularPlankOutlines(radius, planks, radialSegments);
+    const outlines = circularPlankOutlines(radius, planks, radialSegments, widthWeights);
     const pieces: THREE.ExtrudeGeometry[] = [];
 
     for (const outline of outlines) {
@@ -64,14 +67,17 @@ export function groovedCircularPlankPanel(
         planks,
         thickness,
         radialSegments = 48,
+        widthWeights,
         shoulderWidth,
-        recessDepth
+        recessDepth,
+        grooveFloorWidth = 0
     }: CircularPlankPanelOptions & {
         shoulderWidth: number;
         recessDepth: number;
+        grooveFloorWidth?: number;
     }
 ): THREE.BufferGeometry[] {
-    validatePanel(radius, planks, thickness, radialSegments);
+    validatePanel(radius, planks, thickness, radialSegments, widthWeights);
 
     if (
         !Number.isFinite(shoulderWidth) ||
@@ -79,17 +85,22 @@ export function groovedCircularPlankPanel(
         shoulderWidth <= 0 ||
         recessDepth <= 0 ||
         recessDepth >= thickness / 2 ||
-        shoulderWidth >= radius / planks
+        !Number.isFinite(grooveFloorWidth) ||
+        grooveFloorWidth < 0 ||
+        grooveFloorWidth >= shoulderWidth ||
+        shoulderWidth * 2 >= Math.min(...(widthWeights ?? Array(planks).fill(1))) *
+            (2 * radius / (widthWeights?.reduce((sum, w) => sum + w, 0) ?? planks))
     ) {
         throw new RangeError("Invalid circular plank joint relief");
     }
 
-    const outlines = circularPlankOutlines(radius, planks, radialSegments);
+    const outlines = circularPlankOutlines(radius, planks, radialSegments, widthWeights);
     return outlines.map((outline, index) =>
         seamedPlankExtrusion(outline, {
             thickness,
             shoulderWidth,
             recessDepth,
+            grooveFloorWidth,
             seamAtStart: index > 0,
             seamAtEnd: index < planks - 1
         })
@@ -103,7 +114,8 @@ export function groovedCircularPlankPanel(
 function circularPlankOutlines(
     radius: number,
     planks: number,
-    radialSegments: number
+    radialSegments: number,
+    widthWeights?: readonly number[]
 ): Point[][] {
     const circle: Point[] = Array.from(
         { length: radialSegments },
@@ -116,10 +128,14 @@ function circularPlankOutlines(
         }
     );
 
-    const cuts = Array.from(
-        { length: planks + 1 },
-        (_, i) => -radius + (2 * radius * i) / planks
-    );
+    const weights = widthWeights ?? Array.from({ length: planks }, () => 1);
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const cuts = [-radius];
+
+    for (let i = 0; i < planks - 1; i++) {
+        cuts.push(cuts[i]! + 2 * radius * weights[i]! / totalWeight);
+    }
+    cuts.push(radius);
 
     return Array.from({ length: planks }, (_, i) => {
         const clipped = clipAtX(
@@ -140,13 +156,21 @@ function circularPlankOutlines(
 }
 
 function validatePanel(
-    radius: number, planks: number, thickness: number, radialSegments: number
+    radius: number,
+    planks: number,
+    thickness: number,
+    radialSegments: number,
+    widthWeights?: readonly number[]
 ): void {
     if (
         !Number.isFinite(radius) || radius <= 0 ||
         !Number.isFinite(thickness) || thickness <= 0 ||
         !Number.isInteger(planks) || planks < 2 ||
-        !Number.isInteger(radialSegments) || radialSegments < 8
+        !Number.isInteger(radialSegments) || radialSegments < 8 ||
+        (widthWeights !== undefined && (
+            widthWeights.length !== planks ||
+            widthWeights.some(w => !Number.isFinite(w) || w <= 0)
+        ))
     ) {
         throw new RangeError("Invalid circular plank panel dimensions");
     }
