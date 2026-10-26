@@ -17,9 +17,13 @@ Models import **materials**, never draw their own texture maps.
   use `boxUVsInMeters()`. ExtrudeGeometry retains its shape-space UVs.
 - End grain is a different surface, not a rotated copy of longitudinal grain.
 - Different wood finishes reuse the same textures and differ by material tint.
-  Do not mutate their shared texture transforms per model. For per-board
-  variation, change that board's UV coordinates or explicitly add a new
-  material definition.
+  Do not mutate their shared texture transforms per model.
+- For **subtle per-piece tones**, use `coherentVariation()` to produce a
+  neighborhood-correlated distribution (circular for barrels, linear for
+  plank arrangements). Put a constant RGB tint into the mesh's vertex-color
+  attribute with `tintVertices()`, then use `oak().tinted.face` and
+  `oak().tinted.endGrain`. These share all PBR maps and use vertexColors;
+  GLB export keeps the tint without creating one material per board.
 - All textures are ordinary CanvasTextures attached to MeshStandardMaterials,
   compatible with the existing GLTFExporter / binary GLB workflow.
 - SVG can join the recipe toolbox when we need deliberately drawn vector marks

@@ -7,6 +7,8 @@ import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
 import { radialStaves } from "../toolbox/geometry/construction/radialStaves";
 import { circularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
+import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
+import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
 import { oak } from "../materials/wood/oak";
 import type { OakMaterials } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
@@ -68,13 +70,6 @@ function createBody(
     const body = new THREE.Group();
     body.name = "Body";
 
-    const shades: THREE.Material[] = [
-        wood.face,
-        wood.aged,
-        wood.light,
-        wood.dark
-    ];
-
     const staves = radialStaves(profile, {
         count: staveCount,
         thickness: cm(2)
@@ -89,18 +84,25 @@ function createBody(
         "cap-end": 1
     };
 
-    // Deliberately varied tones, not a procedurally generated texture.
-    const finish = [
-        0, 1, 0, 2, 1, 0, 3, 1,
-        0, 2, 0, 1, 3, 0, 1, 2,
-        0, 3, 1, 0, 2, 1, 0, 3
-    ];
+    // Neighboring staves belong to broad tonal regions, not a random
+    // checkerboard of unrelated oak finishes. Gentle vertex tints keep
+    // the PBR maps and materials shared and survive GLB export.
+    const variations = coherentVariation({
+        count: staves.length,
+        seed: 23,
+        radius: 4,
+        cyclic: true
+    });
 
     for (let i = 0; i < staves.length; i++) {
-        const geometry = toBufferGeometry(staves[i]!, surfaceMaterials);
+        const tone = 0.955 + 0.045 * variations[i]!;
+        const geometry = tintVertices(
+            toBufferGeometry(staves[i]!, surfaceMaterials),
+            new THREE.Color(tone, tone, tone)
+        );
         const stave = new THREE.Mesh(geometry, [
-            shades[finish[i]!]!,
-            wood.endGrain
+            wood.tinted.face,
+            wood.tinted.endGrain
         ]);
 
         stave.name = `Stave${String(i + 1).padStart(2, "0")}`;
@@ -135,17 +137,29 @@ function createHead(
     head.position.y = rim.y + direction * (inset + thickness / 2);
 
     const wood = oak();
-    const woods = [wood.face, wood.aged, wood.light, wood.dark, wood.aged];
-    const edgeWood = wood.endGrain;
-
     const boards = circularPlankPanel(radius, {
-        planks: woods.length,
+        planks: 5,
         thickness,
         radialSegments: 48
     });
 
+    // Heads are linear rows of timber, not random swatch arrangements.
+    const variations = coherentVariation({
+        count: boards.length,
+        seed: isTop ? 31 : 47,
+        radius: 3
+    });
+
     for (let i = 0; i < boards.length; i++) {
-        const board = new THREE.Mesh(boards[i]!, [woods[i]!, edgeWood]);
+        const tone = 0.97 + 0.02 * variations[i]!;
+        const geometry = tintVertices(
+            boards[i]!,
+            new THREE.Color(tone, tone, tone)
+        );
+        const board = new THREE.Mesh(geometry, [
+            wood.tinted.face,
+            wood.tinted.endGrain
+        ]);
         board.name = `HeadBoard${i + 1}`;
         head.add(board);
     }

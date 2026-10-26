@@ -9,6 +9,11 @@ export interface OakMaterials {
     dark: THREE.MeshStandardMaterial;
     aged: THREE.MeshStandardMaterial;
     endGrain: THREE.MeshStandardMaterial;
+    /** Same PBR maps; enable exported vertex colors for per-piece variation. */
+    tinted: {
+        face: THREE.MeshStandardMaterial;
+        endGrain: THREE.MeshStandardMaterial;
+    };
 }
 
 let cached: OakMaterials | undefined;
@@ -50,12 +55,25 @@ export function oak(): OakMaterials {
         });
     }
 
+    const natural = finish("Oak · Natural", faces);
+    const endGrain = finish("Oak · End Grain", ends);
+    const tintedFace = natural.clone();
+    tintedFace.name = "Oak · Natural (Vertex Tinted)";
+    tintedFace.vertexColors = true;
+    const tintedEndGrain = endGrain.clone();
+    tintedEndGrain.name = "Oak · End Grain (Vertex Tinted)";
+    tintedEndGrain.vertexColors = true;
+
     cached = {
-        face: finish("Oak · Natural", faces),
+        face: natural,
         light: finish("Oak · Light", faces, "#f1e9dc"),
         dark: finish("Oak · Dark", faces, "#b6a28e"),
         aged: finish("Oak · Aged", faces, "#d1c5b4"),
-        endGrain: finish("Oak · End Grain", ends)
+        endGrain,
+        tinted: {
+            face: tintedFace,
+            endGrain: tintedEndGrain
+        }
     };
 
     return cached;
