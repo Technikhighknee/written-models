@@ -2,7 +2,8 @@ import * as THREE from "three";
 import { extrude } from "../../shapes/operations/extrude";
 import {
     seamedPlankExtrusion,
-    getPlankLongitudinalStations
+    getPlankLongitudinalStations,
+    type PlankVertex
 } from "./seamedPlankExtrusion";
 
 export interface HandFittedPanelOptions {
@@ -185,7 +186,8 @@ export function groovedCircularPlankPanel(
                         maxDepth: 5
                     }
                 } : {}),
-            deform: handFitted ? p => {
+            ...(handFitted ? {
+                deform: (p: Readonly<PlankVertex>) => {
                 const t = Math.max(0, Math.min(1, (p.x - left) / (right - left)));
                 // Preserve the exact circular trim: all deformation fades
                 // to zero where the face meets its outside cut.
@@ -224,7 +226,8 @@ export function groovedCircularPlankPanel(
                     y: p.y + bow * fade - Math.sign(p.y) * wear,
                     z: p.z
                 };
-            } : undefined
+            }
+            } : {})
         });
     });
 
