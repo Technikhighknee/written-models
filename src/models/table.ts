@@ -1,7 +1,10 @@
 import * as THREE from "three";
 
 import { boardPanel } from "../toolbox/geometry/construction/boardPanel";
-import { createTimberBetween } from "../toolbox/geometry/construction/timber";
+import {
+    createTimberBetween,
+    createTimberBetweenContacts
+} from "../toolbox/geometry/construction/timber";
 import {
     createTrestleSupport,
     type TrestleTimberFactory,
@@ -118,22 +121,27 @@ function buildTrestles(
     // A fixed set of related oak cuts, and dedicated UV windows, keep
     // the framing related to the tabletop without repeating its pattern.
     const timber: TrestleTimberFactory = (
-        name, start, end, width, depth
+        name, start, end, width, depth, contacts
     ) => {
         const piece = timberNumber++;
         const seed = (piece * 5 + 1) % 8;
         const material = oakVariant(seed);
-        const beam = createTimberBetween(
-            start, end, width, depth,
-            {
-                face: oakBoardFace(seed),
-                endGrain: material.tinted.endGrain
-            },
-            {
-                u: cm(1.4) + (piece * cm(3.7)) % cm(16),
-                v: (piece * cm(31)) % cm(49)
-            }
-        );
+        const faces = {
+            face: oakBoardFace(seed),
+            endGrain: material.tinted.endGrain
+        };
+        const uvOffset = {
+            u: cm(1.4) + (piece * cm(3.7)) % cm(16),
+            v: (piece * cm(31)) % cm(49)
+        };
+
+        const beam = contacts
+            ? createTimberBetweenContacts(
+                start, end, width, depth, faces, contacts, uvOffset
+            )
+            : createTimberBetween(
+                start, end, width, depth, faces, uvOffset
+            );
 
         // oakBoardFace and the tinted end grain expect vertex colors.
         tintVertices(beam.geometry, new THREE.Color(0.97, 0.97, 0.97));

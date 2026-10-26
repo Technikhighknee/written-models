@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import type { TimberContactNormals } from "./timber";
 
 /** Timber assembled in the caller's coordinate system and material family. */
 export type TrestleTimberFactory = (
@@ -6,7 +7,8 @@ export type TrestleTimberFactory = (
     start: THREE.Vector3,
     end: THREE.Vector3,
     width: number,
-    depth: number
+    depth: number,
+    contacts?: TimberContactNormals
 ) => THREE.Mesh;
 
 export interface TrestleSupportOptions {
@@ -75,9 +77,10 @@ export function createTrestleSupport(
         start: THREE.Vector3,
         end: THREE.Vector3,
         width: number,
-        depth: number
+        depth: number,
+        contacts?: TimberContactNormals
     ): void => {
-        const timber = makeTimber(name, start, end, width, depth);
+        const timber = makeTimber(name, start, end, width, depth, contacts);
         timber.name = name;
         trestle.add(timber);
     };
@@ -108,20 +111,23 @@ export function createTrestleSupport(
         headHeight
     );
 
-    // Brace ends overlap the foot and post inside the joints, so neither
-    // of these diagonal timbers appears to float beside its support.
-    const lowerY = footHeight + braceSize * 0.10;
-    const upperY = height - headHeight - braceSize * 0.82;
+    // Brace centers are chosen ON the foot's upper face and the post's
+    // outer face. The two contact planes determine the miters at all four
+    // corners of both ends; no beam penetrates the supporting timbers.
     const lowerZ = footLength / 2 - braceSize * 1.5;
-    const upperZ = postDepth / 2 - braceSize * 0.25;
+    const upperY = height - headHeight - braceSize * 1.5;
 
     for (const side of [-1, 1] as const) {
         add(
             side < 0 ? "BraceBack" : "BraceFront",
-            new THREE.Vector3(0, lowerY, side * lowerZ),
-            new THREE.Vector3(0, upperY, side * upperZ),
+            new THREE.Vector3(0, footHeight, side * lowerZ),
+            new THREE.Vector3(0, upperY, side * postDepth / 2),
             braceSize,
-            braceSize
+            braceSize,
+            {
+                startNormal: new THREE.Vector3(0, 1, 0),
+                endNormal: new THREE.Vector3(0, 0, side)
+            }
         );
     }
 
