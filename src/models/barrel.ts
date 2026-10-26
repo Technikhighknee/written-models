@@ -5,11 +5,10 @@ import { positionsFromEnds } from "../toolbox/spatial/layout/positionsFromEnds";
 import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
 import { radialStaves } from "../toolbox/geometry/construction/radialStaves";
-import { circularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
+import { groovedCircularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 import { offsetMeshUvs } from "../toolbox/geometry/uv/offsetMeshUvs";
 import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
-import { assignExtrudedTimberSurfaces } from "../toolbox/geometry/materials/assignExtrudedTimberSurfaces";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
 import { oakVariant } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
@@ -146,10 +145,14 @@ function createHead(
     const direction = isTop ? -1 : 1;
     head.position.y = rim.y + direction * (inset + thickness / 2);
 
-    const boards = circularPlankPanel(radius, {
+    const boards = groovedCircularPlankPanel(radius, {
         planks: 5,
         thickness,
-        radialSegments: 48
+        radialSegments: 48,
+        // A shallow V-joint on BOTH faces makes the five head boards
+        // readable, while their touching sidewalls still seal the disk.
+        shoulderWidth: mm(3.2),
+        recessDepth: mm(1.5)
     });
 
     // Heads are linear rows of timber, not random swatch arrangements.
@@ -163,10 +166,7 @@ function createHead(
         const wood = oakVariant((i * 3 + (isTop ? 1 : 5)) % 8);
         const tone = 0.97 + 0.02 * variations[i]!;
         const geometry = tintVertices(
-            assignExtrudedTimberSurfaces(
-                boards[i]!,
-                new THREE.Vector3(0, 0, 1)
-            ),
+            boards[i]!,
             new THREE.Color(tone, tone, tone)
         );
         const board = new THREE.Mesh(geometry, [

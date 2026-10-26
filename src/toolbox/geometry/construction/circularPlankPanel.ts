@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { extrude } from "../../shapes/operations/extrude";
+import { seamedPlankExtrusion } from "./seamedPlankExtrusion";
 
 export interface CircularPlankPanelOptions {
     planks: number;
@@ -27,17 +28,83 @@ export function circularPlankPanel(
         radialSegments = 48
     }: CircularPlankPanelOptions
 ): THREE.ExtrudeGeometry[] {
-    if (
-        !Number.isFinite(radius) || radius <= 0 ||
-        !Number.isFinite(thickness) || thickness <= 0 ||
-        !Number.isInteger(planks) || planks < 2 ||
-        !Number.isInteger(radialSegments) || radialSegments < 8
-    ) {
-        throw new RangeError("Invalid circular plank panel dimensions");
+    validatePanel(radius, planks, thickness, radialSegments);
+
+    const outlines = circularPlankOutlines(radius, planks, radialSegments);
+    const pieces: THREE.ExtrudeGeometry[] = [];
+
+    for (const outline of outlines) {
+        const shape = new THREE.Shape();
+        shape.moveTo(...outline[0]!);
+
+        for (const point of outline.slice(1)) {
+            shape.lineTo(...point);
+        }
+
+        shape.closePath();
+        pieces.push(extrude(shape, { thickness, curveSegments: 1 }));
     }
 
-    // Build the perimeter once. All planks are then clipped against
-    // this same polygon, so no independently rounded ends can drift apart.
+    return pieces;
+}
+
+
+/**
+ * Closed, visibly seamed version of circularPlankPanel(). The solid side
+ * walls of adjacent planks still meet all the way through the middle of
+ * their thickness; only the visible broad faces are recessed at the joints.
+ *
+ * Reuses the same shared clipped circular outlines as the plain panel.
+ * Returned geometries contain long-grain material slot 0 and end-grain
+ * slot 1, ready for the existing wood material families.
+ */
+export function groovedCircularPlankPanel(
+    radius: number,
+    {
+        planks,
+        thickness,
+        radialSegments = 48,
+        shoulderWidth,
+        recessDepth
+    }: CircularPlankPanelOptions & {
+        shoulderWidth: number;
+        recessDepth: number;
+    }
+): THREE.BufferGeometry[] {
+    validatePanel(radius, planks, thickness, radialSegments);
+
+    if (
+        !Number.isFinite(shoulderWidth) ||
+        !Number.isFinite(recessDepth) ||
+        shoulderWidth <= 0 ||
+        recessDepth <= 0 ||
+        recessDepth >= thickness / 2 ||
+        shoulderWidth >= radius / planks
+    ) {
+        throw new RangeError("Invalid circular plank joint relief");
+    }
+
+    const outlines = circularPlankOutlines(radius, planks, radialSegments);
+    return outlines.map((outline, index) =>
+        seamedPlankExtrusion(outline, {
+            thickness,
+            shoulderWidth,
+            recessDepth,
+            seamAtStart: index > 0,
+            seamAtEnd: index < planks - 1
+        })
+    );
+}
+
+/**
+ * Clip once against exactly the same perimeter for every independent
+ * plank. Neighboring outlines therefore share the very same seam location.
+ */
+function circularPlankOutlines(
+    radius: number,
+    planks: number,
+    radialSegments: number
+): Point[][] {
     const circle: Point[] = Array.from(
         { length: radialSegments },
         (_, i) => {
@@ -54,34 +121,35 @@ export function circularPlankPanel(
         (_, i) => -radius + (2 * radius * i) / planks
     );
 
-    const pieces: THREE.ExtrudeGeometry[] = [];
-
-    for (let i = 0; i < planks; i++) {
+    return Array.from({ length: planks }, (_, i) => {
         const clipped = clipAtX(
             clipAtX(circle, cuts[i]!, true),
             cuts[i + 1]!,
             false
         );
 
-        // Avoid passing a seam endpoint twice to Shape / ExtrudeGeometry.
-        const outline = removeConsecutiveDuplicates(clipped, radius * 1e-10);
+        const outline = removeConsecutiveDuplicates(
+            clipped, radius * 1e-10
+        );
 
         if (outline.length < 3) {
             throw new RangeError("Panel plank has no usable area");
         }
+        return outline;
+    });
+}
 
-        const shape = new THREE.Shape();
-        shape.moveTo(...outline[0]!);
-
-        for (const point of outline.slice(1)) {
-            shape.lineTo(...point);
-        }
-
-        shape.closePath();
-        pieces.push(extrude(shape, { thickness, curveSegments: 1 }));
+function validatePanel(
+    radius: number, planks: number, thickness: number, radialSegments: number
+): void {
+    if (
+        !Number.isFinite(radius) || radius <= 0 ||
+        !Number.isFinite(thickness) || thickness <= 0 ||
+        !Number.isInteger(planks) || planks < 2 ||
+        !Number.isInteger(radialSegments) || radialSegments < 8
+    ) {
+        throw new RangeError("Invalid circular plank panel dimensions");
     }
-
-    return pieces;
 }
 
 function clipAtX(
