@@ -4,8 +4,7 @@ import { mm, cm } from "../toolbox/units/length";
 import { positionsFromEnds } from "../toolbox/spatial/layout/positionsFromEnds";
 import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
-import { radialStaves } from "../toolbox/geometry/construction/radialStaves";
-import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
+import { revolveShell } from "../toolbox/shapes/operations/revolveShell";
 
 type BarrelHeadSide = "top" | "bottom";
 
@@ -56,61 +55,16 @@ function create(): THREE.Group {
 
 function createBody(
     profile: readonly THREE.Vector2[],
-    wood: THREE.Material
-): THREE.Group {
-    const body = new THREE.Group();
+    material: THREE.Material
+): THREE.Mesh {
+    const geometry = revolveShell(profile, {
+        thickness: cm(2),
+        roundedRims: true,
+        rimSegments: 8
+    });
+    
+    const body = new THREE.Mesh(geometry, material);
     body.name = "Body";
-
-    // Hand-picked, restrained color variation makes the separate
-    // pieces readable without generating textures.
-    const staveWoods: THREE.Material[] = [
-        wood,
-        new THREE.MeshStandardMaterial({
-            color: "#805330",
-            roughness: 0.9
-        }),
-        new THREE.MeshStandardMaterial({
-            color: "#8a5934",
-            roughness: 0.9
-        }),
-        new THREE.MeshStandardMaterial({
-            color: "#79502f",
-            roughness: 0.9
-        })
-    ];
-
-    const endGrain = new THREE.MeshStandardMaterial({
-        color: "#684126",
-        roughness: 0.95
-    });
-
-    const staves = radialStaves(profile, {
-        count: 32,
-        thickness: cm(2)
-    });
-
-    const surfaces = {
-        "side-0": 0,
-        "side-1": 0,
-        "side-2": 0,
-        "side-3": 0,
-        "cap-start": 1,
-        "cap-end": 1
-    };
-
-    for (let index = 0; index < staves.length; index++) {
-        const geometry = toBufferGeometry(staves[index]!, surfaces);
-        const woodIndex = (index * 7 + Math.floor(index / 3)) %
-            staveWoods.length;
-
-        const stave = new THREE.Mesh(geometry, [
-            staveWoods[woodIndex]!,
-            endGrain
-        ]);
-
-        stave.name = `Stave${String(index + 1).padStart(2, "0")}`;
-        body.add(stave);
-    }
 
     return body;
 }
