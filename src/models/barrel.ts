@@ -158,7 +158,16 @@ function createHead(
         // and a continuous solid contact below it on BOTH faces.
         shoulderWidth: mm(4.2),
         recessDepth: mm(2.4),
-        grooveFloorWidth: mm(0.95)
+        grooveFloorWidth: mm(0.95),
+        // Fitted joinery, not five identical machine-cut strips.
+        // Adjacent edges wander TOGETHER; shallow wear never opens the head.
+        handFitted: {
+            seed: isTop ? 181 : 293,
+            edgeWander: mm(1.9),
+            crown: mm(1.1),
+            edgeWear: mm(0.65),
+            longitudinalSegments: 9
+        }
     });
 
     // Heads are linear rows of timber, not random swatch arrangements.

@@ -2,6 +2,18 @@ import * as THREE from "three";
 import { extrude } from "../../shapes/operations/extrude";
 import { seamedPlankExtrusion } from "./seamedPlankExtrusion";
 
+export interface HandFittedPanelOptions {
+    seed: number;
+    /** Lateral drift of the SHARED joinery edges (meters). */
+    edgeWander: number;
+    /** Gentle cupping/twist of each plank between its two fitted edges. */
+    crown: number;
+    /** Tiny worn patches at the exposed seams; never a through-gap. */
+    edgeWear: number;
+    /** Longitudinal control divisions to support the worked surface. */
+    longitudinalSegments?: number;
+}
+
 export interface CircularPlankPanelOptions {
     planks: number;
     thickness: number;
@@ -70,11 +82,13 @@ export function groovedCircularPlankPanel(
         widthWeights,
         shoulderWidth,
         recessDepth,
-        grooveFloorWidth = 0
+        grooveFloorWidth = 0,
+        handFitted
     }: CircularPlankPanelOptions & {
         shoulderWidth: number;
         recessDepth: number;
         grooveFloorWidth?: number;
+        handFitted?: HandFittedPanelOptions;
     }
 ): THREE.BufferGeometry[] {
     validatePanel(radius, planks, thickness, radialSegments, widthWeights);
@@ -94,17 +108,108 @@ export function groovedCircularPlankPanel(
         throw new RangeError("Invalid circular plank joint relief");
     }
 
+    const cuts = panelCuts(radius, planks, widthWeights);
     const outlines = circularPlankOutlines(radius, planks, radialSegments, widthWeights);
-    return outlines.map((outline, index) =>
-        seamedPlankExtrusion(outline, {
+
+    if (handFitted) {
+        const { seed, edgeWander, crown, edgeWear, longitudinalSegments = 8 } = handFitted;
+        const smallestWidth = Math.min(
+            ...cuts.slice(1).map((cut, i) => cut - cuts[i]!)
+        );
+        if (
+            !Number.isInteger(seed) ||
+            ![edgeWander, crown, edgeWear].every(Number.isFinite) ||
+            edgeWander < 0 || edgeWander >= smallestWidth * 0.12 ||
+            crown < 0 || crown >= thickness * 0.2 ||
+            edgeWear < 0 || edgeWear >= thickness / 2 - recessDepth ||
+            !Number.isInteger(longitudinalSegments) ||
+            longitudinalSegments < 2 || longitudinalSegments > 32
+        ) {
+            throw new RangeError("Invalid hand-fitted panel dimensions");
+        }
+    }
+
+    // The joinery is ONE shared profile per internal seam, not separate
+    // random displacement for either adjacent plank. Every edge still mates.
+    const smooth = (t: number): number => {
+        const x = Math.max(0, Math.min(1, t));
+        return x * x * (3 - 2 * x);
+    };
+
+    const vary = (index: number, channel: number): number => {
+        const seed = handFitted?.seed ?? 0;
+        let h = Math.imul(seed + 67, 0x9e3779b1) ^
+            Math.imul(index + 1, 0x85ebca6b) ^
+            Math.imul(channel + 1, 0xc2b2ae35);
+        h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
+        h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+        return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff * 2 - 1;
+    };
+
+    const wander = (seam: number, z: number): number => {
+        if (!handFitted || seam === 0 || seam === planks) return 0;
+        const along = z / radius;
+        return handFitted.edgeWander * (
+            0.62 * Math.sin(along * Math.PI * 0.85 + vary(seam, 1) * Math.PI) +
+            0.27 * Math.sin(along * Math.PI * 1.9 + vary(seam, 2) * Math.PI) +
+            0.11 * along * vary(seam, 3)
+        );
+    };
+
+    return outlines.map((outline, index) => {
+        const left = cuts[index]!;
+        const right = cuts[index + 1]!;
+
+        return seamedPlankExtrusion(outline, {
             thickness,
             shoulderWidth,
             recessDepth,
             grooveFloorWidth,
             seamAtStart: index > 0,
-            seamAtEnd: index < planks - 1
-        })
-    );
+            seamAtEnd: index < planks - 1,
+            longitudinalSegments: handFitted?.longitudinalSegments ?? 1,
+            deform: handFitted ? p => {
+                const t = Math.max(0, Math.min(1, (p.x - left) / (right - left)));
+                // Preserve the exact circular trim: all deformation fades
+                // to zero where the face meets its outside cut.
+                const fade = smooth(
+                    (radius - Math.hypot(p.x, p.z)) / (radius * 0.15)
+                );
+                const x = p.x + fade * (
+                    (1 - t) * wander(index, p.z) +
+                    t * wander(index + 1, p.z)
+                );
+
+                // A timber board can cup and twist slightly, but its
+                // long contacting edges still meet their neighbors.
+                const bow = handFitted.crown * Math.sin(Math.PI * t) * (
+                    0.65 * vary(index, 4) +
+                    0.45 * vary(index, 5) * p.z / radius +
+                    0.2 * vary(index, 6) *
+                        Math.sin(p.z * Math.PI / radius)
+                );
+
+                // Worn notches happen in a few places along real joints,
+                // rather than painting a uniform black barcode.
+                const wearAt = (seam: number): number => {
+                    const center = vary(seam, 7) * radius * 0.52;
+                    const span = radius * (0.1 + 0.045 * (vary(seam, 8) + 1));
+                    const distance = (p.z - center) / span;
+                    return Math.exp(-distance * distance * 2);
+                };
+                const wear = handFitted.edgeWear * fade * Math.max(
+                    index > 0 ? Math.pow(1 - t, 7) * wearAt(index) : 0,
+                    index < planks - 1 ? Math.pow(t, 7) * wearAt(index + 1) : 0
+                );
+
+                return {
+                    x,
+                    y: p.y + bow * fade - Math.sign(p.y) * wear,
+                    z: p.z
+                };
+            } : undefined
+        });
+    });
 }
 
 /**
@@ -128,14 +233,7 @@ function circularPlankOutlines(
         }
     );
 
-    const weights = widthWeights ?? Array.from({ length: planks }, () => 1);
-    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-    const cuts = [-radius];
-
-    for (let i = 0; i < planks - 1; i++) {
-        cuts.push(cuts[i]! + 2 * radius * weights[i]! / totalWeight);
-    }
-    cuts.push(radius);
+    const cuts = panelCuts(radius, planks, widthWeights);
 
     return Array.from({ length: planks }, (_, i) => {
         const clipped = clipAtX(
@@ -153,6 +251,23 @@ function circularPlankOutlines(
         }
         return outline;
     });
+}
+
+/** Shared cut positions for all faces and all deformation profiles. */
+function panelCuts(
+    radius: number,
+    planks: number,
+    widthWeights?: readonly number[]
+): number[] {
+    const weights = widthWeights ?? Array.from({ length: planks }, () => 1);
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+    const cuts = [-radius];
+
+    for (let i = 0; i < planks - 1; i++) {
+        cuts.push(cuts[i]! + 2 * radius * weights[i]! / totalWeight);
+    }
+    cuts.push(radius);
+    return cuts;
 }
 
 function validatePanel(

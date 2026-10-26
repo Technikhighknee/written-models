@@ -4,6 +4,13 @@ import { registerControlOutline } from "../mesh/controlOutline";
 /** A point in the X/Z plane. The board's grain runs along Z. */
 export type PanelPoint = readonly [x: number, z: number];
 
+/** A point on a finished board, before optional hand-working. */
+export interface PlankVertex {
+    x: number;
+    y: number;
+    z: number;
+}
+
 export interface SeamedPlankOptions {
     thickness: number;
     /** Width of each sloping shoulder on the exposed broad faces. */
@@ -22,6 +29,10 @@ export interface SeamedPlankOptions {
     seamAtEnd: boolean;
     /** Dot-product threshold for distinguishing true end grain. */
     cutThreshold?: number;
+    /** Extra stations along the grain: real edge loops, not wireframe guesses. */
+    longitudinalSegments?: number;
+    /** Shape the finished timber while its faces and control edges are authored. */
+    deform?: (vertex: Readonly<PlankVertex>) => PlankVertex;
 }
 
 interface Station {
@@ -58,7 +69,9 @@ export function seamedPlankExtrusion(
         grooveFloorWidth = 0,
         seamAtStart,
         seamAtEnd,
-        cutThreshold = 0.68
+        cutThreshold = 0.68,
+        longitudinalSegments = 1,
+        deform
     }: SeamedPlankOptions
 ): THREE.BufferGeometry {
     if (
@@ -69,6 +82,8 @@ export function seamedPlankExtrusion(
         recessDepth <= 0 || recessDepth >= thickness / 2 ||
         grooveFloorWidth < 0 || grooveFloorWidth >= shoulderWidth ||
         cutThreshold <= 0 || cutThreshold >= 1 ||
+        !Number.isInteger(longitudinalSegments) ||
+        longitudinalSegments < 1 || longitudinalSegments > 32 ||
         outline.some(p => !Number.isFinite(p[0]) || !Number.isFinite(p[1]))
     ) {
         throw new RangeError("Invalid fitted plank or seam relief");
@@ -168,7 +183,7 @@ export function seamedPlankExtrusion(
     // Actual construction edges, not the diagonal created by triangulation.
     // When a circular outline tapers to a single point, the strip ends in
     // one genuine triangle; that triangle must not be counted as a quad.
-    type Vertex = { x: number; y: number; z: number };
+    type Vertex = PlankVertex;
     const controlEdges = new Map<string, readonly [Vertex, Vertex]>();
     let quadCount = 0;
 
@@ -216,21 +231,80 @@ export function seamedPlankExtrusion(
         return true;
     }
 
-    function quad(
+    function worked(p: Vertex): Vertex {
+        if (!deform) return p;
+        const moved = deform(p);
+        if (![moved.x, moved.y, moved.z].every(Number.isFinite)) {
+            throw new RangeError("Invalid deformed plank vertex");
+        }
+        return moved;
+    }
+
+    function lerpVertex(a: Vertex, b: Vertex, t: number): Vertex {
+        return point(
+            a.x + (b.x - a.x) * t,
+            a.y + (b.y - a.y) * t,
+            a.z + (b.z - a.z) * t
+        );
+    }
+
+    function emitQuad(
         a: Vertex, b: Vertex, c: Vertex, d: Vertex,
         material: 0 | 1 | 2,
-        sidewall = false
+        sidewall: boolean
     ): void {
-        const first = triangle(a, b, c, material, sidewall);
-        const second = triangle(a, c, d, material, sidewall);
+        // Apply the same deformation to rendered vertices AND authored
+        // construction edges. Otherwise the Quad mode tells a different story.
+        const wa = worked(a);
+        const wb = worked(b);
+        const wc = worked(c);
+        const wd = worked(d);
+        const first = triangle(wa, wb, wc, material, sidewall);
+        const second = triangle(wa, wc, wd, material, sidewall);
 
         if (first && second) {
             quadCount++;
-            recordFace([a, b, c, d]);
+            recordFace([wa, wb, wc, wd]);
         } else if (first) {
-            recordFace([a, b, c]);
+            recordFace([wa, wb, wc]);
         } else if (second) {
-            recordFace([a, c, d]);
+            recordFace([wa, wc, wd]);
+        }
+    }
+
+    function quad(
+        a: Vertex, b: Vertex, c: Vertex, d: Vertex,
+        material: 0 | 1 | 2,
+        sidewall = false,
+        // Which two opposite edges run along the grain?
+        longitudinal?: "ab" | "ad"
+    ): void {
+        if (!longitudinal || longitudinalSegments === 1) {
+            emitQuad(a, b, c, d, material, sidewall);
+            return;
+        }
+
+        for (let i = 0; i < longitudinalSegments; i++) {
+            const t0 = i / longitudinalSegments;
+            const t1 = (i + 1) / longitudinalSegments;
+
+            if (longitudinal === "ab") {
+                emitQuad(
+                    lerpVertex(a, b, t0),
+                    lerpVertex(a, b, t1),
+                    lerpVertex(d, c, t1),
+                    lerpVertex(d, c, t0),
+                    material, sidewall
+                );
+            } else {
+                emitQuad(
+                    lerpVertex(a, d, t0),
+                    lerpVertex(b, c, t0),
+                    lerpVertex(b, c, t1),
+                    lerpVertex(a, d, t1),
+                    material, sidewall
+                );
+            }
         }
     }
 
@@ -252,13 +326,13 @@ export function seamedPlankExtrusion(
             point(a.x, a.top, a.low),
             point(a.x, a.top, a.high),
             point(b.x, b.top, b.high),
-            point(b.x, b.top, b.low), faceMaterial
+            point(b.x, b.top, b.low), faceMaterial, false, "ab"
         );
         quad(
             point(a.x, a.bottom, a.low),
             point(b.x, b.bottom, b.low),
             point(b.x, b.bottom, b.high),
-            point(a.x, a.bottom, a.high), faceMaterial
+            point(a.x, a.bottom, a.high), faceMaterial, false, "ad"
         );
 
         for (const [z0, z1, highSide] of [
@@ -299,13 +373,13 @@ export function seamedPlankExtrusion(
         point(first.x, first.top, first.low),
         point(first.x, first.bottom, first.low),
         point(first.x, first.bottom, first.high),
-        point(first.x, first.top, first.high), 0, true
+        point(first.x, first.top, first.high), 0, true, "ad"
     );
     quad(
         point(last.x, last.top, last.low),
         point(last.x, last.top, last.high),
         point(last.x, last.bottom, last.high),
-        point(last.x, last.bottom, last.low), 0, true
+        point(last.x, last.bottom, last.low), 0, true, "ab"
     );
 
     const geometry = new THREE.BufferGeometry();
