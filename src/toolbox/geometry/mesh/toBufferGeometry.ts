@@ -9,6 +9,14 @@ const QUAD_TRIANGLES = [
 ] as const;
 
 const controlMeshes = new WeakMap<THREE.BufferGeometry, MeshData>();
+const controlVertexIds = new WeakMap<THREE.BufferGeometry, readonly number[]>();
+
+/** GPU vertex to original construction vertex, including UV/normal splits. */
+export function getControlVertexIds(
+    geometry: THREE.BufferGeometry
+): readonly number[] | undefined {
+    return controlVertexIds.get(geometry);
+}
 
 export function getControlMesh(
     geometry: THREE.BufferGeometry
@@ -117,6 +125,7 @@ export function toBufferGeometry(
     const positions: number[] = [];
     const normals: number[] = [];
     const uvs: number[] = [];
+    const sourceVertexIds: number[] = [];
     const indices: number[] = [];
     const vertexCache = new Map<string, number>();
     const geometry = new THREE.BufferGeometry();
@@ -162,6 +171,7 @@ export function toBufferGeometry(
                         positions.push(vertex.x, vertex.y, vertex.z);
                         normals.push(normal.x, normal.y, normal.z);
                         uvs.push(uv.x, uv.y);
+                        sourceVertexIds.push(vertexIndex);
                         if (key !== null) vertexCache.set(key, index);
                     }
                     indices.push(index);
@@ -185,5 +195,6 @@ export function toBufferGeometry(
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     controlMeshes.set(geometry, mesh);
+    controlVertexIds.set(geometry, sourceVertexIds);
     return geometry;
 }
