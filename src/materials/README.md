@@ -28,3 +28,24 @@ Models import **materials**, never draw their own texture maps.
 The material library is **not** responsible for mesh shape, topology,
 UV unwrapping or installing materials on meshes. Those stay in the geometry
 toolbox and the individual models.
+
+## Authored surface vocabulary
+
+The texture toolbox supplies general-purpose **tileable seeded noise**, `fractalNoise`,
+`ellipseMask`, `smoothstep`, `wrappedDelta`, and hand-authored color `palette`
+stops. These building blocks do not know what oak, iron, or leather means.
+
+The oak recipe lives in `wood/oakSurface.ts`. It describes coarse grain flow,
+ring-porous vessels, shaped annual-ring bands, knots, wood rays, and a separate
+end-grain cut. One sample determines the color, roughness, and physical relief
+at the same UV position. It is deterministic and periodic in both axes.
+
+`wood/oak.ts` handles only material construction, dimensions and caching; it
+continues to expose `oak().face`, `oak().light`, `oak().dark`,
+`oak().aged`, and `oak().endGrain`. Existing models do not need to know how
+an oak surface is composed. For a different wood species, write a distinct
+surface recipe and reuse the same toolbox functions.
+
+The authored recipe is a visual design, not a claim to photogrammetric accuracy.
+Inspect the generated color map together with its normal and roughness maps,
+and always check seams and UV scale on a real model before shipping assets.
