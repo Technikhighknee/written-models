@@ -5,6 +5,7 @@ import { positionsFromEnds } from "../toolbox/spatial/layout/positionsFromEnds";
 import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
 import { radialStaves } from "../toolbox/geometry/construction/radialStaves";
+import { circularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 
 type BarrelHeadSide = "top" | "bottom";
@@ -35,8 +36,8 @@ function create(): THREE.Group {
     });
 
     barrel.add(createBody(profile, wood));
-    barrel.add(createHead(profile, "top", mm(8), wood));
-    barrel.add(createHead(profile, "bottom", mm(8), wood));
+    barrel.add(createHead(profile, "top", cm(2)));
+    barrel.add(createHead(profile, "bottom", cm(2)));
 
     const hoopPositions = positionsFromEnds({
         start: profile[0]!.y,
@@ -109,9 +110,8 @@ function createBody(
 function createHead(
     profile: readonly THREE.Vector2[],
     side: BarrelHeadSide,
-    inset: number,
-    material: THREE.Material
-): THREE.Mesh {
+    staveThickness: number
+): THREE.Group {
     const isTop = side === "top";
     const rim = isTop ? profile.at(-1) : profile[0];
 
@@ -119,15 +119,42 @@ function createHead(
         throw new RangeError("Barrel profile is empty");
     }
 
-    const innerY = rim.y + (isTop ? -inset : inset);
-    const inner = new THREE.Vector2(rim.x, innerY);
-    const center = new THREE.Vector2(0, innerY);
-    const points = isTop
-        ? [rim.clone(), inner, center]
-        : [center, inner, rim.clone()];
-
-    const head = new THREE.Mesh(new THREE.LatheGeometry(points, 32), material);
+    const head = new THREE.Group();
     head.name = isTop ? "TopHead" : "BottomHead";
+
+    const thickness = cm(1.6);
+    const inset = cm(1.6);
+
+    // A little of the rim sits inside the staves, as a real head does
+    // in its croze. The visible face is recessed below the stave ends.
+    const radius = rim.x - staveThickness + mm(7);
+    const direction = isTop ? -1 : 1;
+    head.position.y = rim.y + direction * (inset + thickness / 2);
+
+    const woods = [
+        "#885934", "#815431", "#8c5e39", "#80512f", "#875833"
+    ].map(color => new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.92
+    }));
+
+    const edgeWood = new THREE.MeshStandardMaterial({
+        color: "#704828",
+        roughness: 0.95
+    });
+
+    const boards = circularPlankPanel(radius, {
+        planks: woods.length,
+        thickness,
+        radialSegments: 48
+    });
+
+    for (let i = 0; i < boards.length; i++) {
+        const board = new THREE.Mesh(boards[i]!, [woods[i]!, edgeWood]);
+        board.name = `HeadBoard${i + 1}`;
+        head.add(board);
+    }
+
     return head;
 }
 
