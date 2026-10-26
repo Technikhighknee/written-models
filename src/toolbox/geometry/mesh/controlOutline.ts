@@ -19,6 +19,7 @@ export function getControlOutline(
     const mesh = getControlMesh(geometry);
     if (!mesh) return null;
 
+    const vertices = mesh.vertices;
     const positions: number[] = [];
     const edges = new Set<string>();
 
@@ -28,8 +29,8 @@ export function getControlOutline(
         if (edges.has(key)) return;
         edges.add(key);
 
-        const from = mesh.vertices[a]!;
-        const to = mesh.vertices[b]!;
+        const from = vertices[a]!;
+        const to = vertices[b]!;
         positions.push(
             from.x, from.y, from.z,
             to.x, to.y, to.z

@@ -336,8 +336,14 @@ export function prepareRuntimeModel(model: THREE.Object3D): RuntimeAsset {
         const materials = Array.isArray(object.material)
             ? object.material : [object.material];
         const indexCount = geometry.index?.count ?? position?.count ?? 0;
-        const groups = geometry.groups.length ? geometry.groups
-            : [{ start: 0, count: indexCount, materialIndex: 0 }];
+        const groups: { start: number; count: number; materialIndex: number }[] =
+            geometry.groups.length
+                ? geometry.groups.map(group => ({
+                    start: group.start,
+                    count: group.count,
+                    materialIndex: group.materialIndex ?? 0
+                }))
+                : [{ start: 0, count: indexCount, materialIndex: 0 }];
 
         const valid = !(object instanceof THREE.SkinnedMesh) &&
             !(object instanceof THREE.InstancedMesh) &&
