@@ -152,19 +152,24 @@ export function getControlOutline(
             );
         }
 
-        // Three.js r186 emits cap triangles in group 0 and
-        // sidewall quads as two triangles each in group 1.
-        // The caps remain triangulated: do not invent cap quads.
-        for (const group of geometry.groups) {
-            if (group.materialIndex !== 1) continue;
+        // Three.js r186 emits cap triangles followed by pairs of sidewall
+        // triangles. Wood materials can split the sidewall into several
+        // draw groups; preserve its ORIGINAL uninterrupted control range.
+        // Cap triangles remain triangles (never invent cap quads).
+        const recorded = geometry.userData.controlSidewalls as
+            { start: number; count: number } | undefined;
+        const sidewallRanges = recorded
+            ? [recorded]
+            : geometry.groups.filter(group => group.materialIndex === 1);
 
-            if (group.count % 6 !== 0) {
+        for (const range of sidewallRanges) {
+            if (range.count % 6 !== 0) {
                 throw new Error("Unexpected ExtrudeGeometry sidewall layout");
             }
 
             for (
-                let i = group.start;
-                i < group.start + group.count;
+                let i = range.start;
+                i < range.start + range.count;
                 i += 6
             ) {
                 // Emitted triangle corners: (a,b,d), (b,c,d).

@@ -7,10 +7,11 @@ import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
 import { radialStaves } from "../toolbox/geometry/construction/radialStaves";
 import { circularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
+import { offsetMeshUvs } from "../toolbox/geometry/uv/offsetMeshUvs";
 import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
+import { assignExtrudedTimberSurfaces } from "../toolbox/geometry/materials/assignExtrudedTimberSurfaces";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
-import { oak } from "../materials/wood/oak";
-import type { OakMaterials } from "../materials/wood/oak";
+import { oakVariant } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
 
 type BarrelHeadSide = "top" | "bottom";
@@ -26,8 +27,6 @@ function create(): THREE.Group {
     const barrel = new THREE.Group();
     barrel.name = "Barrel";
 
-    const wood = oak();
-
     const profile = bulgedProfile({
         height: cm(50),
         bottomDiameter: cm(30),
@@ -38,7 +37,7 @@ function create(): THREE.Group {
     });
 
     const staveCount = 24;
-    barrel.add(createBody(profile, wood, staveCount));
+    barrel.add(createBody(profile, staveCount));
     barrel.add(createHead(profile, "top", cm(2)));
     barrel.add(createHead(profile, "bottom", cm(2)));
 
@@ -64,7 +63,6 @@ function create(): THREE.Group {
 
 function createBody(
     profile: readonly THREE.Vector2[],
-    wood: OakMaterials,
     staveCount: number
 ): THREE.Group {
     const body = new THREE.Group();
@@ -95,9 +93,17 @@ function createBody(
     });
 
     for (let i = 0; i < staves.length; i++) {
+        const wood = oakVariant((i * 5 + 3) % 8);
+        // Unique slices through 2.6m-long material cuts. None of these
+        // 50cm staves runs through a complete repeating texture interval.
+        const section = offsetMeshUvs(
+            staves[i]!,
+            0.018 + (i * 0.027) % 0.31,
+            0.12 + ((i * 17) % 24) * 0.075
+        );
         const tone = 0.955 + 0.045 * variations[i]!;
         const geometry = tintVertices(
-            toBufferGeometry(staves[i]!, surfaceMaterials),
+            toBufferGeometry(section, surfaceMaterials),
             new THREE.Color(tone, tone, tone)
         );
         const stave = new THREE.Mesh(geometry, [
@@ -136,7 +142,6 @@ function createHead(
     const direction = isTop ? -1 : 1;
     head.position.y = rim.y + direction * (inset + thickness / 2);
 
-    const wood = oak();
     const boards = circularPlankPanel(radius, {
         planks: 5,
         thickness,
@@ -151,9 +156,13 @@ function createHead(
     });
 
     for (let i = 0; i < boards.length; i++) {
+        const wood = oakVariant((i * 3 + (isTop ? 1 : 5)) % 8);
         const tone = 0.97 + 0.02 * variations[i]!;
         const geometry = tintVertices(
-            boards[i]!,
+            assignExtrudedTimberSurfaces(
+                boards[i]!,
+                new THREE.Vector3(0, 0, 1)
+            ),
             new THREE.Color(tone, tone, tone)
         );
         const board = new THREE.Mesh(geometry, [

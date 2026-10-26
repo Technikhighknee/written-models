@@ -1,44 +1,63 @@
 import * as THREE from "three";
 import { bakePbrMaps } from "../../toolbox/texturing/bakePbrMaps";
-import { oakFace, oakEndGrain } from "./oakSurface";
+import { makeOakFace, makeOakEndGrain } from "./oakSurface";
 
 export interface OakMaterials {
-    /** Across the fibers in U, along the fibers in V. */
+    /** U across the fibers, V along them. Both UVs are measured in meters. */
     face: THREE.MeshStandardMaterial;
     light: THREE.MeshStandardMaterial;
     dark: THREE.MeshStandardMaterial;
     aged: THREE.MeshStandardMaterial;
     endGrain: THREE.MeshStandardMaterial;
-    /** Same PBR maps; enable exported vertex colors for per-piece variation. */
     tinted: {
         face: THREE.MeshStandardMaterial;
         endGrain: THREE.MeshStandardMaterial;
     };
 }
 
-let cached: OakMaterials | undefined;
+const cuts = new Map<number, OakMaterials>();
 
-/** All three wooden models share these authored PBR maps and finishes. */
+/** Canonical oak material; unchanged API for existing models. */
 export function oak(): OakMaterials {
-    if (cached) return cached;
+    return oakVariant(0);
+}
 
+/**
+ * Deterministic cuts of the SAME oak species. They share palette, scale,
+ * structure and lighting response, but not a recognizable repeating knot.
+ * A caller picks a small, reusable set of seeds and assigns UV windows.
+ *
+ * Materials/maps are created once per seed and cached across all models.
+ */
+export function oakVariant(seed: number): OakMaterials {
+    if (!Number.isInteger(seed) || seed < 0 || seed > 10000) {
+        throw new RangeError("Invalid oak cut seed");
+    }
+
+    const existing = cuts.get(seed);
+    if (existing) return existing;
+
+    // One full board fits into a tile. The old texture repeated every 1.6m
+    // and stamped the same knots onto each stave; now unique seeds and
+    // longer grain flow remove both repetition mechanisms.
     const faces = bakePbrMaps({
-        width: 512,
-        height: 1024,
-        tileWidth: 0.32,
-        tileLength: 1.6,
-        sample: oakFace
+        width: 320,
+        height: 768,
+        tileWidth: 0.48,
+        tileLength: 2.6,
+        sample: makeOakFace(seed)
     });
 
+    // End grain is quieter and never a centered bulls-eye.
     const ends = bakePbrMaps({
-        width: 256,
-        height: 256,
-        tileWidth: 0.20,
-        tileLength: 0.20,
-        sample: oakEndGrain
+        width: 192,
+        height: 192,
+        tileWidth: 0.26,
+        tileLength: 0.26,
+        sample: makeOakEndGrain(seed)
     });
 
-    function finish(
+    function material(
         name: string,
         maps: typeof faces,
         tint = "#ffffff"
@@ -50,31 +69,29 @@ export function oak(): OakMaterials {
             roughnessMap: maps.roughness,
             normalMap: maps.normal,
             normalScale: new THREE.Vector2(0.6, 0.6),
-            metalness: 0,
-            roughness: 1
+            roughness: 1,
+            metalness: 0
         });
     }
 
-    const natural = finish("Oak · Natural", faces);
-    const endGrain = finish("Oak · End Grain", ends);
-    const tintedFace = natural.clone();
-    tintedFace.name = "Oak · Natural (Vertex Tinted)";
+    const face = material(`Oak Cut ${seed} · Natural`, faces);
+    const endGrain = material(`Oak Cut ${seed} · End Grain`, ends);
+    const tintedFace = face.clone();
     tintedFace.vertexColors = true;
-    const tintedEndGrain = endGrain.clone();
-    tintedEndGrain.name = "Oak · End Grain (Vertex Tinted)";
-    tintedEndGrain.vertexColors = true;
+    tintedFace.name = `Oak Cut ${seed} · Tinted`;
+    const tintedEnd = endGrain.clone();
+    tintedEnd.vertexColors = true;
+    tintedEnd.name = `Oak Cut ${seed} · Tinted End Grain`;
 
-    cached = {
-        face: natural,
-        light: finish("Oak · Light", faces, "#f1e9dc"),
-        dark: finish("Oak · Dark", faces, "#b6a28e"),
-        aged: finish("Oak · Aged", faces, "#d1c5b4"),
+    const family: OakMaterials = {
+        face,
+        light: material(`Oak Cut ${seed} · Light`, faces, "#f1e9dc"),
+        dark: material(`Oak Cut ${seed} · Dark`, faces, "#b6a28e"),
+        aged: material(`Oak Cut ${seed} · Aged`, faces, "#d1c5b4"),
         endGrain,
-        tinted: {
-            face: tintedFace,
-            endGrain: tintedEndGrain
-        }
+        tinted: { face: tintedFace, endGrain: tintedEnd }
     };
 
-    return cached;
+    cuts.set(seed, family);
+    return family;
 }

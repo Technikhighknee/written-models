@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { cm, m } from "../toolbox/units/length";
 import { loftSections } from "../toolbox/geometry/construction/loftSections";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
-import { oak } from "../materials/wood/oak";
+import { oakVariant } from "../materials/wood/oak";
 
 export default {
     create,
@@ -20,7 +20,7 @@ function create(): THREE.Group {
     const width = cm(22);
     const thickness = cm(3);
 
-    const wood = oak();
+    const wood = oakVariant(6);
 
     function section(
         z: number,

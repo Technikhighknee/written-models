@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import { createBeamBetween } from "../toolbox/geometry/construction/beams";
+import { createTimberBetween } from "../toolbox/geometry/construction/timber";
 import { boardPanel } from "../toolbox/geometry/construction/boardPanel";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
@@ -10,8 +10,7 @@ import { cm, m, mm } from "../toolbox/units/length";
 import { rectangleCornerMounts } from "../toolbox/geometry/features/rectangleCornerMounts";
 import { attachByFrames } from "../toolbox/spatial/relationships/attachByFrames";
 import { createFrame } from "../toolbox/spatial/frames/frames";
-import { oak } from "../materials/wood/oak";
-import type { OakMaterials } from "../materials/wood/oak";
+import { oakVariant } from "../materials/wood/oak";
 
 interface TopSpec {
     width: number;
@@ -40,8 +39,6 @@ function create(): THREE.Group {
     const table = new THREE.Group();
     table.name = "TavernTable";
 
-    const wood = oak();
-
     const topSpec: TopSpec = {
         width: m(2),
         depth: cm(110),
@@ -65,16 +62,15 @@ function create(): THREE.Group {
     top.position.y = topSpec.surfaceHeight - topSpec.thickness / 2;
     table.add(top);
 
-    createTopBoards(top, topSpec, wood);
-    createUnderframe(top, topSpec, legSpec, wood);
+    createTopBoards(top, topSpec);
+    createUnderframe(top, topSpec, legSpec);
 
     return table;
 }
 
 function createTopBoards(
     top: THREE.Group,
-    spec: TopSpec,
-    wood: OakMaterials
+    spec: TopSpec
 ): void {
     const boards = boardPanel({
         length: spec.width,
@@ -102,12 +98,13 @@ function createTopBoards(
     };
 
     for (let i = 0; i < boards.length; i++) {
-        // Different UV excerpts prevent an obvious line of repeated knots.
-        // UVs are still measured in meters, and all boards share one oak map.
+        // Every board has its own deterministic oak cut, but all share
+        // the species palette. This 2 m board stays inside one 2.6 m tile.
+        const wood = oakVariant((i * 3 + 2) % 8);
         const meshData = offsetMeshUvs(
             boards[i]!,
-            (i * 0.073) % 0.32,
-            (i * 0.37) % 1.6
+            0.015 + i * 0.032,
+            0.09 + i * 0.07
         );
 
         const tone = 0.965 + 0.025 * tones[i]!;
@@ -129,13 +126,29 @@ function createTopBoards(
 function createUnderframe(
     top: THREE.Group,
     spec: TopSpec,
-    legs: LegSpec,
-    wood: OakMaterials
+    legs: LegSpec
 ): void {
-    const timber: THREE.Material[] = [
-        wood.face, wood.face, wood.endGrain,
-        wood.endGrain, wood.face, wood.face
-    ];
+    // Each structural beam has a semantic fiber axis and its own UV window.
+    // The eight cached cuts are reused; no unique textures per mesh.
+    let piece = 0;
+    const timber = (
+        start: THREE.Vector3,
+        end: THREE.Vector3,
+        width: number,
+        depth: number
+    ): THREE.Mesh => {
+        const cut = oakVariant((piece * 5 + 1) % 8);
+        const uvOffset = {
+            u: 0.014 + (piece * 0.037) % 0.16,
+            v: (piece * 0.31) % 0.49
+        };
+        piece++;
+        return createTimberBetween(
+            start, end, width, depth,
+            { face: cut.face, endGrain: cut.endGrain },
+            uvOffset
+        );
+    };
 
     const legLength = spec.surfaceHeight - spec.thickness;
     const mountPoints = rectangleCornerMounts({
@@ -158,12 +171,11 @@ function createUnderframe(
     );
 
     for (const mount of mountPoints) {
-        const leg = createBeamBetween(
+        const leg = timber(
             new THREE.Vector3(0, -halfLeg, 0),
             new THREE.Vector3(0, halfLeg, 0),
             legs.width,
-            legs.depth,
-            timber
+            legs.depth
         );
 
         leg.name = `Leg${mount.name}`;
@@ -225,9 +237,14 @@ function addBeam(
     end: THREE.Vector3,
     width: number,
     depth: number,
-    materials: THREE.Material[]
+    makeTimber: (
+        start: THREE.Vector3,
+        end: THREE.Vector3,
+        width: number,
+        depth: number
+    ) => THREE.Mesh
 ): void {
-    const beam = createBeamBetween(start, end, width, depth, materials);
+    const beam = makeTimber(start, end, width, depth);
     beam.name = name;
     parent.add(beam);
 }
