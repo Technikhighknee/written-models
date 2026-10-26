@@ -329,7 +329,7 @@ export function prepareRuntimeModel(model: THREE.Object3D): RuntimeAsset {
         }
         sourceMeshes++;
 
-        const geometry = object.geometry;
+        const geometry: THREE.BufferGeometry = object.geometry;
         const position = geometry.getAttribute("position");
         const color = geometry.getAttribute("color");
         const uv = geometry.getAttribute("uv");
