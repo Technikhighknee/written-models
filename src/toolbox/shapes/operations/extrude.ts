@@ -260,9 +260,12 @@ export function extrude(
                         1 - (p.y + depth / 2)
                     );
 
+                // Preserve the native bevel's b-d render diagonal.
+                // A cyclic rotation changes neither the authored quad nor
+                // its control edges, but makes triangulation match Three.js.
                 quads.push({
-                    corners,
-                    uvs: [uv(a!), uv(b!), uv(c!), uv(d!)],
+                    corners: [corners[1], corners[2], corners[3], corners[0]],
+                    uvs: [uv(b!), uv(c!), uv(d!), uv(a!)],
                     surface: "side"
                 });
             }
