@@ -79,13 +79,15 @@ A tabletop is not a barrel stave enlarged by a factor of four. Oak needs
 different **cut orientations** while keeping one species-wide palette,
 physical UV scale, roughness and PBR maps per cut.
 
-- `oakVariant(seed).tinted.face`: longitudinal/rift-style grain for narrow
-  sides, aprons, legs and barrel staves.
-- `oakBoardFace(seed)`: a quiet **planed broad face** with a continuously
-  flowing growth-band field, restrained contrast and lengthwise pore detail.
-  It uses the same seed, UV scale and vertex-tint support. Board-face maps
-  are generated lazily and cached; barrel staves do not generate them.
-- `oakVariant(seed).tinted.endGrain`: transverse timber ends.
+- `oakVariant(seed).tinted.face`: a stronger rift-style longitudinal
+  grain for parts such as barrel staves.
+- `oakBoardFace(seed)`: a quiet **planed furniture cut** with continuously
+  flowing grain, restrained contrast and lengthwise pore detail. On the
+  table this belongs on BOTH broad board faces, their long exposed edges,
+  and the planed frame timbers. It shares the oak seed and physical UV
+  scale. These maps are generated lazily and cached; the barrel does not
+  generate them.
+- `oakVariant(seed).tinted.endGrain`: genuine transverse timber ends.
 
 `flowedGrainField()` is a reusable texturing-toolbox coordinate field.
 It bends all growth lines together while keeping them continuous through
@@ -93,6 +95,10 @@ the board, rather than layering isolated semicircle-shaped masks. Its phase
 wraps at tile boundaries, and the material recipe decides where latewood,
 pores and subtle color/roughness/height changes occur.
 
-In a quad board made with `loftBoard()`, material slots should map
-`outer` (upper face) to the broad-face cut, `inner` and both long edges
-to longitudinal grain, and `cap-start/cap-end` to end grain.
+In a quad board made with `loftBoard()`, all lengthwise surfaces
+(`outer`, `inner`, `edge-left`, `edge-right`) can share the same quiet
+planed material and continuous perimeter UVs. Only `cap-start` and `cap-end`
+use the transverse end-grain material. A beam made with
+`createTimberBetween()` uses the same surface material on its four long
+faces, and end grain at its actual ends. Note that `oakBoardFace()`
+uses vertex colors; beams must provide them (neutral white if untinted).

@@ -101,8 +101,8 @@ export function oakVariant(seed: number): OakMaterials {
  *
  * This has a subtler, continuously flowing grain FIGURE, not a different
  * wood species.
- * The narrow sides still use oakVariant(seed).tinted.face and cut ends
- * use oakVariant(seed).tinted.endGrain.
+ * It also suits the underside, exposed lengthwise edges, and planed
+ * furniture framing. The true cross-cut ends always use endGrain.
  *
  * Create these maps lazily: barrel staves should not pay for a tabletop
  * texture, and materials for equal seeds are shared across models.

@@ -88,14 +88,16 @@ function createTopBoards(
         radius: 2
     });
 
+    // A board has one continuous planed lengthwise surface around its
+    // perimeter. The underside and long edges should not abruptly turn
+    // into the old striped cut; only the sawed ends are cross-grain.
     const surfaceMaterials = {
-        // Only the broad, upward-facing surface shows plain-sawn figure.
         outer: 0,
-        inner: 1,
-        "edge-left": 1,
-        "edge-right": 1,
-        "cap-start": 2,
-        "cap-end": 2
+        inner: 0,
+        "edge-left": 0,
+        "edge-right": 0,
+        "cap-start": 1,
+        "cap-end": 1
     };
 
     for (let i = 0; i < boards.length; i++) {
@@ -118,7 +120,6 @@ function createTopBoards(
 
         const board = new THREE.Mesh(geometry, [
             topFace,
-            wood.tinted.face,
             wood.tinted.endGrain
         ]);
 
@@ -141,17 +142,28 @@ function createUnderframe(
         width: number,
         depth: number
     ): THREE.Mesh => {
-        const cut = oakVariant((piece * 5 + 1) % 8);
+        const seed = (piece * 5 + 1) % 8;
+        const cut = oakVariant(seed);
         const uvOffset = {
             u: 0.014 + (piece * 0.037) % 0.16,
             v: (piece * 0.31) % 0.49
         };
         piece++;
-        return createTimberBetween(
+        const beam = createTimberBetween(
             start, end, width, depth,
-            { face: cut.face, endGrain: cut.endGrain },
+            {
+                face: oakBoardFace(seed),
+                endGrain: cut.tinted.endGrain
+            },
             uvOffset
         );
+
+        // oakBoardFace() uses vertex colors just like the tabletop boards.
+        // Give the frame neutral (white) vertex colors rather than adding
+        // a separate clone of every cached oak material.
+        tintVertices(beam.geometry, new THREE.Color(1, 1, 1));
+
+        return beam;
     };
 
     const legLength = spec.surfaceHeight - spec.thickness;
