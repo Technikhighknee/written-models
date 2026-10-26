@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { boxUVsInMeters } from "../uv/boxUVsInMeters";
+import { boxMesh, BOX_SURFACES } from "./boxMesh";
+import { toBufferGeometry } from "../mesh/toBufferGeometry";
 
 export function createBeamBetween(
     start: THREE.Vector3Like,
@@ -17,11 +18,10 @@ export function createBeamBetween(
         throw new Error("Beam requires two distinct points");
     }
 
-    const geometry = boxUVsInMeters(new THREE.BoxGeometry(
-        width,
-        length,
-        depth
-    ));
+    const geometry = toBufferGeometry(
+        boxMesh({ width, height: length, depth }),
+        BOX_SURFACES
+    );
 
     const beam = new THREE.Mesh(geometry, material);
 

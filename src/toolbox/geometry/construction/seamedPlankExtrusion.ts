@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { registerControlOutline } from "../mesh/controlOutline";
+import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import { toBufferGeometry } from "../mesh/toBufferGeometry";
 import { adaptiveStations } from "../topology/adaptiveStations";
 
 /** A point in the X/Z plane. The board's grain runs along Z. */
@@ -214,65 +215,58 @@ export function seamedPlankExtrusion(
         };
     });
 
-    const verts = [
-        [] as number[], [] as number[], [] as number[]
-    ];
-    const normals = [
-        [] as number[], [] as number[], [] as number[]
-    ];
-    const uvSets = [
-        [] as number[], [] as number[], [] as number[]
-    ];
-
-    // Actual construction edges, not the diagonal created by triangulation.
-    // When a circular outline tapers to a single point, the strip ends in
-    // one genuine triangle; that triangle must not be counted as a quad.
     type Vertex = PlankVertex;
-    const controlEdges = new Map<string, readonly [Vertex, Vertex]>();
-    let quadCount = 0;
+    const vertices: THREE.Vector3[] = [];
+    const quads: QuadFace[] = [];
+    const triangles: TriangleFace[] = [];
+    const vertexIds = new Map<string, number>();
 
-    function recordFace(corners: readonly Vertex[]): void {
-        const keyOf = (p: Vertex): string =>
-            [p.x, p.y, p.z].map(v => Math.round(v * 1e9)).join(":");
+    // Identical constructed points share an authored vertex, including
+    // across UV seams, material changes and adjoining longitudinal strips.
+    // They remain distinct GPU vertices wherever normals or UVs demand it.
+    function idOf(p: Vertex): number {
+        const key = [p.x, p.y, p.z]
+            .map(value => Math.round(value * 1e9)).join(":");
+        const existing = vertexIds.get(key);
+        if (existing !== undefined) return existing;
+        const index = vertices.length;
+        vertices.push(new THREE.Vector3(p.x, p.y, p.z));
+        vertexIds.set(key, index);
+        return index;
+    }
 
-        for (let i = 0; i < corners.length; i++) {
-            const a = corners[i]!;
-            const b = corners[(i + 1) % corners.length]!;
-            const ka = keyOf(a);
-            const kb = keyOf(b);
-            if (ka === kb) continue;
-
-            const key = ka < kb ? `${ka}|${kb}` : `${kb}|${ka}`;
-            if (!controlEdges.has(key)) controlEdges.set(key, [a, b]);
+    function recordFace(
+        corners: readonly Vertex[],
+        material: 0 | 1 | 2,
+        sidewall: boolean
+    ): void {
+        const indices = corners.map(idOf);
+        const uvs = corners.map(p => new THREE.Vector2(
+            material === 1 ? p.x : (sidewall ? p.y : p.x),
+            material === 1 ? p.y : p.z
+        ));
+        const surface = ["oak", "end-grain", "groove"][material]!;
+        if (corners.length === 4) {
+            quads.push({
+                corners: indices as [number, number, number, number],
+                uvs: uvs as [THREE.Vector2, THREE.Vector2, THREE.Vector2, THREE.Vector2],
+                surface
+            });
+        } else {
+            triangles.push({
+                corners: indices as [number, number, number],
+                uvs: uvs as [THREE.Vector2, THREE.Vector2, THREE.Vector2],
+                surface
+            });
         }
     }
 
-
     const point = (x: number, y: number, z: number): Vertex => ({ x, y, z });
 
-    function triangle(
-        a: Vertex, b: Vertex, c: Vertex,
-        material: 0 | 1 | 2,
-        sidewall = false
-    ): boolean {
+    function validTriangle(a: Vertex, b: Vertex, c: Vertex): boolean {
         const ab = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
         const ac = new THREE.Vector3(c.x - a.x, c.y - a.y, c.z - a.z);
-        const n = ab.cross(ac);
-        if (n.lengthSq() < 1e-18) return false;
-        n.normalize();
-
-        for (const p of [a, b, c]) {
-            verts[material]!.push(p.x, p.y, p.z);
-            normals[material]!.push(n.x, n.y, n.z);
-
-            // Physical meter UVs. Long-grain V follows Z; end-grain
-            // exposes a true transverse surface across X and Y.
-            uvSets[material]!.push(
-                material === 1 ? p.x : (sidewall ? p.y : p.x),
-                material === 1 ? p.y : p.z
-            );
-        }
-        return true;
+        return ab.cross(ac).lengthSq() >= 1e-18;
     }
 
     function emitTriangle(
@@ -283,8 +277,8 @@ export function seamedPlankExtrusion(
         const wa = worked(a);
         const wb = worked(b);
         const wc = worked(c);
-        if (triangle(wa, wb, wc, material, sidewall)) {
-            recordFace([wa, wb, wc]);
+        if (validTriangle(wa, wb, wc)) {
+            recordFace([wa, wb, wc], material, sidewall);
         }
     }
 
@@ -316,16 +310,15 @@ export function seamedPlankExtrusion(
         const wb = worked(b);
         const wc = worked(c);
         const wd = worked(d);
-        const first = triangle(wa, wb, wc, material, sidewall);
-        const second = triangle(wa, wc, wd, material, sidewall);
+        const first = validTriangle(wa, wb, wc);
+        const second = validTriangle(wa, wc, wd);
 
         if (first && second) {
-            quadCount++;
-            recordFace([wa, wb, wc, wd]);
+            recordFace([wa, wb, wc, wd], material, sidewall);
         } else if (first) {
-            recordFace([wa, wb, wc]);
+            recordFace([wa, wb, wc], material, sidewall);
         } else if (second) {
-            recordFace([wa, wc, wd]);
+            recordFace([wa, wc, wd], material, sidewall);
         }
     }
 
@@ -516,43 +509,13 @@ export function seamedPlankExtrusion(
     cap(first, true);
     cap(last, false);
 
-    const geometry = new THREE.BufferGeometry();
-    const positions = verts[0]!.concat(verts[1]!, verts[2]!);
-    const normalValues = normals[0]!.concat(normals[1]!, normals[2]!);
-    const uvs = uvSets[0]!.concat(uvSets[1]!, uvSets[2]!);
-
-    geometry.setAttribute(
-        "position", new THREE.Float32BufferAttribute(positions, 3)
-    );
-    geometry.setAttribute(
-        "normal", new THREE.Float32BufferAttribute(normalValues, 3)
-    );
-    geometry.setAttribute(
-        "uv", new THREE.Float32BufferAttribute(uvs, 2)
-    );
-    geometry.addGroup(0, verts[0]!.length / 3, 0);
-    if (verts[1]!.length) {
-        geometry.addGroup(verts[0]!.length / 3, verts[1]!.length / 3, 1);
-    }
-    if (verts[2]!.length) {
-        geometry.addGroup(
-            (verts[0]!.length + verts[1]!.length) / 3,
-            verts[2]!.length / 3, 2
-        );
-    }
-    geometry.computeBoundingBox();
-    geometry.computeBoundingSphere();
-
-    const outlinePositions: number[] = [];
-    for (const [a, b] of controlEdges.values()) {
-        outlinePositions.push(
-            a.x, a.y, a.z,
-            b.x, b.y, b.z
-        );
-    }
-    registerControlOutline(geometry, {
-        positions: outlinePositions,
-        quadCount
+    // The actual authored faces are the only topology representation.
+    // Rendering and the Quad View consume this same MeshData object.
+    const mesh: MeshData = { vertices, quads, triangles };
+    const geometry = toBufferGeometry(mesh, {
+        oak: 0,
+        "end-grain": 1,
+        groove: 2
     });
     tessellation.set(geometry, fractions);
 

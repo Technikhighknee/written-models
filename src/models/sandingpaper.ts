@@ -2,8 +2,8 @@
 import * as THREE from "three";
 
 import { mm, cm } from "../toolbox/units/length";
-import { warpGeometry } from "../toolbox/geometry/deformation/warpGeometry";
-import { assignMaterialsByNormal } from "../toolbox/geometry/materials/assignMaterialsByNormal";
+import { boxMesh } from "../toolbox/geometry/construction/boxMesh";
+import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 
 export default {
     create,
@@ -30,19 +30,18 @@ function create(): THREE.Group {
         roughness: 1,
     });
 
-    const geometry = new THREE.BoxGeometry(
+    // The shape is authored first; render triangles and control faces
+    // derive from the very same displaced vertices.
+    const mesh = boxMesh({
         width,
-        thickness,
+        height: thickness,
         depth,
-        12, 1, 16
-    );
+        widthSegments: 12,
+        heightSegments: 1,
+        depthSegments: 16
+    });
 
-    assignMaterialsByNormal(
-        geometry, 
-        normal => normal.y > 0.9 ? 0 : 1
-    );
-
-    warpGeometry(geometry, point => {
+    for (const point of mesh.vertices) {
         const u = point.x / width;
         const v = point.z / depth;
 
@@ -73,6 +72,10 @@ function create(): THREE.Group {
             Math.sin(Math.PI * 2 * (1.3 * u - 0.7 * v));
         
         point.y += fold + bow + curl + wave;
+    }
+
+    const geometry = toBufferGeometry(mesh, {
+        px: 1, nx: 1, py: 0, ny: 1, pz: 1, nz: 1
     });
 
     const paper = new THREE.Mesh(

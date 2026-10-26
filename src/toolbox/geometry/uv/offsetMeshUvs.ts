@@ -16,8 +16,9 @@ export function offsetMeshUvs(
         throw new RangeError("Invalid UV offset");
     }
 
-    for (const quad of mesh.quads) {
-        for (const uv of quad.uvs) {
+    // Both kinds of authored faces share the same UV treatment.
+    for (const face of [...mesh.quads, ...(mesh.triangles ?? [])]) {
+        for (const uv of face.uvs) {
             uv.x += u;
             uv.y += v;
         }

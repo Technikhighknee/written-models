@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { mm, cm } from "../toolbox/units/length";
 import { positionsFromEnds } from "../toolbox/spatial/layout/positionsFromEnds";
 import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile";
+import { cylinderMesh, CYLINDER_SURFACES } from "../toolbox/geometry/construction/cylinderMesh";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
 import { radialStaves } from "../toolbox/geometry/construction/radialStaves";
 import { groovedCircularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
@@ -310,9 +311,12 @@ function createHoop(
     const lapOuterRadius = radiusAt(y) /
         Math.cos(sweep / (lapSegments * 2)) + lapClearance + lapThickness;
     const rivetHeight = mm(1.6);
-    const rivetGeometry = new THREE.CylinderGeometry(
-        mm(3.1), mm(3.7), rivetHeight, 10
-    );
+    const rivetGeometry = toBufferGeometry(cylinderMesh({
+        radiusTop: mm(3.1),
+        radiusBottom: mm(3.7),
+        height: rivetHeight,
+        radialSegments: 10
+    }), CYLINDER_SURFACES);
 
     for (const [index, direction] of [-1, 1].entries()) {
         const theta = centerAngle + direction * sweep * 0.29;
