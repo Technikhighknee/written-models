@@ -7,6 +7,9 @@ import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
 import { radialStaves } from "../toolbox/geometry/construction/radialStaves";
 import { circularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
+import { oak } from "../materials/wood/oak";
+import type { OakMaterials } from "../materials/wood/oak";
+import { wroughtIron } from "../materials/metal/wroughtIron";
 
 type BarrelHeadSide = "top" | "bottom";
 
@@ -21,10 +24,7 @@ function create(): THREE.Group {
     const barrel = new THREE.Group();
     barrel.name = "Barrel";
 
-    const wood = new THREE.MeshStandardMaterial({
-        color: "#855632",
-        roughness: 0.9
-    });
+    const wood = oak();
 
     const profile = bulgedProfile({
         height: cm(50),
@@ -49,11 +49,7 @@ function create(): THREE.Group {
         fromEnd: [cm(5.5), cm(15)]
     });
 
-    const iron = new THREE.MeshStandardMaterial({
-        color: "#484b4d",
-        metalness: 0.8,
-        roughness: 0.4
-    });
+    const iron = wroughtIron();
 
     for (let i = 0; i < hoopPositions.length; i++) {
         const isChime = i === 0 || i === hoopPositions.length - 1;
@@ -66,23 +62,18 @@ function create(): THREE.Group {
 
 function createBody(
     profile: readonly THREE.Vector2[],
-    wood: THREE.Material,
+    wood: OakMaterials,
     staveCount: number
 ): THREE.Group {
     const body = new THREE.Group();
     body.name = "Body";
 
     const shades: THREE.Material[] = [
-        wood,
-        new THREE.MeshStandardMaterial({ color: "#815331", roughness: 0.9 }),
-        new THREE.MeshStandardMaterial({ color: "#8a5a35", roughness: 0.9 }),
-        new THREE.MeshStandardMaterial({ color: "#7d502f", roughness: 0.9 })
+        wood.face,
+        wood.aged,
+        wood.light,
+        wood.dark
     ];
-
-    const endGrain = new THREE.MeshStandardMaterial({
-        color: "#694124",
-        roughness: 0.94
-    });
 
     const staves = radialStaves(profile, {
         count: staveCount,
@@ -109,7 +100,7 @@ function createBody(
         const geometry = toBufferGeometry(staves[i]!, surfaceMaterials);
         const stave = new THREE.Mesh(geometry, [
             shades[finish[i]!]!,
-            endGrain
+            wood.endGrain
         ]);
 
         stave.name = `Stave${String(i + 1).padStart(2, "0")}`;
@@ -143,17 +134,9 @@ function createHead(
     const direction = isTop ? -1 : 1;
     head.position.y = rim.y + direction * (inset + thickness / 2);
 
-    const woods = [
-        "#885934", "#815431", "#8c5e39", "#80512f", "#875833"
-    ].map(color => new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.92
-    }));
-
-    const edgeWood = new THREE.MeshStandardMaterial({
-        color: "#704828",
-        roughness: 0.95
-    });
+    const wood = oak();
+    const woods = [wood.face, wood.aged, wood.light, wood.dark, wood.aged];
+    const edgeWood = wood.endGrain;
 
     const boards = circularPlankPanel(radius, {
         planks: woods.length,

@@ -7,6 +7,7 @@ import { cm, m, } from "../toolbox/units/length";
 import { rectangleCornerMounts } from "../toolbox/geometry/features/rectangleCornerMounts";
 import { attachByFrames } from "../toolbox/spatial/relationships/attachByFrames";
 import { createFrame } from "../toolbox/spatial/frames/frames";
+import { oak } from "../materials/wood/oak";
 
 interface TopSpec {
     width: number;
@@ -37,10 +38,7 @@ function create(): THREE.Group {
     const table = new THREE.Group();
     table.name = "TavernTable";
 
-    const wood = new THREE.MeshStandardMaterial({
-        color: "#855632",
-        roughness: 0.9
-    });
+    const wood = oak();
 
     const topSpec: TopSpec = {
         width: m(2),
@@ -60,11 +58,16 @@ function create(): THREE.Group {
         inset: cm(12)
     };
 
-    const top = createTop(topSpec, wood);
+    const top = createTop(topSpec, wood.face);
 
     table.add(top);
 
-    createLegs(top, topSpec, legSpec, wood);
+    // BoxGeometry material order: +X, -X, +Y, -Y, +Z, -Z.
+    // The leg ends show end grain; all vertical sides follow the wood fiber.
+    createLegs(top, topSpec, legSpec, [
+        wood.face, wood.face, wood.endGrain,
+        wood.endGrain, wood.face, wood.face
+    ]);
 
     top.rotateZ(Math.PI / 2 + 20);
     top.rotateX(1);
@@ -98,7 +101,7 @@ function createLegs(
     top: THREE.Mesh,
     topSpec: TopSpec,
     legSpec: LegSpec,
-    material: THREE.Material
+    material: THREE.Material | THREE.Material[]
 ): void {
     const mounts = rectangleCornerMounts({
         width: topSpec.width,

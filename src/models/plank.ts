@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { cm, m } from "../toolbox/units/length";
 import { loftSections } from "../toolbox/geometry/construction/loftSections";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
+import { oak } from "../materials/wood/oak";
 
 export default {
     create,
@@ -19,15 +20,7 @@ function create(): THREE.Group {
     const width = cm(22);
     const thickness = cm(3);
 
-    const wood = new THREE.MeshStandardMaterial({
-        color: "#855632",
-        roughness: 0.9
-    });
-
-    const endGrain = new THREE.MeshStandardMaterial({
-        color: "#694124",
-        roughness: 0.9
-    });
+    const wood = oak();
 
     function section(
         z: number,
@@ -65,7 +58,7 @@ function create(): THREE.Group {
 
     const plank = new THREE.Mesh(
         geometry,
-        [wood, endGrain]
+        [wood.face, wood.endGrain]
     );
 
     plank.name = "Plank";
