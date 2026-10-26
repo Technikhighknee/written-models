@@ -11,11 +11,11 @@ const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 // end grain. Darken the sRGB stops themselves, not the material lighting,
 // so the same look survives texture baking and GLB export.
 const OAK_COLORS = [
-    [0, [53, 41, 30]],
-    [0.28, [75, 58, 41]],
-    [0.53, [98, 78, 56]],
-    [0.78, [114, 96, 70]],
-    [1, [126, 108, 82]]
+    [0, [41, 29, 20]],
+    [0.28, [57, 40, 27]],
+    [0.53, [76, 53, 35]],
+    [0.78, [94, 69, 47]],
+    [1, [110, 85, 60]]
 ] as const;
 
 function random(seed: number, salt: number): number {
