@@ -150,24 +150,46 @@ export class ModelViewer {
 
         const center = bounds.getCenter(new THREE.Vector3());
         const size = bounds.getSize(new THREE.Vector3());
+        const extent = Math.max(size.x, size.y, size.z, 0.01);
 
-        const extent = Math.max(
-            size.x,
-            size.y,
-            size.z,
-            0.5
-        );
+        // Fit the projected bounds instead of keeping a fixed wide distance.
+        const direction = new THREE.Vector3(1.8, 1.35, 1.8).normalize();
 
-        this.camera.position.copy(center).add(
-            new THREE.Vector3(
-                extent * 1.8,
-                extent * 1.35,
-                extent * 1.8
-            )
-        );
+        this.camera.position.copy(center).add(direction);
+        this.camera.lookAt(center);
 
-        this.camera.near = Math.max(0.01, extent / 1000);
-        this.camera.far = Math.max(100, extent * 100);
+        const inverseRotation = this.camera.quaternion.clone().invert();
+        const verticalSlope = Math.tan(
+            THREE.MathUtils.degToRad(this.camera.fov) / 2
+        ) / this.camera.zoom;
+        const horizontalSlope = verticalSlope * this.camera.aspect;
+        const fill = 0.82;
+
+        let distance = 0;
+
+        for (const x of [bounds.min.x, bounds.max.x]) {
+            for (const y of [bounds.min.y, bounds.max.y]) {
+                for (const z of [bounds.min.z, bounds.max.z]) {
+                    const corner = new THREE.Vector3(x, y, z)
+                        .sub(center)
+                        .applyQuaternion(inverseRotation);
+
+                    distance = Math.max(
+                        distance,
+                        corner.z + Math.abs(corner.x) /
+                            (horizontalSlope * fill),
+                        corner.z + Math.abs(corner.y) /
+                            (verticalSlope * fill)
+                    );
+                }
+            }
+        }
+
+        distance = Math.max(distance, extent * 0.5);
+        this.camera.position.copy(center).addScaledVector(direction, distance);
+
+        this.camera.near = Math.max(0.001, extent / 1000);
+        this.camera.far = Math.max(100, distance + extent * 100);
         this.camera.updateProjectionMatrix();
 
         this.controls.target.copy(center);

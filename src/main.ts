@@ -57,7 +57,7 @@ else if (route.type === "model") {
   const { model } = route;
 
   app.innerHTML = `
-    <main class="layout">
+    <main class="layout viewer-page">
       <header class="viewer-header">
         <div>
           <a class="back-link" href="/">
@@ -74,17 +74,40 @@ else if (route.type === "model") {
       </header>
 
       <div class="viewer-toolbar">
-        <label>
-          <input id="wireframe-toggle" type="checkbox">
-          Wireframe
-        </label>
-        <label>
-          <input id="quad-toggle" type="checkbox">
-          Quad View
-        </label>
-
-        <span id="triangle-count">Tris: 0</span>
-        <span id="quad-count">Quads: 0</span>
+        <div class="view-modes" role="group" aria-label="Display mode">
+          <button type="button" class="view-mode is-active" data-mode="solid"
+                  aria-pressed="true" title="Solid shading">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 2.5 9 5v9l-9 5-9-5v-9Z"/>
+              <path d="m3 7.5 9 5 9-5M12 12.5v9"/>
+              <path d="m3 7.5 9 5v9l-9-5Z" fill="currentColor" stroke="none" opacity=".26"/>
+            </svg>
+            Solid
+          </button>
+          <button type="button" class="view-mode" data-mode="wireframe"
+                  aria-pressed="false" title="Triangle wireframe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 2.5 9 5v9l-9 5-9-5v-9Z"/>
+              <path d="m3 7.5 9 5 9-5M12 12.5v9M3 7.5l9 14m0-9 9 4"/>
+            </svg>
+            Wireframe
+          </button>
+          <button type="button" class="view-mode" data-mode="quads"
+                  aria-pressed="false" title="Control mesh">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linejoin="round" aria-hidden="true">
+              <path d="m12 2.5 9 5v9l-9 5-9-5v-9Z"/>
+              <path d="m3 7.5 9 5 9-5M12 12.5v9"/>
+            </svg>
+            Quads
+          </button>
+        </div>
+        <div class="mesh-stats" aria-label="Mesh statistics">
+          <span class="mesh-stat"><span>Tris</span><strong id="triangle-count">0</strong></span>
+          <span class="mesh-stat"><span>Quads</span><strong id="quad-count">0</strong></span>
+        </div>
       </div>
 
       <div id="viewer" class="viewer"></div>
@@ -97,43 +120,49 @@ else if (route.type === "model") {
   const asset = model.create();
   viewer.setModel(asset);
 
-  const wireframeToggle = requireElement<HTMLInputElement>(
-    "#wireframe-toggle"
-  );
+  type ViewMode = "solid" | "wireframe" | "quads";
 
-  const quadToggle = requireElement<HTMLInputElement>(
-    "#quad-toggle"
+  const modeButtons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>(".view-mode")
   );
-
-  const quadCount = requireElement<HTMLElement>(
-    "#quad-count"
-  );
-
   const quads = viewer.getQuadCount();
 
-  quadToggle.disabled = quads === 0;
-
-  quadCount.textContent =
-    `Quads: ${quads.toLocaleString("en-US")}`;
-
-  quadToggle.addEventListener("change", () => {
-    viewer.setQuadView(quadToggle.checked);
-
-    wireframeToggle.checked = viewer.wireframe;
-  });
-
-  const triangleCount = requireElement<HTMLElement>(
-    "#triangle-count"
+  const quadButton = modeButtons.find(
+    button => button.dataset.mode === "quads"
   );
 
-  wireframeToggle.addEventListener("change", () => {
-    viewer.setWireframe(wireframeToggle.checked);
+  if (quadButton) quadButton.disabled = quads === 0;
 
-    quadToggle.checked = viewer.quadView;
-  });
+  requireElement<HTMLElement>("#triangle-count").textContent =
+    viewer.getTriangleCount().toLocaleString("en-US");
 
-  triangleCount.textContent =
-    `Tris: ${viewer.getTriangleCount().toLocaleString("en-US")}`;
+  requireElement<HTMLElement>("#quad-count").textContent =
+    quads.toLocaleString("en-US");
+
+  function setMode(mode: ViewMode): void {
+    if (mode === "quads" && quads === 0) return;
+
+    viewer.setQuadView(false);
+    viewer.setWireframe(false);
+
+    if (mode === "wireframe") {
+      viewer.setWireframe(true);
+    } else if (mode === "quads") {
+      viewer.setQuadView(true);
+    }
+
+    for (const button of modeButtons) {
+      const active = button.dataset.mode === mode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    }
+  }
+
+  for (const button of modeButtons) {
+    button.addEventListener("click", () => {
+      setMode(button.dataset.mode as ViewMode);
+    });
+  }
 
   const exportButton = requireElement<HTMLButtonElement>(
     "#export-button"
