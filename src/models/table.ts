@@ -68,7 +68,15 @@ function buildTop(parent: THREE.Group, spec: TopSpec): void {
         count: spec.boardWeights.length,
         widthWeights: spec.boardWeights,
         chamfer: spec.chamfer,
-        crown: spec.crown
+        crown: spec.crown,
+        handWorked: {
+            seed: 1400,
+            edgeWander: mm(4.2),
+            endStagger: mm(12),
+            cornerWear: mm(7),
+            thicknessVariation: mm(1.4),
+            chamferVariation: 0.33
+        }
     });
 
     const tones = coherentVariation({
