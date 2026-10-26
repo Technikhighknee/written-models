@@ -7,13 +7,15 @@ const TAU = Math.PI * 2;
 const fract = (value: number): number => value - Math.floor(value);
 const clamp = (value: number): number => Math.max(0, Math.min(1, value));
 
-// One species-wide palette: a different board is NOT a different wood color.
+// One species-wide palette: every oak cut (long grain, planed face,
+// end grain) inherits the same deeper, tavern-worn color family.
+// Adjust these stops once instead of tinting individual models.
 const OAK_COLORS = [
-    [0, [84, 65, 47]],
-    [0.28, [117, 91, 64]],
-    [0.53, [153, 123, 87]],
-    [0.78, [178, 150, 110]],
-    [1, [196, 169, 128]]
+    [0, [74, 57, 41]],
+    [0.28, [103, 80, 56]],
+    [0.53, [135, 108, 77]],
+    [0.78, [157, 132, 97]],
+    [1, [173, 149, 113]]
 ] as const;
 
 function random(seed: number, salt: number): number {

@@ -67,6 +67,7 @@ function buildTop(parent: THREE.Group, spec: TopSpec): void {
         thickness: spec.thickness,
         count: spec.boardWeights.length,
         widthWeights: spec.boardWeights,
+        gap: mm(2.5),
         chamfer: spec.chamfer,
         crown: spec.crown,
         handWorked: {
