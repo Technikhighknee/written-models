@@ -6,8 +6,8 @@ let shared: THREE.MeshStandardMaterial | undefined;
 export function wroughtIron(): THREE.MeshStandardMaterial {
     return shared ??= new THREE.MeshStandardMaterial({
         name: "Wrought Iron · Dark",
-        color: "#484b4d",
-        metalness: 0.8,
-        roughness: 0.4
+        color: "#5c5a55",
+        metalness: 0.64,
+        roughness: 0.73
     });
 }

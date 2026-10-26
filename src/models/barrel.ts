@@ -54,11 +54,17 @@ function create(): THREE.Group {
     });
 
     const iron = wroughtIron();
+    const joiningIron = iron.clone();
+    joiningIron.name = "Wrought Iron · Forged Lap";
+    joiningIron.color.set("#706c64");
 
     for (let i = 0; i < hoopPositions.length; i++) {
         const isChime = i === 0 || i === hoopPositions.length - 1;
         const width = isChime ? cm(2.8) : cm(2.2);
-        barrel.add(createHoop(profile, hoopPositions[i]!, width, staveCount, iron));
+        barrel.add(createHoop(
+            profile, hoopPositions[i]!, width, staveCount, i,
+            iron, joiningIron
+        ));
     }
 
     return barrel;
@@ -213,21 +219,108 @@ function createHoop(
     y: number,
     width: number,
     staveCount: number,
-    iron: THREE.Material
-): THREE.Mesh {
-    const geometry = bandAroundProfile(profile, {
-        y,
-        width,
-        thickness: mm(4),
-        overlap: mm(0.6),
-        bevel: mm(0.6),
-        radialSegments: staveCount,
-        // Each polygon vertex rests over the middle of a stave;
-        // the faces bridge the joints without exposing the wood.
-        angleOffset: Math.PI / staveCount
-    });
+    hoopIndex: number,
+    iron: THREE.Material,
+    joiningIron: THREE.Material
+): THREE.Group {
+    const hoop = new THREE.Group();
+    hoop.name = `IronHoop${hoopIndex + 1}`;
 
-    const hoop = new THREE.Mesh(geometry, iron);
-    hoop.name = "IronHoop";
+    const radialSegments = staveCount * 2;
+    const thickness = mm(3.8);
+    const clearance = mm(1.0);
+
+    // Between polygon vertices, a flat chord is INSIDE the circle through
+    // those vertices. bandAroundProfile compensates for that sagitta before
+    // adding the clearance. The complete metal surface stays outside the
+    // actual staves, even between sampled angles and in a GLB export.
+    const band = new THREE.Mesh(
+        bandAroundProfile(profile, {
+            y,
+            width,
+            thickness,
+            clearance,
+            bevel: mm(0.75),
+            radialSegments,
+            angleOffset: 0
+        }),
+        iron
+    );
+    band.name = "ClosedForgedBand";
+    hoop.add(band);
+
+    // A short raised strip represents the overlapped ends of the forged
+    // hoop. It is truly curved, has solid end faces and sits outside the
+    // supporting band: no coincident surfaces or renderer-only depth tricks.
+    const lapThickness = mm(1.2);
+    const lapClearance = mm(0.22);
+    const sweep = 0.26;
+    const lapSegments = 8;
+    const centerAngle = 0.57 + hoopIndex * 0.14;
+    const arc = {
+        startAngle: centerAngle - sweep / 2,
+        sweepAngle: sweep
+    };
+
+    // The *outer* radius of the primary band is our new supporting profile
+    // for the lap. Preserve the exact same height-dependent bulge.
+    const lapProfile = profile.map(point => new THREE.Vector2(
+        point.x / Math.cos(Math.PI / radialSegments) +
+            clearance + thickness + mm(0.35),
+        point.y
+    ));
+
+    const lap = new THREE.Mesh(
+        bandAroundProfile(lapProfile, {
+            y,
+            width: width - mm(4),
+            thickness: lapThickness,
+            clearance: lapClearance,
+            bevel: mm(0.3),
+            radialSegments: lapSegments,
+            arc
+        }),
+        joiningIron
+    );
+    lap.name = "OverlappingStrapJoint";
+    hoop.add(lap);
+
+    // Small, slightly proud hammered rivet heads. Their cylinder axes point
+    // radially outward; the back is buried in the lap, never coplanar with it.
+    function radiusAt(height: number): number {
+        for (let i = 1; i < lapProfile.length; i++) {
+            const a = lapProfile[i - 1]!;
+            const b = lapProfile[i]!;
+            if (height <= b.y) {
+                const t = (height - a.y) / (b.y - a.y);
+                return a.x + (b.x - a.x) * t;
+            }
+        }
+        throw new RangeError("Rivet outside hoop profile");
+    }
+
+    const lapOuterRadius = radiusAt(y) /
+        Math.cos(sweep / (lapSegments * 2)) + lapClearance + lapThickness;
+    const rivetHeight = mm(1.6);
+    const rivetGeometry = new THREE.CylinderGeometry(
+        mm(3.1), mm(3.7), rivetHeight, 10
+    );
+
+    for (const [index, direction] of [-1, 1].entries()) {
+        const theta = centerAngle + direction * sweep * 0.29;
+        const normal = new THREE.Vector3(Math.sin(theta), 0, Math.cos(theta));
+        const rivet = new THREE.Mesh(rivetGeometry, joiningIron);
+        rivet.name = index === 0 ? "JointRivetA" : "JointRivetB";
+        rivet.position.copy(normal).multiplyScalar(
+            lapOuterRadius + rivetHeight * 0.32
+        );
+        rivet.position.y = y;
+        rivet.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            normal
+        );
+        hoop.add(rivet);
+    }
+
     return hoop;
 }
