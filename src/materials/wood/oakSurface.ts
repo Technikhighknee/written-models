@@ -1,7 +1,7 @@
 import type { SurfaceSample } from "../../toolbox/texturing/bakePbrMaps";
 import { palette, smoothstep, wrappedDelta } from "../../toolbox/texturing/fields";
 import { fractalNoise, tileableNoise } from "../../toolbox/texturing/tileableNoise";
-import { archedRingField } from "../../toolbox/texturing/archedRingField";
+import { flowedGrainField } from "../../toolbox/texturing/flowedGrainField";
 
 const TAU = Math.PI * 2;
 const fract = (value: number): number => value - Math.floor(value);
@@ -147,48 +147,49 @@ export const oakFace = makeOakFace(0);
 export const oakEndGrain = makeOakEndGrain(0);
 
 /**
- * Tangential / plain-sawn oak for a board's broad, planed face.
+ * Quiet, continuously flowing broad-face grain for planed oak.
  *
- * A few feathered cathedral arcs interrupt fine longitudinal fibers.
- * This is deliberately different from the rift/quarter-sawn look of
- * makeOakFace(): no regular, dark stripes across the full plank length.
- *
- * UV convention remains U across the board, V along its fibers.
+ * Unlike painted ring contours, every grain line belongs to one global
+ * fiber field and continues along the board. A few broad latewood bands
+ * remain visible, but are subordinate to pores and fine longitudinal grain.
  */
 export function makeOakBoardFace(seed: number): (u: number, v: number) => SurfaceSample {
     if (!Number.isInteger(seed) || seed < 0) {
         throw new RangeError("Oak cut seed must be a nonnegative integer");
     }
 
-    const figure = archedRingField({
-        centerU: 0.38 + 0.24 * random(seed, 7),
-        originV: -0.18 - 0.16 * random(seed, 8),
-        rings: 4.5 + 0.8 * random(seed, 9)
+    const flow = flowedGrainField({
+        rings: 4 + Math.floor(random(seed, 7) * 3),
+        bend: 0.24 + 0.07 * random(seed, 8),
+        firstPhase: TAU * random(seed, 9),
+        secondPhase: TAU * random(seed, 10)
     });
 
     return (u, v) => {
-        // Broad tonal variation stays gentle; most visible detail follows
-        // the wood fiber, not the growth-ring contours.
         const broad = fractalNoise(u, v, 3, 2, 3, seed * 13 + 11);
         const streak = fractalNoise(u, v, 13, 4, 2, seed * 13 + 23);
         const fiber = tileableNoise(u, v, 89, 7, seed * 13 + 59);
         const vessels = tileableNoise(u, v, 107, 42, seed * 13 + 41);
 
-        const cathedral = figure(u, v, 0.075 * broad);
-        const pores = smoothstep(0.08, 0.65, vessels);
+        // The displaced coordinate belongs to the grain itself, not to a
+        // separate circular mask. Growth zones can't form floating crescents.
+        const phase = flow(u, v, 0.10 * broad + 0.025 * streak);
+        const { late, early } = bands(phase);
+        const pores = smoothstep(0.08, 0.65, vessels) *
+            (0.60 + 0.40 * early);
 
         const tone = clamp(
-            0.66 + 0.11 * broad + 0.072 * streak +
-            0.042 * fiber - 0.14 * cathedral - 0.035 * pores
+            0.66 + 0.10 * broad + 0.075 * streak +
+            0.044 * fiber - 0.073 * late - 0.045 * pores
         );
 
         return {
             color: palette(OAK_COLORS, tone),
             roughness: clamp(
-                0.80 + 0.024 * cathedral +
-                0.035 * pores + 0.012 * fiber
+                0.80 + 0.018 * late +
+                0.034 * pores + 0.013 * fiber
             ),
-            height: -0.000030 * pores - 0.000009 * cathedral +
+            height: -0.000029 * pores - 0.000008 * late +
                 0.000007 * fiber + 0.000005 * streak
         };
     };

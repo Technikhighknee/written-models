@@ -97,9 +97,10 @@ export function oakVariant(seed: number): OakMaterials {
 }
 
 /**
- * Flat-sawn broad face for a tabletop or other wide, planed timber.
+ * Calm, planed broad face for a tabletop or other wide timber.
  *
- * This has a different grain FIGURE, not a different wood species.
+ * This has a subtler, continuously flowing grain FIGURE, not a different
+ * wood species.
  * The narrow sides still use oakVariant(seed).tinted.face and cut ends
  * use oakVariant(seed).tinted.endGrain.
  *
@@ -122,7 +123,7 @@ export function oakBoardFace(seed: number): THREE.MeshStandardMaterial {
     });
 
     const face = oakCut.tinted.face.clone();
-    face.name = `Oak Cut ${seed} · Plain-Sawn Board Face`;
+    face.name = `Oak Cut ${seed} · Planed Broad Face`;
     face.map = maps.color;
     face.roughnessMap = maps.roughness;
     face.normalMap = maps.normal;

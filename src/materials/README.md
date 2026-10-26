@@ -76,24 +76,23 @@ GLB export carries the baked texture maps and material assignments.
 ## Broad board faces versus longitudinal grain
 
 A tabletop is not a barrel stave enlarged by a factor of four. Oak needs
-different **cut orientations** while keeping the same species-wide palette,
+different **cut orientations** while keeping one species-wide palette,
 physical UV scale, roughness and PBR maps per cut.
 
 - `oakVariant(seed).tinted.face`: longitudinal/rift-style grain for narrow
   sides, aprons, legs and barrel staves.
-- `oakBoardFace(seed)`: a plain-/flat-sawn **broad face**, with softly
-  feathered cathedral arches, lower ring contrast and lengthwise fiber detail.
-  It is vertex-tinted, GLB-compatible, and uses the same seed and UV scale.
-  Board-face maps are **created lazily and cached by seed**; a barrel never
-  has to generate tabletop textures.
-- `oakVariant(seed).tinted.endGrain`: actual transverse timber ends.
+- `oakBoardFace(seed)`: a quiet **planed broad face** with a continuously
+  flowing growth-band field, restrained contrast and lengthwise pore detail.
+  It uses the same seed, UV scale and vertex-tint support. Board-face maps
+  are generated lazily and cached; barrel staves do not generate them.
+- `oakVariant(seed).tinted.endGrain`: transverse timber ends.
 
-`archedRingField()` is a reusable texturing-toolbox feature field. Its broad
-off-center arcs fade to zero value and slope at all four tile boundaries,
-allowing coherent color, roughness and normal maps without visible seams.
-The material recipe determines the oak-specific color and porosity response.
+`flowedGrainField()` is a reusable texturing-toolbox coordinate field.
+It bends all growth lines together while keeping them continuous through
+the board, rather than layering isolated semicircle-shaped masks. Its phase
+wraps at tile boundaries, and the material recipe decides where latewood,
+pores and subtle color/roughness/height changes occur.
 
 In a quad board made with `loftBoard()`, material slots should map
-`outer` (upper face) to the board-face cut, `inner` and both long edges
-to longitudinal grain, and `cap-start/cap-end` to end grain. Do not
-reorient the shared grain map merely to make the tabletop look different.
+`outer` (upper face) to the broad-face cut, `inner` and both long edges
+to longitudinal grain, and `cap-start/cap-end` to end grain.
