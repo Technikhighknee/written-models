@@ -157,12 +157,6 @@ button:disabled {
   cursor: pointer;
 }
 
-#triangle-count {
-  font-family: monospace;
-  font-size: 1.5em;
-  font-variant-numeric: tabular-nums;
-}
-
 .viewer canvas {
   display: block;
 }
@@ -286,40 +280,51 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.viewer-page .viewer {
+  position: relative;
+}
+
 .mesh-stats {
-  display: flex;
-  flex-shrink: 0;
-  border: 1px solid #394553;
+  position: absolute;
+  z-index: 1;
+  bottom: 14px;
+  left: 14px;
+  display: grid;
+  grid-template-columns: max-content minmax(0, max-content);
+  align-items: baseline;
+  gap: 5px 18px;
+  max-width: calc(100% - 28px);
+  padding: 10px 13px;
+  border: 1px solid rgba(151, 172, 197, 0.17);
   border-radius: 8px;
-  overflow: hidden;
-  background: #161c24;
+  color: #e7edf6;
+  background: rgba(17, 23, 31, 0.88);
+  box-shadow: 0 5px 19px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
 }
 
 .mesh-stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 10px;
-  padding: 9px 12px;
-  min-width: 104px;
-}
-
-.mesh-stat + .mesh-stat {
-  border-left: 1px solid #394553;
+  display: contents;
 }
 
 .mesh-stat > span {
-  color: #9eacbd;
+  color: #9aaabd;
   font-size: 0.73rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .mesh-stat > strong {
-  margin-left: auto;
-  color: #edf2f9;
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 0.86rem;
+  min-width: 0;
+  overflow: hidden;
+  color: #edf3fd;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.79rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0.015em;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .viewer-page .viewer {
@@ -372,12 +377,8 @@ button:disabled {
   }
 
   .mesh-stats {
-    flex: 1 1 auto;
-    justify-content: center;
-  }
-
-  .mesh-stat {
-    flex: 1 1 0;
+    bottom: 10px;
+    left: 10px;
   }
 }
 

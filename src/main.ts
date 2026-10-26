@@ -104,13 +104,14 @@ else if (route.type === "model") {
             Quads
           </button>
         </div>
+      </div>
+
+      <div id="viewer" class="viewer">
         <div class="mesh-stats" aria-label="Mesh statistics">
           <span class="mesh-stat"><span>Tris</span><strong id="triangle-count">0</strong></span>
           <span class="mesh-stat"><span>Quads</span><strong id="quad-count">0</strong></span>
         </div>
       </div>
-
-      <div id="viewer" class="viewer"></div>
     </main>
   `;
 
