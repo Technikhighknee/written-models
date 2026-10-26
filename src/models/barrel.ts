@@ -70,7 +70,11 @@ function createBody(
 
     const staves = radialStaves(profile, {
         count: staveCount,
-        thickness: cm(2)
+        thickness: cm(2),
+        // Sink the OUTER corners into the wood to create a narrow,
+        // shadow-catching V-seam. Adjacent stave sidewalls still meet
+        // at the same angle, so the barrel stays closed and watertight.
+        edgeRoundover: mm(2.2)
     });
 
     const surfaceMaterials = {
