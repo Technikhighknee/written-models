@@ -1,38 +1,34 @@
 import * as THREE from "three";
 
-import { createTimberBetween } from "../toolbox/geometry/construction/timber";
 import { boardPanel } from "../toolbox/geometry/construction/boardPanel";
+import { createTimberBetween } from "../toolbox/geometry/construction/timber";
+import {
+    createTrestleSupport,
+    type TrestleTimberFactory,
+    type TrestleSupportOptions
+} from "../toolbox/geometry/construction/trestleSupport";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
 import { offsetMeshUvs } from "../toolbox/geometry/uv/offsetMeshUvs";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
 import { cm, m, mm } from "../toolbox/units/length";
-import { rectangleCornerMounts } from "../toolbox/geometry/features/rectangleCornerMounts";
-import { attachByFrames } from "../toolbox/spatial/relationships/attachByFrames";
-import { createFrame } from "../toolbox/spatial/frames/frames";
 import { oakVariant, oakBoardFace } from "../materials/wood/oak";
 
 interface TopSpec {
-    width: number;
+    length: number;
     depth: number;
     thickness: number;
     surfaceHeight: number;
-    boards: number;
+    boardWeights: readonly number[];
     chamfer: number;
     crown: number;
-}
-
-interface LegSpec {
-    width: number;
-    depth: number;
-    inset: number;
 }
 
 export default {
     create,
     slug: "table",
-    title: "Simple Table",
-    description: "It all began with a table..."
+    title: "Tavern Trestle Table",
+    description: "A broad oak board resting on two braced trestles."
 };
 
 function create(): THREE.Group {
@@ -40,44 +36,34 @@ function create(): THREE.Group {
     table.name = "TavernTable";
 
     const topSpec: TopSpec = {
-        width: m(2),
-        depth: cm(110),
-        thickness: cm(4.5),
+        length: m(2),
+        depth: cm(92),
+        thickness: cm(6),
         surfaceHeight: cm(78),
-        boards: 5,
-        chamfer: mm(2.5),
-        crown: mm(0.5)
+        boardWeights: [1.07, 0.94, 1.03, 0.96],
+        chamfer: mm(3),
+        crown: mm(0.6)
     };
 
-    const legSpec: LegSpec = {
-        width: cm(10.5),
-        depth: cm(10.5),
-        inset: cm(13)
-    };
-
-    // All joinery is relative to this frame, not to world-space heights.
-    // Moving or rotating the tabletop carries the entire structure with it.
+    const topCenterHeight = topSpec.surfaceHeight - topSpec.thickness / 2;
     const top = new THREE.Group();
     top.name = "TableTop";
-    top.position.y = topSpec.surfaceHeight - topSpec.thickness / 2;
+    top.position.y = topCenterHeight;
     table.add(top);
 
-    createTopBoards(top, topSpec);
-    createUnderframe(top, topSpec, legSpec);
+    buildTop(top, topSpec);
+    buildTrestles(top, topSpec, topCenterHeight);
 
     return table;
 }
 
-function createTopBoards(
-    top: THREE.Group,
-    spec: TopSpec
-): void {
+function buildTop(parent: THREE.Group, spec: TopSpec): void {
     const boards = boardPanel({
-        length: spec.width,
+        length: spec.length,
         width: spec.depth,
         thickness: spec.thickness,
-        count: spec.boards,
-        gap: 0,
+        count: spec.boardWeights.length,
+        widthWeights: spec.boardWeights,
         chamfer: spec.chamfer,
         crown: spec.crown
     });
@@ -88,9 +74,8 @@ function createTopBoards(
         radius: 2
     });
 
-    // A board has one continuous planed lengthwise surface around its
-    // perimeter. The underside and long edges should not abruptly turn
-    // into the old striped cut; only the sawed ends are cross-grain.
+    // All long surfaces are the same planed oak cut; only sawed ends show
+    // transverse grain. The loft uses actual meter UVs on every quad.
     const surfaceMaterials = {
         outer: 0,
         inner: 0,
@@ -101,166 +86,98 @@ function createTopBoards(
     };
 
     for (let i = 0; i < boards.length; i++) {
-        // Every board has its own deterministic oak cut, but all share
-        // the species palette. This 2 m board stays inside one 2.6 m tile.
         const seed = (i * 3 + 2) % 8;
         const wood = oakVariant(seed);
-        const topFace = oakBoardFace(seed);
         const meshData = offsetMeshUvs(
             boards[i]!,
-            0.015 + i * 0.032,
-            0.09 + i * 0.07
+            cm(1.5) + i * cm(3.2),
+            cm(9) + i * cm(7)
         );
-
-        const tone = 0.965 + 0.025 * tones[i]!;
+        const tone = 0.967 + 0.023 * tones[i]!;
         const geometry = tintVertices(
             toBufferGeometry(meshData, surfaceMaterials),
             new THREE.Color(tone, tone, tone)
         );
 
         const board = new THREE.Mesh(geometry, [
-            topFace,
+            oakBoardFace(seed),
             wood.tinted.endGrain
         ]);
-
-        board.name = `TopBoard${i + 1}`;
-        top.add(board);
+        board.name = `Plank${i + 1}`;
+        parent.add(board);
     }
 }
 
-function createUnderframe(
-    top: THREE.Group,
+function buildTrestles(
+    parent: THREE.Group,
     spec: TopSpec,
-    legs: LegSpec
+    topCenterHeight: number
 ): void {
-    // Each structural beam has a semantic fiber axis and its own UV window.
-    // The eight cached cuts are reused; no unique textures per mesh.
-    let piece = 0;
-    const timber = (
-        start: THREE.Vector3,
-        end: THREE.Vector3,
-        width: number,
-        depth: number
-    ): THREE.Mesh => {
+    let timberNumber = 0;
+
+    // A fixed set of related oak cuts, and dedicated UV windows, keep
+    // the framing related to the tabletop without repeating its pattern.
+    const timber: TrestleTimberFactory = (
+        name, start, end, width, depth
+    ) => {
+        const piece = timberNumber++;
         const seed = (piece * 5 + 1) % 8;
-        const cut = oakVariant(seed);
-        const uvOffset = {
-            u: 0.014 + (piece * 0.037) % 0.16,
-            v: (piece * 0.31) % 0.49
-        };
-        piece++;
+        const material = oakVariant(seed);
         const beam = createTimberBetween(
             start, end, width, depth,
             {
                 face: oakBoardFace(seed),
-                endGrain: cut.tinted.endGrain
+                endGrain: material.tinted.endGrain
             },
-            uvOffset
+            {
+                u: cm(1.4) + (piece * cm(3.7)) % cm(16),
+                v: (piece * cm(31)) % cm(49)
+            }
         );
 
-        // oakBoardFace() uses vertex colors just like the tabletop boards.
-        // Give the frame neutral (white) vertex colors rather than adding
-        // a separate clone of every cached oak material.
-        tintVertices(beam.geometry, new THREE.Color(1, 1, 1));
-
+        // oakBoardFace and the tinted end grain expect vertex colors.
+        tintVertices(beam.geometry, new THREE.Color(0.97, 0.97, 0.97));
+        beam.name = name;
         return beam;
     };
 
-    const legLength = spec.surfaceHeight - spec.thickness;
-    const mountPoints = rectangleCornerMounts({
-        width: spec.width,
-        depth: spec.depth,
-        thickness: spec.thickness,
-        footprintWidth: legs.width,
-        footprintDepth: legs.depth,
-        inset: legs.inset,
-        face: "bottom"
-    });
+    const support: TrestleSupportOptions = {
+        height: spec.surfaceHeight - spec.thickness,
+        footLength: cm(80),
+        headLength: cm(72),
+        postWidth: cm(14.5),
+        postDepth: cm(13.5),
+        crossWidth: cm(16),
+        footHeight: cm(10),
+        headHeight: cm(10.5),
+        braceSize: cm(7)
+    };
 
-    const halfLeg = legLength / 2;
-    const legTop = createFrame(
-        new THREE.Vector3(0, halfLeg, 0),
-        new THREE.Quaternion().setFromAxisAngle(
-            new THREE.Vector3(1, 0, 0),
-            Math.PI
-        )
+    const supportX = cm(66);
+
+    for (const [name, x] of [
+        ["LeftTrestle", -supportX],
+        ["RightTrestle", supportX]
+    ] as const) {
+        const trestle = createTrestleSupport(support, timber);
+        trestle.name = name;
+
+        // All framing belongs to the table top's coordinate frame.
+        // Reposition or rotate TableTop, and the whole assembly follows.
+        trestle.position.set(x, -topCenterHeight, 0);
+        parent.add(trestle);
+    }
+
+    // Longitudinal tie between the inside faces of both upright posts.
+    // The ends meet the posts, not empty space or the outer foot.
+    const insideX = supportX - support.postWidth / 2;
+    const tieHeight = cm(34);
+    const tie = timber(
+        "LongStretcher",
+        new THREE.Vector3(-insideX, tieHeight - topCenterHeight, 0),
+        new THREE.Vector3(insideX, tieHeight - topCenterHeight, 0),
+        cm(10.5),
+        cm(10.5)
     );
-
-    for (const mount of mountPoints) {
-        const leg = timber(
-            new THREE.Vector3(0, -halfLeg, 0),
-            new THREE.Vector3(0, halfLeg, 0),
-            legs.width,
-            legs.depth
-        );
-
-        leg.name = `Leg${mount.name}`;
-        attachByFrames(top, leg, mount.frame, legTop);
-    }
-
-    const legX = spec.width / 2 - legs.inset - legs.width / 2;
-    const legZ = spec.depth / 2 - legs.inset - legs.depth / 2;
-
-    // A fitted apron joins the inside faces of the four legs.
-    const apronHeight = cm(11.5);
-    const apronThickness = cm(4.2);
-    const apronY = -spec.thickness / 2 - apronHeight / 2;
-
-    for (const z of [-legZ, legZ]) {
-        addBeam(
-            top, `LongApron${z < 0 ? "Back" : "Front"}`,
-            new THREE.Vector3(-legX + legs.width / 2, apronY, z),
-            new THREE.Vector3(legX - legs.width / 2, apronY, z),
-            apronHeight, apronThickness, timber
-        );
-    }
-
-    for (const x of [-legX, legX]) {
-        addBeam(
-            top, `EndApron${x < 0 ? "Left" : "Right"}`,
-            new THREE.Vector3(x, apronY, -legZ + legs.depth / 2),
-            new THREE.Vector3(x, apronY, legZ - legs.depth / 2),
-            apronThickness, apronHeight, timber
-        );
-    }
-
-    // Cross rails tie the legs together; the long central rail joins
-    // those cross rails, rather than hanging unsupported in space.
-    const railSize = cm(7);
-    const railY = cm(23) - top.position.y;
-
-    for (const x of [-legX, legX]) {
-        addBeam(
-            top, `LowCrossRail${x < 0 ? "Left" : "Right"}`,
-            new THREE.Vector3(x, railY, -legZ + legs.depth / 2),
-            new THREE.Vector3(x, railY, legZ - legs.depth / 2),
-            railSize, railSize, timber
-        );
-    }
-
-    addBeam(
-        top, "LongStretcher",
-        new THREE.Vector3(-legX + railSize / 2, railY, 0),
-        new THREE.Vector3(legX - railSize / 2, railY, 0),
-        railSize, railSize, timber
-    );
-}
-
-function addBeam(
-    parent: THREE.Group,
-    name: string,
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    width: number,
-    depth: number,
-    makeTimber: (
-        start: THREE.Vector3,
-        end: THREE.Vector3,
-        width: number,
-        depth: number
-    ) => THREE.Mesh
-): void {
-    const beam = makeTimber(start, end, width, depth);
-    beam.name = name;
-    parent.add(beam);
+    parent.add(tie);
 }
