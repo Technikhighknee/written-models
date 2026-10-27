@@ -32,8 +32,8 @@ export function createFillableVolume(
     const rows = cavity.rings.length;
     const count = cavity.rings[0]!.outline.length;
     const topStart = rows * count;
-    const bottomStart = topStart + count + 1;
-    const vertexCount = bottomStart + count + 1;
+    const bottomStart = topStart + count;
+    const vertexCount = bottomStart + count;
     const indices: number[] = [];
     const steps = 8;
 
@@ -43,7 +43,6 @@ export function createFillableVolume(
             const lower = row * count;
             const upper = (row + 1) * count;
 
-            // Sorted X/Z outlines run clockwise when viewed from above.
             indices.push(
                 lower + j, upper + j, lower + next,
                 lower + next, upper + j, upper + next
@@ -51,10 +50,31 @@ export function createFillableVolume(
         }
     }
 
-    for (let j = 0; j < count; j++) {
-        const next = (j + 1) % count;
-        indices.push(topStart + count, topStart + next, topStart + j);
-        indices.push(bottomStart + count, bottomStart + j, bottomStart + next);
+    // A center fan crosses the empty space of concave cavities. Triangulate
+    // the actual contour instead and reuse its connectivity for every morph.
+    const capOutline = cavity.rings.at(-1)!.outline.map(
+        point => new THREE.Vector2(point.x, point.y)
+    );
+    const capFaces = THREE.ShapeUtils.triangulateShape(capOutline, []);
+    if (capFaces.length !== count - 2) {
+        throw new RangeError("Cavity cap cannot be triangulated");
+    }
+
+    for (const [a, b, c] of capFaces) {
+        if (a === undefined || b === undefined || c === undefined) {
+            throw new RangeError("Invalid cavity cap triangulation");
+        }
+
+        const p = capOutline[a]!;
+        const q = capOutline[b]!;
+        const r = capOutline[c]!;
+        const winding = (q.x - p.x) * (r.y - p.y) -
+            (q.y - p.y) * (r.x - p.x);
+
+        // Positive winding in the X/Z plane faces -Y in world space.
+        const top = winding > 0 ? [a, c, b] : [a, b, c];
+        indices.push(...top.map(index => topStart + index));
+        indices.push(...[...top].reverse().map(index => bottomStart + index));
     }
 
     function positionsAtFill(fraction: number): Float32Array {
@@ -98,12 +118,6 @@ export function createFillableVolume(
                 positions[index + 2] = cz + dz * scale;
             }
 
-            if (start === topStart || start === bottomStart) {
-                const center = (start + count) * 3;
-                positions[center] = cx;
-                positions[center + 1] = section.y;
-                positions[center + 2] = cz;
-            }
         }
 
         for (let row = 0; row < rows; row++) {
