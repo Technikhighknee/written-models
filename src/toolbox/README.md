@@ -58,6 +58,8 @@ Use `loftAxialProfile()` when an asset is defined by a series of cross-sections 
 
 For longer turned forms, `profileSpans()` generates shared axial stations from consecutive lengths, end radii, smooth bulges, and optional radial variation. Each span may change material; `samples` sets genuine longitudinal quad loops. This avoids hand-authoring every intermediate section while keeping the designed endpoints explicit.
 
+`profiledMesh()` composes profile spans, optional mirroring, axial lofting and material assignment in one step. `facetedDiamondOutline()` provides a reusable normalized eight-corner section with adjustable bevel shoulders, suitable for tools, ribs and mouldings. Use these when a model should define a few meaningful form sections rather than individual rings or mesh plumbing.
+
 These are reusable construction tools, not model presets: proportions, station locations, contours, and material choices still belong in the model.
 
 
