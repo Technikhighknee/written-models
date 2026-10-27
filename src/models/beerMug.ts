@@ -73,9 +73,9 @@ export function buildTankardGeometry(): TankardGeometry {
     // section. Keep the upper mount tied to the lower edge of its hoop.
     const upperHandleY = upperBandCenter - bandWidth / 2 - cm(1.25);
 
-    // Adult-hand grip: 24 mm across the knuckles (Z), 18 mm in depth (X).
-    // Eight real bevelled sides, without extra smoothing subdivisions.
-    const w = mm(12), d = mm(9), b = mm(2.4);
+    // A compact, gently bevelled 20 × 14 mm grip: enough to hold,
+    // but visually subordinate to the vessel instead of a bulky handle.
+    const w = mm(10), d = mm(7), b = mm(2.2);
     const section = [
         [-w + b, -d], [w - b, -d], [w, -d + b], [w, d - b],
         [w - b, d], [-w + b, d], [-w, d - b], [-w, -d + b]
@@ -84,15 +84,16 @@ export function buildTankardGeometry(): TankardGeometry {
     let handle = sweepSection({
         path: [
             new THREE.Vector3(cm(4.95), upperHandleY, 0),
-            new THREE.Vector3(cm(6.8), upperHandleY, 0),
-            new THREE.Vector3(cm(8.7), upperHandleY - mm(0.5), 0),
-            new THREE.Vector3(cm(10.3), cm(11.5), 0),
-            new THREE.Vector3(cm(10.4), cm(9.9), 0),
-            new THREE.Vector3(cm(10.4), cm(5.3), 0),
-            new THREE.Vector3(cm(10.3), cm(3.65), 0),
-            new THREE.Vector3(cm(8.8), cm(3.0), 0),
-            new THREE.Vector3(cm(6.8), cm(2.9), 0),
-            new THREE.Vector3(cm(4.95), cm(3.15), 0)
+            new THREE.Vector3(cm(6.55), cm(12.2), 0),
+            new THREE.Vector3(cm(7.65), cm(11.85), 0),
+            new THREE.Vector3(cm(8.6), cm(11.2), 0),
+            new THREE.Vector3(cm(9.2), cm(9.9), 0),
+            new THREE.Vector3(cm(9.2), cm(7.5), 0),
+            new THREE.Vector3(cm(9.16), cm(5.4), 0),
+            new THREE.Vector3(cm(8.6), cm(4.05), 0),
+            new THREE.Vector3(cm(7.55), cm(3.3), 0),
+            new THREE.Vector3(cm(6.3), cm(3.2), 0),
+            new THREE.Vector3(cm(4.95), cm(3.4), 0)
         ],
         section, referenceAxis: new THREE.Vector3(0, 0, 1),
         segments: 18, endFlare: 0.03
