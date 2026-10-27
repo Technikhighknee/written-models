@@ -206,14 +206,24 @@ test("fillable cavities preserve mesh identity and calculate volume-based levels
     const originalPositions = originalMesh.geometry.getAttribute("position");
 
     try {
-        assert.equal(contents.mesh.visible, false);
+        const geometry = originalMesh.geometry;
+        const targets = geometry.morphAttributes.position;
+        const weights = originalMesh.morphTargetInfluences;
+
+        // Exportable targets must exist even for a currently empty vessel.
+        assert.equal(contents.mesh.visible, true);
+        assert.ok(targets.length > 1);
+        assert.equal(weights.length, targets.length);
+        assert.ok(targets.every(target => target.count === originalPositions.count));
+        assert.equal(weights[0], 1);
 
         contents.setFillLevel(0.5);
 
         assert.equal(contents.mesh, originalMesh);
         assert.equal(contents.mesh.geometry.getAttribute("position"), originalPositions);
         assert.equal(contents.getFillLevel(), 0.5);
-        assert.equal(contents.mesh.visible, true);
+        assert.ok(weights.some(value => value > 0));
+        assert.ok(weights.every(value => value >= 0 && value <= 1));
 
         const filledVolume = cavity.volumeAt(cavity.heightAtFill(0.5));
         assert.ok(Math.abs(filledVolume / cavity.capacity - 0.5) < 1e-7);
@@ -221,8 +231,23 @@ test("fillable cavities preserve mesh identity and calculate volume-based levels
         // The taper grows with height, so half the volume is not half height.
         assert.ok(cavity.heightAtFill(0.5) > (cavity.bottom + cavity.top) / 2);
 
+        const { prepareRuntimeModel } = await vite.ssrLoadModule(
+            "/src/core/export/prepareRuntimeModel.ts"
+        );
+        const runtime = prepareRuntimeModel(originalMesh);
+        try {
+            const exported = runtime.root.getObjectByName(originalMesh.name);
+            assert.ok(exported instanceof THREE.Mesh);
+            assert.equal(exported.geometry, geometry);
+            assert.deepEqual(exported.morphTargetInfluences, weights);
+            assert.deepEqual(exported.userData, originalMesh.userData);
+        } finally {
+            runtime.dispose();
+        }
+
         contents.setFillLevel(1);
         assert.equal(contents.getFillLevel(), 1);
+        assert.ok(weights.every(value => value === 0));
         assert.throws(() => contents.setFillLevel(1.5), RangeError);
     } finally {
         originalMesh.geometry.dispose();
