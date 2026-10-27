@@ -103,7 +103,11 @@ function supportedMaterial(material: THREE.Material): {
     const key = JSON.stringify([
         textured, material.metalness, material.roughness,
         material.normalScale.x, material.normalScale.y,
-        material.side, material.normalMapType
+        material.side, material.normalMapType,
+        // Untinted surfaces can share a mesh only when their actual
+        // material color and vertex-color behavior also agree.
+        textured ? null : material.color.toArray(),
+        textured ? null : material.vertexColors
     ]);
     return { key, source };
 }
@@ -257,7 +261,12 @@ function collectTriangles(
             ? new THREE.Vector3().fromBufferAttribute(normals, index)
                 .applyMatrix3(normalMatrix).normalize()
             : new THREE.Vector3(0, 1, 0);
-        const tint = unit.material.color.clone();
+        // Textured variants use vertex tint to share an atlas material.
+        // Solid materials keep their tint in the GLB baseColorFactor;
+        // relying on COLOR_0 for that makes the iron white in Godot.
+        const tint = tile
+            ? unit.material.color.clone()
+            : new THREE.Color(0xffffff);
         if (unit.material.vertexColors && color) {
             tint.r *= color.getX(index);
             tint.g *= color.getY(index);
@@ -289,7 +298,10 @@ function collectTriangles(
     }
 }
 
-function makeGeometry(buffers: Buffers): THREE.BufferGeometry {
+function makeGeometry(
+    buffers: Buffers,
+    useVertexColors: boolean
+): THREE.BufferGeometry {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position",
         new THREE.Float32BufferAttribute(buffers.positions, 3));
@@ -297,8 +309,10 @@ function makeGeometry(buffers: Buffers): THREE.BufferGeometry {
         new THREE.Float32BufferAttribute(buffers.normals, 3));
     geometry.setAttribute("uv",
         new THREE.Float32BufferAttribute(buffers.uvs, 2));
-    geometry.setAttribute("color",
-        new THREE.Float32BufferAttribute(buffers.colors, 3));
+    if (useVertexColors) {
+        geometry.setAttribute("color",
+            new THREE.Float32BufferAttribute(buffers.colors, 3));
+    }
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     return geometry;
@@ -423,11 +437,12 @@ export function prepareRuntimeModel(model: THREE.Object3D): RuntimeAsset {
             }
             if (buffers.positions.length === 0) continue;
 
-            const geometry = makeGeometry(buffers);
+            const useVertexColors = !!page || batch.prototype.vertexColors;
+            const geometry = makeGeometry(buffers, useVertexColors);
             const material = new THREE.MeshStandardMaterial({
                 name: page ? "Atlased Surface" : "Merged Surface",
-                color: 0xffffff,
-                vertexColors: true,
+                color: page ? 0xffffff : batch.prototype.color.clone(),
+                vertexColors: useVertexColors,
                 roughness: batch.prototype.roughness,
                 metalness: batch.prototype.metalness,
                 normalScale: batch.prototype.normalScale.clone(),
