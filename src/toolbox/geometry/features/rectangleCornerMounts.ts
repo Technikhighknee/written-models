@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { createFrame } from "../../spatial/frames/frames";
+import { contactFrame } from "../../spatial/frames/contactFrame";
 
 export type MountFace = "top" | "bottom";
 
@@ -65,14 +65,8 @@ export function rectangleCornerMounts({
         ? -thickness / 2
         :  thickness / 2;
     
-    const rotation = new THREE.Quaternion();
-
-    if (face === "bottom") {
-        rotation.setFromAxisAngle(
-            new THREE.Vector3(1, 0, 0),
-            Math.PI
-        );
-    }
+    const outward = new THREE.Vector3(0, face === "bottom" ? -1 : 1, 0);
+    const tangent = new THREE.Vector3(1, 0, 0);
 
     const corners: [string, number, number][] = [
         ["FrontLeft", -x,  z],
@@ -83,9 +77,8 @@ export function rectangleCornerMounts({
 
     return corners.map(([name, cx, cz]) => ({
         name,
-        frame: createFrame(
-            new THREE.Vector3(cx, y, cz),
-            rotation
+        frame: contactFrame(
+            new THREE.Vector3(cx, y, cz), outward, tangent
         )
     }));
 }
