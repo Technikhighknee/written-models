@@ -15,11 +15,13 @@ export class AuthoredMeshBuilder {
     private readonly quads: QuadFace[] = [];
     private readonly triangles: TriangleFace[] = [];
     private readonly verticesByPosition = new Map<string, number>();
+    private readonly weldResolution: number;
 
-    constructor(private readonly weldResolution = 1e-9) {
+    constructor(weldResolution = 1e-9) {
         if (!Number.isFinite(weldResolution) || weldResolution <= 0) {
             throw new RangeError("Invalid construction vertex resolution");
         }
+        this.weldResolution = weldResolution;
     }
 
     private vertexId(point: THREE.Vector3Like): number {
