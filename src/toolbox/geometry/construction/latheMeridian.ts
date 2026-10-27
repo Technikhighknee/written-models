@@ -58,6 +58,14 @@ export function latheMeridian(
             : "Closed meridian requires two axis poles");
     }
 
+    if (closed) {
+        const first = points[0]!;
+        const last = points.at(-1)!;
+        if (Math.hypot(first.radius - last.radius, first.y - last.y) <= 1e-9) {
+            throw new RangeError("Cyclic meridian repeats its closing station");
+        }
+    }
+
     const vertices: THREE.Vector3[] = [];
     const rows: number[][] = [];
     const perimeters: number[] = [0];

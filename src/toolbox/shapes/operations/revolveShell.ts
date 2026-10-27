@@ -47,6 +47,14 @@ export function revolveShell(
         ]
         : [...profile, ...interior];
 
+    // Rounded bottom lips can end on exactly the outer profile's first
+    // point. A cyclic meridian closes this edge itself: do not leave a
+    // duplicate station that creates a strip of zero-area quads.
+    if (contour.length > 1 &&
+        contour[0]!.distanceTo(contour.at(-1)!) < 1e-12) {
+        contour.pop();
+    }
+
     // Unlike a filled disk or vessel floor, this entire closed meridian
     // stays away from the rotation axis. No cap fan is manufactured.
     const meridian: MeridianPoint[] = contour.map(point => ({

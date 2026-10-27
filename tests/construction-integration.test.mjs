@@ -118,6 +118,14 @@ test("thin rotating shells preserve closed all-quad construction topology", asyn
     assert.ok(control);
     assert.ok(control.quads.length > 24);
     assert.equal(control.triangles?.length ?? 0, 0);
+    for (const face of control.quads) {
+        const [a, b, c] = face.corners.map(i => control.vertices[i]);
+        const cross = new THREE.Vector3().subVectors(b, a).cross(
+            new THREE.Vector3().subVectors(c, a)
+        );
+        assert.ok(cross.lengthSq() > 1e-20,
+            "no closing quad may collapse at a duplicate meridian station");
+    }
     assert.ok(geometry.getAttribute("position").count > 0);
     geometry.dispose();
 });
