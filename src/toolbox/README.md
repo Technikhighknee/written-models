@@ -14,6 +14,12 @@ That is how the toolbox grows: **model → capability → model**.
 
 The goal is not to automate away design. It is to make increasingly ambitious, individually authored models easier to create.
 
+## For ChatGPT — the builder
+
+**You build the models.** Before implementing one, look at the toolbox capabilities relevant to the job and how existing models use them. Inspect selectively rather than loading the entire codebase into context. Reuse and combine what is already there when it fits.
+
+If the model needs a capability that does not exist yet, **implement that capability in the toolbox and use it in the model**. Do not bypass a missing operation with a model-specific shortcut. The model sets the challenge; you make the tools meet it.
+
 ## What the toolbox can already do
 
 - **Build forms.** Create basic shapes, extrude outlines, loft changing cross-sections, turn profiles around an axis, and sweep shapes along curves. Build anything from a straight beam to a hollow, curved vessel.
@@ -40,7 +46,6 @@ These are just three examples, not a catalog of what's possible or a set of read
 ## Principles worth keeping
 
 - **Design leads.** The model owns its shape, proportions, construction choices, and character. Generic tools must not dictate its appearance.
-- **Look before inventing.** Before building a model or introducing a new capability, inspect the relevant parts of the toolbox and how existing models use them. Follow what's relevant; there is no need to read everything every time. Prefer combining what already exists. If something genuinely missing stands in the way, grow the toolbox instead of hiding a one-off workaround inside the model.
 - **Generalize the problem, not the object.** A fitted surface is a toolbox capability. A particular handle, table, or trestle is a model or a composition of capabilities.
 - **Compose instead of accumulating special cases.** Prefer small, dependable operations that work together over a different bespoke solution for every asset.
 - **Construction topology is the source of truth.** Preserve authored faces and control edges. Never guess original quads from rendered triangles.
