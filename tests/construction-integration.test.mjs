@@ -276,6 +276,10 @@ test("fillable cavities preserve mesh identity and calculate volume-based levels
                 const primitive = gltf.meshes[0].primitives[0];
                 assert.equal(primitive.targets.length, targets.length);
                 assert.deepEqual(gltf.meshes[0].weights, weights);
+                assert.deepEqual(
+                    gltf.meshes[0].extras?.targetNames,
+                    targets.map(target => target.name)
+                );
             } finally {
                 if (originalReader) {
                     globalThis.FileReader = originalReader;
