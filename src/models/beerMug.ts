@@ -180,9 +180,16 @@ function create(): THREE.Group & FillLevelController {
 
     // The cavity follows the authored inner faces, including the bulge of
     // each stave. Its usable range starts just above the wooden inset floor.
-    const cavity = cavityFromMeshSurfaces(parts.staves).between(
+    const physicalCavity = cavityFromMeshSurfaces(parts.staves).between(
         cm(1.9) + mm(0.2),
         cm(15.2) - mm(2)
+    );
+
+    // A full serving equals 90% of the former usable capacity; the liquid
+    // no longer reaches almost all the way to the rim at fill level 1.
+    const cavity = physicalCavity.between(
+        physicalCavity.bottom,
+        physicalCavity.heightAtFill(0.9)
     );
     const beer = createFillableVolume(
         cavity,
