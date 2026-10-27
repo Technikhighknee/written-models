@@ -73,9 +73,13 @@ test("seeded variation is deterministic across repeated independent calls", () =
 
 test("recess support loops match its continuous height field", () => {
     const profile = {
-        start: 0, end: 10, shoulder: 2,
-        depth: 1, floor: 0.5,
-        atStart: true, atEnd: true
+        start: 0,
+        end: 10,
+        shoulder: 2,
+        depth: 1,
+        floor: 0.5,
+        atStart: true,
+        atEnd: true
     };
     assert.deepEqual(edgeRecessStations(profile), [0.5, 2, 8, 9.5]);
     near(edgeRecessDepth(0.25, profile), 1);
@@ -119,10 +123,14 @@ test("contact frame preserves the tangent and outward normal", () => {
 });
 
 test("any cross-section can fit two differently oriented support planes", () => {
-    const start = {point: new THREE.Vector3(0, 0, 0),
-        normal: new THREE.Vector3(0, 1, 0)};
-    const end = {point: new THREE.Vector3(0, 3, 0),
-        normal: new THREE.Vector3(0.3, -1, 0)};
+    const start = {
+        point: new THREE.Vector3(0, 0, 0),
+        normal: new THREE.Vector3(0, 1, 0)
+    };
+    const end = {
+        point: new THREE.Vector3(0, 3, 0),
+        normal: new THREE.Vector3(0.3, -1, 0)
+    };
     const [first, last] = sectionsBetweenPlanes({
         start, end,
         section: [
@@ -144,7 +152,10 @@ test("any cross-section can fit two differently oriented support planes", () => 
 
 test("one lathe supports both a cyclic shell and axis-pole solid", () => {
     const sample = (radius, y) => ({
-        radius, y, surface: "shell", smoothingGroup: "shell"
+        radius,
+        y,
+        surface: "shell",
+        smoothingGroup: "shell"
     });
     const shell = latheMeridian([
         sample(1, 0), sample(1.2, 0),
@@ -164,8 +175,17 @@ test("authored face assembly shares geometry while retaining distinct surfaces",
     const mesh = new AuthoredMeshBuilder();
     const vertex = (x, y, z = 0) => new THREE.Vector3(x, y, z);
     const uv = corners => corners.map(p => new THREE.Vector2(p.x, p.y));
-    const quad = [vertex(0, 0), vertex(1, 0), vertex(1, 1), vertex(0, 1)];
-    const triangle = [quad[0], quad[1], vertex(0.5, -0.5)];
+    const quad = [
+        vertex(0, 0),
+        vertex(1, 0),
+        vertex(1, 1),
+        vertex(0, 1)
+    ];
+    const triangle = [
+        quad[0],
+        quad[1],
+        vertex(0.5, -0.5)
+    ];
     mesh.addFace(quad, uv(quad), "wood");
     mesh.addFace(triangle, uv(triangle), "metal");
     const result = mesh.build();
