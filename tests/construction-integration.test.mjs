@@ -377,3 +377,45 @@ test("cavity volume follows a concave authored boundary instead of an angular hu
         material.dispose();
     }
 });
+
+test("curved loft caps use local end directions and nondegenerate section UVs", async () => {
+    const {loftRings} = await moduleAt("geometry/construction/loftRings.ts");
+
+    const ring = (center, axisU, axisV) =>
+        [[1, 0], [0, 1], [-1, 0], [0, -1]].map(([u, v]) =>
+            center.clone().addScaledVector(axisU, 0.1 * u)
+                .addScaledVector(axisV, 0.1 * v)
+        );
+
+    const mesh = loftRings({
+        rings: [
+            ring(new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 1)),
+            ring(new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)),
+            ring(new THREE.Vector3(1, 1, 0),
+                new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)),
+            ring(new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 0, 1))
+        ]
+    });
+
+    for (const surface of ["cap-start", "cap-end"]) {
+        const faces = mesh.triangles.filter(face => face.surface === surface);
+        assert.equal(faces.length, 2);
+        let uvArea = 0;
+
+        for (const face of faces) {
+            const [a, b, c] = face.corners.map(index => mesh.vertices[index]);
+            const normal = b.clone().sub(a).cross(c.clone().sub(a));
+            assert.ok(normal.y < -1e-8, "end cap points away from its local span");
+
+            const [u, v, w] = face.uvs;
+            const area = (v.x - u.x) * (w.y - u.y) -
+                (v.y - u.y) * (w.x - u.x);
+            uvArea += Math.abs(area) / 2;
+        }
+        assert.ok(Math.abs(uvArea - 0.02) < 1e-10,
+            "section UVs preserve the physical area of a diamond");
+    }
+});
