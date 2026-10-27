@@ -270,6 +270,28 @@ test("wooden tavern tankard has an open stave-built body and low triangle cost",
     ));
     assert.ok(handle.quads.length > 0);
     assert.ok((handle.triangles?.length ?? 0) > 0);
+
+    // Graspability must be measured on the actual handle mesh, not the
+    // sketched spline: room for adult fingers along a real outer grip.
+    const grip = handle.vertices.filter(v => v.x >= 0.093);
+    assert.ok(grip.length > 0, "the handle must have an outer grasp");
+    const graspHeight = Math.max(...grip.map(v => v.y)) -
+        Math.min(...grip.map(v => v.y));
+    assert.ok(graspHeight >= 0.078,
+        `handle only provides ${(graspHeight * 100).toFixed(1)} cm of grasp span`);
+    const midGrip = grip.filter(v => v.y >= 0.06 && v.y <= 0.10);
+    assert.ok(midGrip.length > 0);
+    const gripWidth = Math.max(...midGrip.map(v => v.z)) -
+        Math.min(...midGrip.map(v => v.z));
+    assert.ok(gripWidth >= 0.023 && gripWidth <= 0.026,
+        "the hand-contact section should be roughly 24 mm wide");
+    const insideGrip = handle.vertices.filter(v =>
+        v.y >= 0.06 && v.y <= 0.10
+    );
+    assert.ok(insideGrip.length > 0);
+    assert.ok(Math.min(...insideGrip.map(v => v.x)) - 0.0515 >= 0.033,
+        "the grip must leave at least 33 mm finger clearance to the vessel");
+
     // Compare actual construction vertices against the rendered hoop's
     // vertical bounds. This prevents a future handle/ring intersection
     // even when either part's proportions are changed.

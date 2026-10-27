@@ -58,21 +58,24 @@ export function buildTankardGeometry(): TankardGeometry {
         height: cm(1), radialSegments: STAVE_COUNT
     });
 
-    const bandWidth = cm(1.25);
-    const upperBandCenter = cm(13.2);
-    const bands = [cm(2.2), upperBandCenter].map(y =>
+    // Give a full-sized hand room: keep the hoops near the wooden ends,
+    // leaving the long central section free for the handle.
+    const bandWidth = cm(1.05);
+    const upperBandCenter = cm(14.05);
+    const bands = [cm(1.0), upperBandCenter].map(y =>
         bandAroundProfile(profile, {
             y, width: bandWidth, thickness: mm(2.1),
             clearance: mm(0.25), radialSegments: 24, angleOffset
         })
     );
 
-    // Keep the grip's entire upper arc below the iron hoop. The upper
-    // mounting point follows the hoop if its position or width changes.
-    const upperHandleY = upperBandCenter - bandWidth / 2 - cm(1.2);
+    // Two solid mounts flank an approximately 8 cm graspable vertical
+    // section. Keep the upper mount tied to the lower edge of its hoop.
+    const upperHandleY = upperBandCenter - bandWidth / 2 - cm(1.25);
 
-    // An eight-sided bevelled grip, rather than a costly rounded extrusion.
-    const w = mm(9), d = mm(6), b = mm(1.8);
+    // Adult-hand grip: 24 mm across the knuckles (Z), 18 mm in depth (X).
+    // Eight real bevelled sides, without extra smoothing subdivisions.
+    const w = mm(12), d = mm(9), b = mm(2.4);
     const section = [
         [-w + b, -d], [w - b, -d], [w, -d + b], [w, d - b],
         [w - b, d], [-w + b, d], [-w, d - b], [-w, -d + b]
@@ -81,15 +84,18 @@ export function buildTankardGeometry(): TankardGeometry {
     let handle = sweepSection({
         path: [
             new THREE.Vector3(cm(4.95), upperHandleY, 0),
-            new THREE.Vector3(cm(6.8), upperHandleY + mm(1.5), 0),
-            new THREE.Vector3(cm(8.2), upperHandleY - mm(5.5), 0),
-            new THREE.Vector3(cm(9.2), cm(9.6), 0),
-            new THREE.Vector3(cm(9.2), cm(6.1), 0),
-            new THREE.Vector3(cm(7.8), cm(4.55), 0),
-            new THREE.Vector3(cm(5.0), cm(4.8), 0)
+            new THREE.Vector3(cm(6.8), upperHandleY, 0),
+            new THREE.Vector3(cm(8.7), upperHandleY - mm(0.5), 0),
+            new THREE.Vector3(cm(10.3), cm(11.5), 0),
+            new THREE.Vector3(cm(10.4), cm(9.9), 0),
+            new THREE.Vector3(cm(10.4), cm(5.3), 0),
+            new THREE.Vector3(cm(10.3), cm(3.65), 0),
+            new THREE.Vector3(cm(8.8), cm(3.0), 0),
+            new THREE.Vector3(cm(6.8), cm(2.9), 0),
+            new THREE.Vector3(cm(4.95), cm(3.15), 0)
         ],
         section, referenceAxis: new THREE.Vector3(0, 0, 1),
-        segments: 14, endFlare: 0.10
+        segments: 18, endFlare: 0.03
     });
 
     const contactGeometry = toBufferGeometry(staves[0]!, STAVE_SURFACES);
