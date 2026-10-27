@@ -248,3 +248,26 @@ test("trestle is a higher-level component assembled from generic timbers", async
         ["Foot", "Post", "TopBearer", "BraceBack", "BraceFront"]
     );
 });
+
+test("wooden tavern tankard has an open stave-built body and low triangle cost", async () => {
+    const {buildTankardGeometry} = await vite.ssrLoadModule(
+        "/src/models/beerMug.ts"
+    );
+    const {staves, floor, bands, handle} = buildTankardGeometry();
+    const count = mesh => mesh.quads.length * 2 +
+        (mesh.triangles?.length ?? 0);
+    const triangles = staves.reduce((n, mesh) => n + count(mesh), 0) +
+        count(floor) + count(handle) +
+        bands.reduce((n, band) => n + (band.getIndex()?.count ?? 0) / 3, 0);
+    assert.equal(staves.length, 12);
+    assert.equal(bands.length, 2);
+    assert.ok(triangles >= 700 && triangles < 1800,
+        `expected an economical tankard, got ${triangles} triangles`);
+    assert.ok(staves.every(mesh =>
+        mesh.quads.some(face => face.surface === "inner") &&
+        mesh.vertices.every(v => [v.x, v.y, v.z].every(Number.isFinite))
+    ));
+    assert.ok(handle.quads.length > 0);
+    assert.ok((handle.triangles?.length ?? 0) > 0);
+    for (const band of bands) band.dispose();
+});
