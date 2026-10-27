@@ -2,18 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 
-import {cleanClosedContour} from "../src/toolbox/shapes/operations/cleanClosedContour.ts";
-import {clipConvexPolygon, partitionConvexPolygon} from "../src/toolbox/shapes/operations/clipConvexPolygon.ts";
-import {weightedCuts} from "../src/toolbox/spatial/layout/weightedCuts.ts";
-import {seededVariation} from "../src/toolbox/spatial/layout/seededVariation.ts";
-import {edgeRecessDepth, edgeRecessStations} from "../src/toolbox/shapes/profiles/edgeRecess.ts";
-import {monotoneProfile} from "../src/toolbox/shapes/profiles/monotoneProfile.ts";
-import {contactFrame} from "../src/toolbox/spatial/frames/contactFrame.ts";
-import {sectionsBetweenPlanes} from "../src/toolbox/geometry/construction/sectionsBetweenPlanes.ts";
-import {latheMeridian} from "../src/toolbox/geometry/construction/latheMeridian.ts";
-import {AuthoredMeshBuilder} from "../src/toolbox/geometry/mesh/AuthoredMeshBuilder.ts";
-import {classifyExtrudedSurfaces} from "../src/toolbox/geometry/materials/classifyExtrudedSurfaces.ts";
-import {periodicFlowField} from "../src/toolbox/texturing/periodicFlowField.ts";
+import { cleanClosedContour } from "../src/toolbox/shapes/operations/cleanClosedContour.ts";
+import { clipConvexPolygon, partitionConvexPolygon } from "../src/toolbox/shapes/operations/clipConvexPolygon.ts";
+import { weightedCuts } from "../src/toolbox/spatial/layout/weightedCuts.ts";
+import { seededVariation } from "../src/toolbox/spatial/layout/seededVariation.ts";
+import { edgeRecessDepth, edgeRecessStations } from "../src/toolbox/shapes/profiles/edgeRecess.ts";
+import { monotoneProfile } from "../src/toolbox/shapes/profiles/monotoneProfile.ts";
+import { contactFrame } from "../src/toolbox/spatial/frames/contactFrame.ts";
+import { sectionsBetweenPlanes } from "../src/toolbox/geometry/construction/sectionsBetweenPlanes.ts";
+import { latheMeridian } from "../src/toolbox/geometry/construction/latheMeridian.ts";
+import { AuthoredMeshBuilder } from "../src/toolbox/geometry/mesh/AuthoredMeshBuilder.ts";
+import { classifyExtrudedSurfaces } from "../src/toolbox/geometry/materials/classifyExtrudedSurfaces.ts";
+import { periodicFlowField } from "../src/toolbox/texturing/periodicFlowField.ts";
 
 const near = (actual, expected, tolerance = 1e-9) =>
     assert.ok(Math.abs(actual - expected) < tolerance,
@@ -25,13 +25,13 @@ const area = polygon => Math.abs(polygon.reduce((sum, p, i) => {
 
 test("closed contours discard BOTH duplicate seam points without losing corners", () => {
     const loop = cleanClosedContour([
-        {x: 0, y: 0}, {x: 1, y: 0}, {x: 1, y: 1},
-        {x: 0, y: 1}, {x: 1e-13, y: 0}, {x: 0, y: 0}
+        { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 },
+        { x: 0, y: 1 }, { x: 1e-13, y: 0 }, { x: 0, y: 0 }
     ]);
     assert.equal(loop.length, 4);
     near(THREE.ShapeUtils.area(loop), 1);
     assert.throws(() => cleanClosedContour([
-        {x: 0, y: 0}, {x: 0, y: 0}, {x: 0, y: 0}
+        { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }
     ]), /Collapsed/);
 });
 
@@ -82,7 +82,7 @@ test("recess support loops match its continuous height field", () => {
 
 test("monotone interpolation preserves authored extrema", () => {
     const at = monotoneProfile([
-        {x: 0, y: 1}, {x: 2, y: 4}, {x: 4, y: 2}
+        { x: 0, y: 1 }, { x: 2, y: 4 }, { x: 4, y: 2 }
     ]);
     near(at(-10), 1);
     near(at(2), 4);
