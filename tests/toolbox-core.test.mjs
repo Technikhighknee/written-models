@@ -16,18 +16,26 @@ import { classifyExtrudedSurfaces } from "../src/toolbox/geometry/materials/clas
 import { periodicFlowField } from "../src/toolbox/texturing/periodicFlowField.ts";
 
 const near = (actual, expected, tolerance = 1e-9) =>
-    assert.ok(Math.abs(actual - expected) < tolerance,
-        `expected ${actual} to equal ${expected}`);
+    assert.ok(
+        Math.abs(actual - expected) < tolerance,
+        `expected ${actual} to equal ${expected}`
+    );
 
-const area = polygon => Math.abs(polygon.reduce((sum, p, i) => {
-    const q = polygon[(i + 1) % polygon.length];
-    return sum + p[0] * q[1] - q[0] * p[1];
-}, 0) / 2);
+const area = polygon => Math.abs(
+    polygon.reduce((sum, p, i) => {
+        const q = polygon[(i + 1) % polygon.length];
+        return sum + p[0] * q[1] - q[0] * p[1];
+    }, 0) / 2
+);
 
 test("closed contours discard BOTH duplicate seam points without losing corners", () => {
     const loop = cleanClosedContour([
-        { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 },
-        { x: 0, y: 1 }, { x: 1e-13, y: 0 }, { x: 0, y: 0 }
+        { x: 0, y: 0 },
+        { x: 1, y: 0 },
+        { x: 1, y: 1 },
+        { x: 0, y: 1 },
+        { x: 1e-13, y: 0 },
+        { x: 0, y: 0 }
     ]);
 
     assert.equal(loop.length, 4);
@@ -35,7 +43,9 @@ test("closed contours discard BOTH duplicate seam points without losing corners"
     near(THREE.ShapeUtils.area(loop), 1);
 
     assert.throws(() => cleanClosedContour([
-        { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 0, y: 0 }
     ]), /Collapsed/);
 });
 
