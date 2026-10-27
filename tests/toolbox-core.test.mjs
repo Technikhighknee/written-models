@@ -11,6 +11,7 @@ import {monotoneProfile} from "../src/toolbox/shapes/profiles/monotoneProfile.ts
 import {contactFrame} from "../src/toolbox/spatial/frames/contactFrame.ts";
 import {sectionsBetweenPlanes} from "../src/toolbox/geometry/construction/sectionsBetweenPlanes.ts";
 import {latheMeridian} from "../src/toolbox/geometry/construction/latheMeridian.ts";
+import {AuthoredMeshBuilder} from "../src/toolbox/geometry/mesh/AuthoredMeshBuilder.ts";
 
 const near = (actual, expected, tolerance = 1e-9) =>
     assert.ok(Math.abs(actual - expected) < tolerance,
@@ -150,4 +151,22 @@ test("one lathe supports both a cyclic shell and axis-pole solid", () => {
     ], 8);
     assert.equal(solid.quads.length, 8);
     assert.equal(solid.triangles.length, 16);
+});
+
+test("authored face assembly shares geometry while retaining distinct surfaces", () => {
+    const mesh = new AuthoredMeshBuilder();
+    const vertex = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+    const uv = corners => corners.map(p => new THREE.Vector2(p.x, p.y));
+    const quad = [vertex(0, 0), vertex(1, 0), vertex(1, 1), vertex(0, 1)];
+    const triangle = [quad[0], quad[1], vertex(0.5, -0.5)];
+    mesh.addFace(quad, uv(quad), "wood");
+    mesh.addFace(triangle, uv(triangle), "metal");
+    const result = mesh.build();
+    assert.equal(result.vertices.length, 5);
+    assert.equal(result.quads.length, 1);
+    assert.equal(result.triangles.length, 1);
+    assert.equal(result.quads[0].corners[0], result.triangles[0].corners[0]);
+    assert.throws(() => mesh.addFace(
+        [quad[0], quad[0], quad[1]], uv(triangle), "invalid"
+    ), /collapsed/);
 });

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import { AuthoredMeshBuilder } from "../mesh/AuthoredMeshBuilder";
 import { toBufferGeometry } from "../mesh/toBufferGeometry";
 import { adaptiveStations } from "../topology/adaptiveStations";
 import { edgeRecessStations, edgeRecessDepth } from "../../shapes/profiles/edgeRecess";
@@ -206,49 +206,21 @@ export function seamedPlankExtrusion(
     });
 
     type Vertex = PlankVertex;
-    const vertices: THREE.Vector3[] = [];
-    const quads: QuadFace[] = [];
-    const triangles: TriangleFace[] = [];
-    const vertexIds = new Map<string, number>();
-
-    // Identical constructed points share an authored vertex, including
-    // across UV seams, material changes and adjoining longitudinal strips.
-    // They remain distinct GPU vertices wherever normals or UVs demand it.
-    function idOf(p: Vertex): number {
-        const key = [p.x, p.y, p.z]
-            .map(value => Math.round(value * 1e9)).join(":");
-        const existing = vertexIds.get(key);
-        if (existing !== undefined) return existing;
-        const index = vertices.length;
-        vertices.push(new THREE.Vector3(p.x, p.y, p.z));
-        vertexIds.set(key, index);
-        return index;
-    }
+    const mesh = new AuthoredMeshBuilder();
 
     function recordFace(
         corners: readonly Vertex[],
         material: 0 | 1 | 2,
         sidewall: boolean
     ): void {
-        const indices = corners.map(idOf);
         const uvs = corners.map(p => new THREE.Vector2(
             material === 1 ? p.x : (sidewall ? p.y : p.x),
             material === 1 ? p.y : p.z
         ));
-        const surface = ["oak", "end-grain", "groove"][material]!;
-        if (corners.length === 4) {
-            quads.push({
-                corners: indices as [number, number, number, number],
-                uvs: uvs as [THREE.Vector2, THREE.Vector2, THREE.Vector2, THREE.Vector2],
-                surface
-            });
-        } else {
-            triangles.push({
-                corners: indices as [number, number, number],
-                uvs: uvs as [THREE.Vector2, THREE.Vector2, THREE.Vector2],
-                surface
-            });
-        }
+        mesh.addFace(
+            corners, uvs,
+            material === 1 ? "cut" : material === 2 ? "recess" : "face"
+        );
     }
 
     const point = (x: number, y: number, z: number): Vertex => ({ x, y, z });
@@ -501,11 +473,10 @@ export function seamedPlankExtrusion(
 
     // The actual authored faces are the only topology representation.
     // Rendering and the Quad View consume this same MeshData object.
-    const mesh: MeshData = { vertices, quads, triangles };
-    const geometry = toBufferGeometry(mesh, {
-        oak: 0,
-        "end-grain": 1,
-        groove: 2
+    const geometry = toBufferGeometry(mesh.build(), {
+        face: 0,
+        cut: 1,
+        recess: 2
     });
     tessellation.set(geometry, fractions);
 

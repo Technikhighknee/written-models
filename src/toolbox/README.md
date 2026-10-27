@@ -66,6 +66,10 @@ These are reusable construction tools, not model presets: proportions, station l
 
 `monotoneProfile()` interpolates ordered scalar landmarks with extrema-preserving cubic slopes; `turnedVessel()` uses it for radius-vs-height instead of keeping a private curve engine. `latheMeridian()` now supports both axis-pole solids and cyclic positive-radius meridians; `revolveShell()` delegates all authored rotational topology to it, retaining a thin-walled convenience API.
 
+### Authored mesh assembly
+
+`AuthoredMeshBuilder` provides a material-agnostic way to add genuine quads and triangles from 3D corners and physical UVs. Shared positions become shared *construction* vertices even across UV/material seams. The existing conversion still owns GPU vertex splits, and the builder does not silently triangulate or repair degenerate input. `seamedPlankExtrusion()` uses it with generic surface IDs (`face`, `cut`, `recess`) rather than embedding wood material names.
+
 ### Shared topology transitions
 
 `stitchPolylines()` connects open contours with different station densities using genuine triangles and no invented hidden vertices. The caller retains responsibility for 3D UV projection. `loftBoard()` uses it at unequal-resolution end caps and still keeps true quads when both contour densities match. `linearProfile()` samples authored straight-sided scalar profiles, complementing the smooth `monotoneProfile()`; radial bands share the linear sampler.
