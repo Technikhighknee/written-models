@@ -1,15 +1,19 @@
 import test, {after} from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import {createServer} from "vite";
+import { createServer } from "vite";
 
 // Load real toolbox TypeScript through Vite, as the project does.
 const vite = await createServer({
     appType: "custom",
-    server: {middlewareMode: true},
+    server: {
+        middlewareMode: true
+    },
     logLevel: "silent"
 });
-after(async () => { await vite.close(); });
+after(async () => {
+    await vite.close();
+});
 const moduleAt = path => vite.ssrLoadModule(`/src/toolbox/${path}`);
 
 // Test durable geometry contracts, not the current contents or dimensions of
@@ -39,7 +43,7 @@ test("surface fitting follows a curved target without losing authored topology",
         referenceAxis: new THREE.Vector3(0, 0, 1),
         segments: 10
     });
-    const faces = sweep.quads.length;
+    const originalQuadCount = sweep.quads.length;
     try {
         for (const surface of ["cap-start", "cap-end"]) {
             sweep = fitBoundaryToSurface({
@@ -52,7 +56,7 @@ test("surface fitting follows a curved target without losing authored topology",
                 embed: 0.0005
             });
         }
-        assert.equal(sweep.quads.length, faces);
+        assert.equal(sweep.quads.length, originalQuadCount);
         for (const face of [...sweep.quads, ...(sweep.triangles ?? [])]) {
             if (face.surface !== "cap-start" && face.surface !== "cap-end") {
                 continue;
@@ -77,7 +81,12 @@ test("revolved shells preserve control faces without collapsed quads", async () 
         new THREE.Vector2(0.052, 0),
         new THREE.Vector2(0.06, 0.2),
         new THREE.Vector2(0.052, 0.4)
-    ], {thickness: 0.004, roundedRims: true, radialSegments: 24, rimSegments: 6});
+    ], {
+        thickness: 0.004,
+        roundedRims: true,
+        radialSegments: 24,
+        rimSegments: 6
+    });
     try {
         const control = getControlMesh(geometry);
         assert.ok(control);
@@ -99,12 +108,20 @@ test("neighboring worked boards agree on shared subdivision stations", async () 
         "geometry/construction/profiledBoard.ts"
     );
     const panel = boardPanel({
-        length: 1.8, width: 0.9, thickness: 0.05,
-        count: 4, widthWeights: [1.07, 0.94, 1.03, 0.96],
-        gap: 0.0025, chamfer: 0.003, crown: 0.0006,
+        length: 1.8,
+        width: 0.9,
+        thickness: 0.05,
+        count: 4,
+        widthWeights: [1.07, 0.94, 1.03, 0.96],
+        gap: 0.0025,
+        chamfer: 0.003,
+        crown: 0.0006,
         handWorked: {
-            seed: 1400, edgeWander: 0.0042, endStagger: 0.012,
-            cornerWear: 0.007, thicknessVariation: 0.0014,
+            seed: 1400,
+            edgeWander: 0.0042,
+            endStagger: 0.012,
+            cornerWear: 0.007,
+            thicknessVariation: 0.0014,
             chamferVariation: 0.33
         }
     });
@@ -120,7 +137,10 @@ test("radial strips share boundaries despite differing inner and outer detail", 
         "geometry/construction/radialStripLayout.ts"
     );
     const strips = radialStripLayout({
-        profile: [new THREE.Vector2(0.4, 0), new THREE.Vector2(0.5, 1)],
+        profile: [
+            new THREE.Vector2(0.4, 0),
+            new THREE.Vector2(0.5, 1)
+        ],
         count: 8,
         outerSamples: [0, 0.25, 0.5, 0.75, 1],
         innerSamples: [0, 1],
