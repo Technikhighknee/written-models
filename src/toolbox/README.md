@@ -30,10 +30,17 @@ If the model needs a capability that does not exist yet, **implement that capabi
 - **Make parts fit.** Position and orient components relative to one another, cut members against angled planes, and fit their ends to the actual curved surface of another mesh.
 - **Shape the details.** Add bevels, rounded edges, crowns, grooves, recessed joints, and controlled wear. Introduce repeatable irregularities without making every piece look randomly different.
 - **Use detail where it matters.** Refine geometry according to its shape, connect differently detailed contours, and coordinate subdivisions across adjacent pieces.
+- **Fill modeled cavities.** Extract horizontal inner profiles from authored faces, calculate volume-correct fill heights, and update one persistent contents mesh without replacing the vessel. Supported cavities are upright, polygonal lofts.
 - **Keep topology intentional.** Author real quads and genuine triangles. The same construction faces underpin the rendered model, Quad View, and export.
 - **Prepare convincing surfaces.** Work in real-world dimensions, assign meaningful material regions, control physical UV scale, and build coherent procedural texture fields and PBR maps.
 
 These are building blocks, not model-specific presets. Their value comes from what they let us construct together.
+
+## Controllable contents
+
+`cavityFromMeshSurfaces(staves).between(floorY, rimY)` derives the usable capacity from existing inner faces. `createFillableVolume(cavity, material, 0.5)` creates a persistent mesh with `setFillLevel(0..1)` and `getFillLevel()`. The amount is a **volume fraction**, not a height fraction. `beerMug.create()` exposes the same methods, and the viewer detects this capability.
+
+This models an upright liquid with a horizontal surface. Tilting, sloshing and pouring are not simulated. **GLB export is a static snapshot of the currently selected fill level:** changing contents at runtime in another engine requires implementing the behavior there; the TypeScript methods are not embedded in GLB.
 
 ## What combining them makes possible
 
