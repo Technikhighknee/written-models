@@ -9,7 +9,7 @@ import {
     createTrestleSupport,
     type TrestleTimberFactory,
     type TrestleSupportOptions
-} from "../toolbox/geometry/construction/trestleSupport";
+} from "./components/trestleSupport";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
 import { offsetMeshUvs } from "../toolbox/geometry/uv/offsetMeshUvs";

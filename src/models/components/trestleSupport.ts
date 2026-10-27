@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { TimberContactNormals } from "./timber";
+import type { TimberContactNormals } from "../../toolbox/geometry/construction/timber";
 
 /** Timber assembled in the caller's coordinate system and material family. */
 export type TrestleTimberFactory = (

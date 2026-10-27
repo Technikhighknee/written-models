@@ -226,3 +226,25 @@ test("radial surface strips share angular boundaries and permit independent sect
     const radius = polygonalRadiusOutside(0.4, Math.PI / 4, 0.001);
     assert.ok(radius * Math.cos(Math.PI / 8) > 0.4);
 });
+
+test("trestle is a higher-level component assembled from generic timbers", async () => {
+    const {createTrestleSupport} = await vite.ssrLoadModule(
+        "/src/models/components/trestleSupport.ts"
+    );
+    const calls = [];
+    const component = createTrestleSupport({
+        height: 0.7, footLength: 0.8, headLength: 0.72,
+        postWidth: 0.145, postDepth: 0.135,
+        crossWidth: 0.16, footHeight: 0.1, headHeight: 0.105,
+        braceSize: 0.07
+    }, (name, start, end, width, depth, contacts) => {
+        calls.push({name, start, end, width, depth, contacts});
+        return new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.01, 0.01));
+    });
+    assert.equal(component.children.length, 5);
+    assert.equal(calls.filter(call => call.contacts !== undefined).length, 2);
+    assert.deepEqual(
+        calls.map(call => call.name),
+        ["Foot", "Post", "TopBearer", "BraceBack", "BraceFront"]
+    );
+});

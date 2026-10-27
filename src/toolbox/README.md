@@ -155,6 +155,14 @@ The resulting geometry is ready for a Three.js mesh, material assignment, Quad V
 
 Do not introduce model-specific functions into the toolbox simply to make one asset work.
 
+## Construction Recipes Versus Operations
+
+`src/models/components/` holds higher-level authored building recipes that
+compose generic toolbox geometry. For example, the five-timber trestle support
+is a reusable model component, **not** a new geometric primitive.
+`sectionsBetweenPlanes()`, `loftRings()`, contact frames, and other
+underlying operations remain in the toolbox and can construct unrelated objects.
+
 ## Relationship to Models
 
 Models decide **what to build**.
