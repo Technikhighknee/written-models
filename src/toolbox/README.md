@@ -66,6 +66,10 @@ These are reusable construction tools, not model presets: proportions, station l
 
 `monotoneProfile()` interpolates ordered scalar landmarks with extrema-preserving cubic slopes; `turnedVessel()` uses it for radius-vs-height instead of keeping a private curve engine. `latheMeridian()` now supports both axis-pole solids and cyclic positive-radius meridians; `revolveShell()` delegates all authored rotational topology to it, retaining a thin-walled convenience API.
 
+### Shared topology transitions
+
+`stitchPolylines()` connects open contours with different station densities using genuine triangles and no invented hidden vertices. The caller retains responsibility for 3D UV projection. `loftBoard()` uses it at unequal-resolution end caps and still keeps true quads when both contour densities match. `linearProfile()` samples authored straight-sided scalar profiles, complementing the smooth `monotoneProfile()`; radial bands share the linear sampler.
+
 ### Shared contours, partitioning and fitted seams
 
 `cleanClosedContour()` removes repeated sampled points, including a near-duplicate at the cyclic seam, while preserving valid corners and winding. `clipConvexPolygon()` intersects a **convex** polygon with a half-plane; `partitionConvexPolygon()` divides it along shared parallel boundaries (concave/disconnected sections need a separate multi-polygon algorithm).

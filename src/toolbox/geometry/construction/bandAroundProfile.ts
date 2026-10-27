@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { MeshData, QuadFace } from "../mesh/MeshData";
 import { toBufferGeometry } from "../mesh/toBufferGeometry";
+import { linearProfile } from "../../shapes/profiles/linearProfile";
 
 export interface BandAroundProfileOptions {
     y: number;
@@ -69,22 +70,9 @@ export function bandAroundProfile(
         throw new RangeError("Invalid band dimensions or profile");
     }
 
-    const radiusAt = (height: number): number => {
-        for (let i = 1; i < profile.length; i++) {
-            const a = profile[i - 1]!;
-            const b = profile[i]!;
-
-            if (height <= b.y) {
-                return THREE.MathUtils.lerp(
-                    a.x,
-                    b.x,
-                    (height - a.y) / (b.y - a.y)
-                );
-            }
-        }
-
-        throw new RangeError("Height outside band profile");
-    };
+    const radiusAt = linearProfile(profile.map(point => ({
+        x: point.y, y: point.x
+    })));
 
     // The straight segments between neighboring vertices must also remain
     // outside the complete wood envelope. A ring drawn through points at

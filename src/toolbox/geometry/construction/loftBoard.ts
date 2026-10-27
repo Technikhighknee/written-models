@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import { stitchPolylines } from "../topology/stitchPolylines";
 
 /**
  * A cross-section of one closed board, viewed across its width.
@@ -211,30 +212,15 @@ export function loftBoard(
             });
         }
 
-        let outer = 0;
-        let inner = 0;
-
-        while (outer < outerPoints - 1 || inner < innerPoints - 1) {
-            const outerA = offset + outer;
-            const innerA = offset + ringSize - 1 - inner;
-
-            const advanceOuter = outer < outerPoints - 1 &&
-                (inner === innerPoints - 1 ||
-                    (outer + 1) / (outerPoints - 1) <
-                    (inner + 1) / (innerPoints - 1));
-
-            if (advanceOuter) {
-                const outerB = outerA + 1;
-                if (start) addTriangle(outerA, innerA, outerB);
-                else addTriangle(outerA, outerB, innerA);
-                outer++;
-            } else {
-                const innerB = innerA - 1;
-                if (start) addTriangle(outerA, innerA, innerB);
-                else addTriangle(outerA, innerB, innerA);
-                inner++;
-            }
-        }
+        const exterior = Array.from(
+            {length: outerPoints}, (_, j) => offset + j
+        );
+        const interior = Array.from(
+            {length: innerPoints}, (_, j) => offset + ringSize - 1 - j
+        );
+        for (const [a, b, c] of stitchPolylines(
+            exterior, interior, !start
+        )) addTriangle(a, b, c);
     }
 
     return triangles.length
