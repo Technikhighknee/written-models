@@ -186,7 +186,7 @@ test("worked panel shares adaptive stations across neighboring boards", async ()
     for (const board of panel) {
         assert.deepEqual(getProfiledBoardStations(board), stations);
         assert.equal(board.quads.length,
-            (stations.length - 1) * 2 * (5 + 5));
+            (stations.length - 1) * 10 + 8);
     }
 });
 

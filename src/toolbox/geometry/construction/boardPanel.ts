@@ -1,6 +1,7 @@
 import type { MeshData } from "../mesh/MeshData";
 import {
-    profiledBoard, getProfiledBoardStations
+    profiledBoard, getProfiledBoardStations,
+    type ProfiledBoardOptions
 } from "./profiledBoard";
 import { straightBoard } from "./straightBoard";
 import { weightedCuts } from "../../spatial/layout/weightedCuts";
@@ -120,7 +121,8 @@ export function boardPanel({
             return value > -0.18 ? cornerWear * (0.3 + 0.7 * Math.abs(value)) : 0;
         };
 
-        const specifications = widths.map((_, index) => ({
+        const specifications: ProfiledBoardOptions[] =
+            widths.map((_, index) => ({
             length,
             thickness,
             chamfer,
