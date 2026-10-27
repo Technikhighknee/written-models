@@ -383,6 +383,19 @@ export function prepareRuntimeModel(model: THREE.Object3D): RuntimeAsset {
             copy.name = object.name;
             copy.matrixAutoUpdate = false;
             copy.matrix.copy(object.matrixWorld);
+
+            // Morph targets are authored runtime behavior, not static meshes.
+            // Preserve both the available shapes and their current weights
+            // when compiling a GLB for an external engine.
+            if (object.morphTargetInfluences && copy.morphTargetInfluences) {
+                copy.morphTargetInfluences.splice(
+                    0,
+                    copy.morphTargetInfluences.length,
+                    ...object.morphTargetInfluences
+                );
+            }
+            copy.userData = { ...object.userData };
+
             fallback.push(copy);
             return;
         }
