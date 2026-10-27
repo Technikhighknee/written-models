@@ -1,176 +1,59 @@
 # Toolbox
 
-Reusable building blocks for creating hand-authored 3D assets in TypeScript.
+**Build the model you imagine. Grow the tools that make it possible.**
 
-Models live in `../models/` – Materials live in `../materials/` **outside** the toolbox. The toolbox provides the geometry, topology, spatial operations, and texturing capabilities they need.
+The toolbox is a collection of reusable capabilities for creating deliberately designed 3D models in TypeScript. It is not a library of finished assets or a system that decides what an object should look like.
 
-## Principles
+## The idea
 
-- **Generic over specific.** Toolbox functions describe reusable operations, not individual models.
-- **Composable over monolithic.** Prefer small capabilities that work together.
-- **Build capabilities through models.** Implement what a model needs, then make it reusable.
-- **Preserve artistic control.** Geometry, topology, materials, and imperfections should be intentional and editable.
-- **No hidden workarounds.** Solve geometric problems in the geometry, not through viewer-specific tricks.
+**Models drive the toolbox. Not the other way around.**
 
-One Three.js world unit equals **one meter**. Use `mm()`, `cm()`, `m()`, and `km()` from `units/length.ts`.
+A model presents a real problem: an awkward joint, a curved surface, a convincing edge, a shape we cannot yet construct well. We solve the underlying problem once, as a capability other models can use. Then we return to the model that needed it.
 
-## Directory Map
+That is how the toolbox grows: **model → capability → model**.
 
-| Directory | Responsibility |
-|---|---|
-| `shapes/primitives/` | 2D shapes such as rectangles, polygons, and rings |
-| `shapes/operations/` | Shape operations such as extrusion and revolution |
-| `shapes/profiles/` | Reusable profiles and curves |
-| `geometry/construction/` | Boards, beams, lofts, panels, staves, bands, and solids |
-| `geometry/mesh/` | Mesh representation, conversion, and control topology |
-| `geometry/topology/` | Topology planning and adaptive subdivisions |
-| `geometry/deformation/` | Vertex deformation |
-| `geometry/uv/` | UV mapping and transformations |
-| `geometry/materials/` | Material assignment and vertex colors |
-| `spatial/` | Anchors, frames, relationships, layouts, and queries |
-| `texturing/` | Texture fields, noise, grain, and PBR baking |
-| `units/` | Physical length units |
+The goal is not to automate away design. It is to make increasingly ambitious, individually authored models easier to create.
 
-## Geometry Architecture
+## What the toolbox can already do
 
-**Construction topology is the source of truth.**
+- **Build forms.** Create basic shapes, extrude outlines, loft changing cross-sections, turn profiles around an axis, and sweep shapes along curves. Build anything from a straight beam to a hollow, curved vessel.
+- **Give things real structure.** Create thickness, open interiors, closed ends, distinct surfaces, and pieces that exist as actual geometry rather than visual illusions.
+- **Divide and assemble.** Split shapes into matching pieces, arrange boards and curved strips, define shared seams, and keep neighboring parts geometrically consistent.
+- **Make parts fit.** Position and orient components relative to one another, cut members against angled planes, and fit their ends to the actual curved surface of another mesh.
+- **Shape the details.** Add bevels, rounded edges, crowns, grooves, recessed joints, and controlled wear. Introduce repeatable irregularities without making every piece look randomly different.
+- **Use detail where it matters.** Refine geometry according to its shape, connect differently detailed contours, and coordinate subdivisions across adjacent pieces.
+- **Keep topology intentional.** Author real quads and genuine triangles. The same construction faces underpin the rendered model, Quad View, and export.
+- **Prepare convincing surfaces.** Work in real-world dimensions, assign meaningful material regions, control physical UV scale, and build coherent procedural texture fields and PBR maps.
 
-`geometry/mesh/MeshData.ts` defines:
+These are building blocks, not model-specific presets. Their value comes from what they let us construct together.
 
-- `vertices`: Shared construction vertices.
-- `quads`: Authored quadrilateral faces.
-- `triangles`: Genuine triangular faces.
-- Each face has corner indices, UVs, a surface identifier, and optionally a smoothing group.
+## What combining them makes possible
 
-`toBufferGeometry()` converts `MeshData` into renderable Three.js geometry.
+**A timber-framed town gate.** Shape individual timbers, fit diagonal braces precisely against their supports, build doors from planks with matching irregular seams, and add iron fittings that follow the wood instead of floating above it.
 
-The same construction data also powers the Quad View through `getControlOutline()`.
+**A waterwheel.** Combine radial layouts, profiled structural members, matched boundaries, and carefully varied wooden surfaces to design a many-part assembly without inventing a special geometry engine for waterwheels.
 
-**Do not reconstruct original quads from rendered triangles.** Triangulation is an output operation, not the source topology.
+**A hollow bronze bell.** Turn a carefully designed silhouette into a real thin-walled shell, add raised bands and surface details, then use contact geometry to position separately constructed fittings against its curved body.
 
-Some constructors return `MeshData` directly. Others return a `BufferGeometry` already converted through the common pipeline.
+None of these is a one-click generator. They illustrate the point: **capabilities can be combined in ways the models that inspired them never anticipated.**
 
-### Axial profiles and surface meshes
+## Principles worth keeping
 
-Use `loftAxialProfile()` when an asset is defined by a series of cross-sections along X, Y, or Z. Each station supplies its axial position and two radii. The section can be an ellipse or a normalized hand-authored outline. Stations can change the active surface material; `sideSurfaces` assigns bevels, and `smoothing` selects rounded or faceted normals. Optional radial waves add controlled deviations without changing the quad structure.
+- **Design leads.** The model owns its shape, proportions, construction choices, and character. Generic tools must not dictate its appearance.
+- **Generalize the problem, not the object.** A fitted surface is a toolbox capability. A particular handle, table, or trestle is a model or a composition of capabilities.
+- **Compose instead of accumulating special cases.** Prefer small, dependable operations that work together over a different bespoke solution for every asset.
+- **Construction topology is the source of truth.** Preserve authored faces and control edges. Never guess original quads from rendered triangles.
+- **Solve geometry in geometry.** No viewer tricks to hide gaps, disconnected parts, or inaccurate joints.
+- **Spend geometry deliberately.** Real detail is welcome. Subdivisions that add nothing are not.
 
-`mirrorStations()` reflects an authored half-profile, preserving its section offsets. `surfaceMesh()` converts `MeshData` to a named Three.js mesh, automatically deduplicating materials and retaining the control topology used by Quad View. Supply `capMaterial` only when a multi-material loft needs an end-cap fallback.
+One world unit equals **one meter**. Models live in `src/models/`, material definitions in `src/materials/`, and the reusable operations here in `src/toolbox/`. Higher-level construction recipes belong with models, not among fundamental geometry operations.
 
-For longer turned forms, `profileSpans()` generates shared axial stations from consecutive lengths, end radii, smooth bulges, and optional radial variation. Each span may change material; `samples` sets genuine longitudinal quad loops. This avoids hand-authoring every intermediate section while keeping the designed endpoints explicit.
+## Know the limits
 
-`profiledMesh()` composes profile spans, optional mirroring, axial lofting and material assignment in one step. `facetedDiamondOutline()` provides a reusable normalized eight-corner section with adjustable bevel shoulders, suitable for tools, ribs and mouldings. Use these when a model should define a few meaningful form sections rather than individual rings or mesh plumbing.
+Fitting one part to another is not the same as welding their topology together. The toolbox can make accurate surface contacts; it does **not** automatically merge arbitrary meshes into a single watertight, cleanly quad-based object.
 
-These are reusable construction tools, not model presets: proportions, station locations, contours, and material choices still belong in the model.
+That distinction matters. We should describe what the tools can really do, not what a convincing render might make them seem to do.
 
-### Profiles and rotational geometry
+---
 
-`monotoneProfile()` interpolates ordered scalar landmarks with extrema-preserving cubic slopes; `turnedVessel()` uses it for radius-vs-height instead of keeping a private curve engine. `latheMeridian()` now supports both axis-pole solids and cyclic positive-radius meridians; `revolveShell()` delegates all authored rotational topology to it, retaining a thin-walled convenience API.
-
-### Authored mesh assembly
-
-`AuthoredMeshBuilder` provides a material-agnostic way to add genuine quads and triangles from 3D corners and physical UVs. Shared positions become shared *construction* vertices even across UV/material seams. The existing conversion still owns GPU vertex splits, and the builder does not silently triangulate or repair degenerate input. `seamedPlankExtrusion()` uses it with generic surface IDs (`face`, `cut`, `recess`) rather than embedding wood material names.
-
-### Generic surface and material fields
-
-`classifyExtrudedSurfaces()` selects material regions by a side face's normal relative to a reference axis while preserving ordinary extruded geometry; `assignExtrudedTimberSurfaces()` is its wood-specific material-slot adapter. `periodicFlowField()` provides continuous wrapped coordinate bending independently of any texture type; `flowedGrainField()` retains the established oak-recipe interface.
-
-### Radial surface partitions
-
-`radialStripLayout()` divides a radius/height surface into corresponding outer and inner section rows with independently selectable transverse subdivisions and caller-defined radius rules. Neither material nor stave shape is baked into it; `radialStaves()` composes it with the board loft. `radialPoint()` and `polygonalRadiusOutside()` centralize radial coordinates and the polygon chord-clearance condition also used by `bandAroundProfile()`.
-
-### Adaptive model contours
-
-`adaptiveStations()` accepts optional mandatory `knots` for deliberate feature boundaries. `profiledBoard()` samples the real cross-section with geometric-error limits instead of maintaining a fixed 13-ring array; `boardPanel()` unions the chosen stations across EVERY adjacent plank, keeping shared seams compatible and preventing T-junctions.
-
-### Shared topology transitions
-
-`stitchPolylines()` connects open contours with different station densities using genuine triangles and no invented hidden vertices. The caller retains responsibility for 3D UV projection. `loftBoard()` uses it at unequal-resolution end caps and still keeps true quads when both contour densities match. `linearProfile()` samples authored straight-sided scalar profiles, complementing the smooth `monotoneProfile()`; radial bands share the linear sampler.
-
-### Shared contours, partitioning and fitted seams
-
-`cleanClosedContour()` removes repeated sampled points, including a near-duplicate at the cyclic seam, while preserving valid corners and winding. `clipConvexPolygon()` intersects a **convex** polygon with a half-plane; `partitionConvexPolygon()` divides it along shared parallel boundaries (concave/disconnected sections need a separate multi-polygon algorithm).
-
-`weightedCuts()` returns shared positions for a weighted interval, and `seededVariation()` produces repeatable variation indexed by piece and channel. Panel constructors use these shared helpers rather than inventing another seam layout or random hash.
-
-`edgeRecessStations()` and `edgeRecessDepth()` specify a recessed strip edge as geometric support loops plus a continuous height profile, without assuming wood or any material. Timber-specific plank constructors combine this operation with grain materials.
-
-### Turned vessels and curved sections
-
-`turnedVessel()` constructs a closed-base, open-topped vessel from a few outer silhouette landmarks, wall/floor thickness, and optional rounded rim, turning grooves and local radial foot impressions. Its interior and exterior are one continuous control mesh; no hollow-cylinder illusion. `latheMeridian()` is the underlying generic solid-of-revolution operation and keeps real quad faces and axial triangle fans.
-
-`sweepSection()` lofts any closed 2D section along a 3D curve using a stable reference axis. It is suitable for applied handles, curved members and bent strips, with real capped ends and optional attachment flare.
-
-### Surface contacts
-
-`contactFrame()` builds a contact frame from a point, outward normal and in-plane tangent, fixing orientation around the normal (not just tilt). `sectionsBetweenPlanes()` intersects every corner of ANY closed cross-section against two arbitrarily oriented support planes. `beamBetweenPlanes()` uses it as a rectangular convenience constructor; `rectangleCornerMounts()` uses the general contact-frame builder.
-
-`MeshSurfaceQuery` raycasts the actual triangles of a target mesh in world space, independent of the display material's sidedness. `fitBoundaryToSurface()` uses this query to fit any named construction-mesh boundary (often a loft cap) to a curved target. An optional topological falloff reshapes adjacent loops while preserving the original quads, UVs and surface IDs. Specify the casting direction, reach and small insertion depth; missing intersections fail explicitly.
-
-This operation produces accurate *contact*, not a Boolean union or watertight welded joint. Source geometry may supply a world transform when target and source do not share local coordinates.
-
-
-
-### Important rules
-
-- Quads are preferred where appropriate; genuine triangles are valid.
-- Material boundaries, UV seams, and smoothing boundaries are independent.
-- Surface identifiers map to material slots during conversion.
-- Geometry must retain its authored topology for Quad View.
-- Deformation must keep render vertices and control vertices synchronized.
-- Never add unnecessary subdivisions to surfaces that do not need them.
-
-## Typical Usage
-
-```ts
-import { straightBoard } from "./geometry/construction/straightBoard";
-import { toBufferGeometry } from "./geometry/mesh/toBufferGeometry";
-import { m, cm, mm } from "./units/length";
-
-const board = straightBoard({
-    length: m(1.2),
-    width: cm(20),
-    thickness: cm(3),
-    chamfer: mm(2)
-});
-
-const geometry = toBufferGeometry(board, {
-    outer: 0,
-    inner: 0,
-    "edge-left": 0,
-    "edge-right": 0,
-    "cap-start": 1,
-    "cap-end": 1
-});
-```
-
-The resulting geometry is ready for a Three.js mesh, material assignment, Quad View, and GLB export.
-
-## Adding a Capability
-
-1. Identify the underlying geometric or spatial operation.
-2. Check whether an existing toolbox function already solves it.
-3. Implement a reusable operation with explicit inputs and predictable results.
-4. Preserve topology, UVs, material surfaces, and physical dimensions.
-5. Integrate it into the model that motivated the addition, and all other models that could benefit from this.
-
-Do not introduce model-specific functions into the toolbox simply to make one asset work.
-
-## Construction Recipes Versus Operations
-
-`src/models/components/` holds higher-level authored building recipes that
-compose generic toolbox geometry. For example, the five-timber trestle support
-is a reusable model component, **not** a new geometric primitive.
-`sectionsBetweenPlanes()`, `loftRings()`, contact frames, and other
-underlying operations remain in the toolbox and can construct unrelated objects.
-
-## Relationship to Models
-
-Models decide **what to build**.
-
-The toolbox determines **how geometry and other reusable operations work**.
-
-Materials and their visual characteristics are primarily defined in `src/materials/`.
-
-The viewer displays the result. It should not be responsible for repairing incomplete geometry or recovering construction information that was discarded.
-
-**The goal is not to generate many models automatically. The goal is to make increasingly sophisticated, individually designed models easier to build.**
+**The toolbox is not the project. The models are. The toolbox is how each model makes the next one more possible.**
