@@ -4,6 +4,7 @@ import { models } from "./models/index";
 import { resolveRoute } from "./core/router";
 import { ModelViewer } from "./core/ModelViewer";
 import { exportGlb } from "./core/exportGlb";
+import { hasFillLevelController } from "./toolbox/geometry/construction/fillableVolume";
 
 function requireElement<T extends HTMLElement>(
   selector: string
@@ -104,6 +105,7 @@ else if (route.type === "model") {
             Quads
           </button>
         </div>
+        <div id="model-parameters" class="model-parameters"></div>
       </div>
 
       <div id="viewer" class="viewer">
@@ -120,6 +122,34 @@ else if (route.type === "model") {
 
   const asset = model.create();
   viewer.setModel(asset);
+
+  // A model advertises a runtime capability; the viewer does not need to
+  // know what object is being filled or how its geometry is constructed.
+  if (hasFillLevelController(asset)) {
+    const host = requireElement<HTMLElement>("#model-parameters");
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    const output = document.createElement("output");
+
+    label.className = "fill-control";
+    label.htmlFor = "fill-level";
+    label.textContent = "Fill";
+    input.id = "fill-level";
+    input.type = "range";
+    input.min = "0";
+    input.max = "100";
+    input.step = "1";
+    input.value = String(Math.round(asset.getFillLevel() * 100));
+    output.textContent = input.value + "%";
+    output.htmlFor = input.id;
+
+    input.addEventListener("input", () => {
+      asset.setFillLevel(Number(input.value) / 100);
+      output.textContent = input.value + "%";
+    });
+
+    host.append(label, input, output);
+  }
 
   type ViewMode = "solid" | "wireframe" | "quads";
 
