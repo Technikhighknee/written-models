@@ -8,7 +8,7 @@ export interface SweepSectionOptions {
     path: readonly THREE.Vector3Like[];
     /** Physical section coordinates along referenceAxis and its normal. */
     section: readonly THREE.Vector2Like[];
-    /** A direction kept perpendicular to the spine at every sample. */
+    /** Preferred section orientation at the path's start. */
     referenceAxis: THREE.Vector3Like;
     segments?: number;
     /** Extra section scale near both attachment points (not separate blobs). */
@@ -18,8 +18,9 @@ export interface SweepSectionOptions {
 /**
  * Loft a closed 2D section along a Catmull-Rom path.
  *
- * Projection of referenceAxis into the normal plane provides a stable
- * section orientation for straps, handles, curved beams and bent piping.
+ * A reference direction establishes the first section frame. Minimal
+ * rotations then transport it along the spine without sudden flips when
+ * the curve becomes parallel to the original reference direction.
  * All quads survive into the viewer's control mesh; the ends are capped.
  */
 export function sweepSection({
@@ -44,15 +45,45 @@ export function sweepSection({
     }
     const unique = cleanClosedContour(section);
 
+    let previousTangent: THREE.Vector3 | undefined;
+    let previousU: THREE.Vector3 | undefined;
+
     const rings = Array.from({length: segments + 1}, (_, i) => {
         const t = i / segments;
         const center = curve.getPoint(t);
         const tangent = curve.getTangent(t).normalize();
-        const u = fixed.clone().addScaledVector(tangent,
-            -fixed.dot(tangent)).normalize();
-        if (u.lengthSq() < 0.5) {
-            throw new RangeError("Reference axis is parallel to the path");
+        if (tangent.lengthSq() < 0.5) {
+            throw new RangeError("Sweep has a collapsed path tangent");
         }
+
+        let u: THREE.Vector3;
+        if (previousU && previousTangent) {
+            const rotation = new THREE.Quaternion().setFromUnitVectors(
+                previousTangent, tangent
+            );
+            u = previousU.clone().applyQuaternion(rotation);
+        } else {
+            u = fixed.clone().addScaledVector(
+                tangent, -fixed.dot(tangent)
+            );
+            if (u.lengthSq() < 1e-12) {
+                const fallback = [
+                    new THREE.Vector3(1, 0, 0),
+                    new THREE.Vector3(0, 1, 0),
+                    new THREE.Vector3(0, 0, 1)
+                ].sort((a, b) =>
+                    Math.abs(a.dot(tangent)) - Math.abs(b.dot(tangent))
+                )[0]!;
+                u.copy(fallback).addScaledVector(
+                    tangent, -fallback.dot(tangent)
+                );
+            }
+        }
+
+        u.addScaledVector(tangent, -u.dot(tangent)).normalize();
+        previousU = u.clone();
+        previousTangent = tangent;
+
         const v = new THREE.Vector3().crossVectors(tangent, u).normalize();
         const ends = Math.max(
             Math.max(0, 1 - t * 7) ** 2,
