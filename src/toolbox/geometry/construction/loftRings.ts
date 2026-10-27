@@ -113,10 +113,28 @@ export function loftRings({
         }
 
         const offset = row * sides;
-        const axisU = vertices[offset]!.clone().sub(centers[row]!).normalize();
-        const axialDirection = centers.at(-1)!.clone().sub(centers[0]!).normalize();
-        const axisV = new THREE.Vector3().crossVectors(axialDirection, axisU)
+        const axisU = vertices[offset + 1]!.clone()
+            .sub(vertices[offset]!).normalize();
+        const ringNormal = new THREE.Vector3();
+
+        for (let side = 0; side < sides; side++) {
+            const a = vertices[offset + side]!.clone().sub(centers[row]!);
+            const b = vertices[offset + (side + 1) % sides]!
+                .clone().sub(centers[row]!);
+            ringNormal.add(a.cross(b));
+        }
+        if (ringNormal.lengthSq() < 1e-20) {
+            throw new RangeError("Loft end contour has no valid plane");
+        }
+        ringNormal.normalize();
+
+        // End caps lie in their own section plane. The overall start-to-end
+        // vector need not be parallel to either end of a curved loft.
+        const axisV = new THREE.Vector3().crossVectors(ringNormal, axisU)
             .normalize();
+        const outward = reverse
+            ? centers[0]!.clone().sub(centers[1]!).normalize()
+            : centers.at(-1)!.clone().sub(centers.at(-2)!).normalize();
 
         const uv = (index: number): THREE.Vector2 => {
             const relative = vertices[index]!.clone().sub(centers[row]!);
@@ -131,7 +149,6 @@ export function loftRings({
             const vb = vertices[b]!;
             const vc = vertices[c]!;
             const normal = vb.clone().sub(va).cross(vc.clone().sub(va));
-            const outward = axialDirection.clone().multiplyScalar(reverse ? -1 : 1);
             const corners: TriangleFace["corners"] = normal.dot(outward) < 0
                 ? [a, c, b] : [a, b, c];
             triangles.push({
