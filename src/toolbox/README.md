@@ -29,11 +29,11 @@ These are building blocks, not model-specific presets. Their value comes from wh
 
 ## What combining them makes possible
 
-**A timber-framed town gate.** Shape individual timbers, fit diagonal braces precisely against their supports, build doors from planks with matching irregular seams, and add iron fittings that follow the wood instead of floating above it.
+**A timber-framed town gate.** Use `boardPanel()` for doors made of individually shaped planks, `beamBetweenPlanes()` for braces fitted to angled supports, and `contactFrame()` to position hinges and ironwork against their mounting surfaces. The same operations work just as well on a chest or a timber-framed house.
 
-**A waterwheel.** Combine radial layouts, profiled structural members, matched boundaries, and carefully varied wooden surfaces to design a many-part assembly without inventing a special geometry engine for waterwheels.
+**A waterwheel.** Combine `radialStripLayout()` with `loftBoard()` to construct a rim from matching curved sections. Use `beamBetweenPlanes()` for fitted spokes and `coherentVariation()` to give the separate wooden pieces a related, hand-built appearance.
 
-**A hollow bronze bell.** Turn a carefully designed silhouette into a real thin-walled shell, add raised bands and surface details, then use contact geometry to position separately constructed fittings against its curved body.
+**A hollow bronze bell.** Shape a real thin-walled body with `revolveShell()`, wrap raised details around its profile with `bandAroundProfile()`, and use `fitBoundaryToSurface()` to make separately constructed fittings meet its curved surface.
 
 None of these is a one-click generator. They illustrate the point: **capabilities can be combined in ways the models that inspired them never anticipated.**
 
