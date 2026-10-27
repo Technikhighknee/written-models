@@ -67,7 +67,8 @@ function supportedMaterial(material: THREE.Material): {
     key: string;
     source: AtlasSource | null;
 } | null {
-    if (material.type !== "MeshStandardMaterial") return null;
+    if (!(material instanceof THREE.MeshStandardMaterial) ||
+        material.type !== "MeshStandardMaterial") return null;
     if (
         material.transparent || material.opacity !== 1 ||
         material.alphaTest !== 0 || material.side !== THREE.FrontSide ||
