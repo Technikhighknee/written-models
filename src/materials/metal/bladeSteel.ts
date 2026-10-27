@@ -22,26 +22,28 @@ export function bladeSteel(): BladeSteel {
         tileWidth: 0.085,
         tileLength: 0.30,
         sample(u, v) {
-            const coarse = tileableNoise(u, v, 12, 21, 301);
-            const fine = tileableNoise(u, v, 63, 89, 707);
-            // Lengthwise grinding marks, with a restrained forged mottling.
-            const grain = Math.sin(
-                2 * Math.PI * (v * 117 + 0.1 * Math.sin(2 * Math.PI * u * 9))
-            );
-            const wear = 0.65 * coarse + 0.35 * fine;
-            const tone = Math.max(-1, Math.min(1, wear * 0.48 + grain * 0.13));
-            const grey = 143 + 14 * tone;
+            // Plain, ground steel. The previous sinusoidal bands made the
+            // blade resemble pattern-welded / Damascus steel. A common
+            // workshop knife instead shows only quiet finishing marks.
+            const forging = tileableNoise(u, v, 13, 11, 301);
+            const finish = tileableNoise(u, v, 39, 27, 707);
+            // Narrow variations across U persist along V: grinding strokes
+            // follow the length of the blade, without waves or flowing bands.
+            const lengthwise = tileableNoise(u, v, 78, 3, 907);
+            const micro = tileableNoise(u, v, 96, 43, 1201);
+
+            // Keep color almost uniform. Fine scratches catch light via
+            // roughness and normal maps, not conspicuous etched contrasts.
+            const grey = 150 + 3.5 * forging + 1.8 * finish +
+                1.2 * lengthwise;
             return {
-                color: [
-                    grey * 0.96,
-                    grey,
-                    grey * 1.035
-                ] as const,
-                roughness: Math.max(0.3, Math.min(0.73,
-                    0.49 + 0.08 * coarse + 0.018 * grain
+                color: [grey, grey + 1, grey + 2] as const,
+                roughness: Math.max(0.48, Math.min(0.64,
+                    0.55 + 0.02 * forging + 0.012 * finish +
+                    0.01 * lengthwise
                 )),
-                height: 0.0000013 * fine + 0.0000007 * grain +
-                    0.0000023 * coarse
+                height: 0.0000006 * lengthwise +
+                    0.0000003 * micro + 0.0000003 * finish
             };
         }
     });
@@ -53,7 +55,7 @@ export function bladeSteel(): BladeSteel {
         roughness: 1,
         map: maps.color,
         normalMap: maps.normal,
-        normalScale: new THREE.Vector2(0.45, 0.45),
+        normalScale: new THREE.Vector2(0.3, 0.3),
         roughnessMap: maps.roughness
     });
 
