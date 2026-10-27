@@ -50,6 +50,15 @@ The same construction data also powers the Quad View through `getControlOutline(
 
 Some constructors return `MeshData` directly. Others return a `BufferGeometry` already converted through the common pipeline.
 
+### Axial profiles and surface meshes
+
+Use `loftAxialProfile()` when an asset is defined by a series of cross-sections along X, Y, or Z. Each station supplies its axial position and two radii. The section can be an ellipse or a normalized hand-authored outline. Stations can change the active surface material; `sideSurfaces` assigns bevels, and `smoothing` selects rounded or faceted normals. Optional radial waves add controlled deviations without changing the quad structure.
+
+`mirrorStations()` reflects an authored half-profile, preserving its section offsets. `surfaceMesh()` converts `MeshData` to a named Three.js mesh, automatically deduplicating materials and retaining the control topology used by Quad View. Supply `capMaterial` only when a multi-material loft needs an end-cap fallback.
+
+These are reusable construction tools, not model presets: proportions, station locations, contours, and material choices still belong in the model.
+
+
 ### Important rules
 
 - Quads are preferred where appropriate; genuine triangles are valid.
