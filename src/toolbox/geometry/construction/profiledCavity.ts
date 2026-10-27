@@ -219,6 +219,7 @@ export function cavityFromMeshSurfaces(
 
             const first = [...adjacency.keys()].sort()[0]!;
             const order = [first];
+            const visited = new Set(order);
             let previous: string | undefined;
             let current = first;
 
@@ -227,10 +228,11 @@ export function cavityFromMeshSurfaces(
                     .find(key => key !== previous);
                 if (!next) throw new RangeError("Disconnected cavity contour");
                 if (next === first) break;
-                if (order.includes(next)) {
-                    throw new RangeError("Cavity contour intersects itself");
+                if (visited.has(next)) {
+                    throw new RangeError("Cavity contour revisits a vertex");
                 }
                 order.push(next);
+                visited.add(next);
                 previous = current;
                 current = next;
             }
@@ -239,8 +241,8 @@ export function cavityFromMeshSurfaces(
                 throw new RangeError("Multiple cavity contours are not supported");
             }
 
-            // Keep the same winding as the old X/Z convention, without
-            // discarding concavities or inventing edges between remote points.
+            // Consistent X/Z winding keeps corresponding loft sections aligned.
+            // The contour itself follows the authored edges, including recesses.
             const twiceArea = order.reduce((area, key, i) => {
                 const p = row.points.get(key)!;
                 const q = row.points.get(order[(i + 1) % order.length]!)!;
