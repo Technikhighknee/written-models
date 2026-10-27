@@ -300,3 +300,39 @@ test("fillable cavities preserve mesh identity and calculate volume-based levels
         material.dispose();
     }
 });
+
+test("cavity volume follows a concave authored boundary instead of an angular hull", async () => {
+    const {cavityFromMeshSurfaces} = await moduleAt(
+        "geometry/construction/profiledCavity.ts"
+    );
+    // A U-shaped horizontal contour has a deep recess. Sorting its points
+    // around the center incorrectly fills part of that recess.
+    const contour = [
+        [0, 0], [4, 0], [4, 4], [3, 4],
+        [3, 1], [1, 1], [1, 4], [0, 4]
+    ];
+    const n = contour.length;
+    const vertices = [
+        ...contour.map(([x, z]) => new THREE.Vector3(x, 0, z)),
+        ...contour.map(([x, z]) => new THREE.Vector3(x + 0.3, 1, z))
+    ];
+    const uv = () => new THREE.Vector2();
+    const quads = contour.map((_, i) => ({
+        corners: [i, (i + 1) % n, n + (i + 1) % n, n + i],
+        uvs: [uv(), uv(), uv(), uv()],
+        surface: "inner"
+    }));
+
+    const cavity = cavityFromMeshSurfaces([
+        {vertices, quads: quads.reverse()}
+    ]);
+
+    assert.equal(cavity.rings.length, 2);
+    assert.ok(Math.abs(cavity.capacity - 10) < 1e-8);
+    assert.ok(Math.abs(cavity.volumeAt(0.5) - 5) < 1e-8);
+
+    const bottomStart = cavity.rings[0].outline[0];
+    const topStart = cavity.rings[1].outline[0];
+    assert.ok(Math.abs(topStart.x - bottomStart.x - 0.3) < 1e-8);
+    assert.ok(Math.abs(topStart.y - bottomStart.y) < 1e-8);
+});
