@@ -59,6 +59,23 @@ export function createFillableVolume(
 
     function positionsAtFill(fraction: number): Float32Array {
         const positions = new Float32Array(vertexCount * 3);
+
+        // Empty contents must vanish visually, not leave a colored disk
+        // resting on the bottom. The full mesh remains the exportable base.
+        if (fraction === 0) {
+            const outline = cavity.rings[0]!.outline;
+            const cx = outline.reduce((sum, p) => sum + p.x, 0) / count;
+            const cz = outline.reduce((sum, p) => sum + p.y, 0) / count;
+
+            for (let i = 0; i < vertexCount; i++) {
+                positions[i * 3] = cx;
+                positions[i * 3 + 1] = cavity.bottom;
+                positions[i * 3 + 2] = cz;
+            }
+
+            return positions;
+        }
+
         const surfaceY = cavity.heightAtFill(fraction);
 
         function writeRing(
