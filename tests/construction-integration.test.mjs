@@ -249,12 +249,40 @@ test("fillable cavities preserve mesh identity and calculate volume-based levels
             const { GLTFExporter } = await import(
                 "three/addons/exporters/GLTFExporter.js"
             );
-            const gltf = await new GLTFExporter().parseAsync(runtime.root, {
-                binary: false
-            });
-            const primitive = gltf.meshes[0].primitives[0];
-            assert.equal(primitive.targets.length, targets.length);
-            assert.deepEqual(gltf.meshes[0].weights, weights);
+            // FileReader is browser-only; this one-off serializer check
+            // supplies the minimal Node bridge required by GLTFExporter.
+            const originalReader = globalThis.FileReader;
+            globalThis.FileReader = class {
+                readAsDataURL(blob) {
+                    blob.arrayBuffer().then(buffer => {
+                        this.result = "data:application/octet-stream;base64," +
+                            Buffer.from(buffer).toString("base64");
+                        this.onloadend?.();
+                    });
+                }
+
+                readAsArrayBuffer(blob) {
+                    blob.arrayBuffer().then(buffer => {
+                        this.result = buffer;
+                        this.onloadend?.();
+                    });
+                }
+            };
+
+            try {
+                const gltf = await new GLTFExporter().parseAsync(runtime.root, {
+                    binary: false
+                });
+                const primitive = gltf.meshes[0].primitives[0];
+                assert.equal(primitive.targets.length, targets.length);
+                assert.deepEqual(gltf.meshes[0].weights, weights);
+            } finally {
+                if (originalReader) {
+                    globalThis.FileReader = originalReader;
+                } else {
+                    delete globalThis.FileReader;
+                }
+            }
         } finally {
             runtime.dispose();
         }
