@@ -66,7 +66,7 @@ test("physical material properties survive runtime compilation", () => {
 
     const asset = prepareRuntimeModel(mesh);
     try {
-        const copy = asset.root.getObjectByName("ClearcoatedSurface");
+        const copy = asset.root.children.find(child => child.name === "ClearcoatedSurface");
         assert.ok(copy instanceof THREE.Mesh);
         assert.ok(copy.material instanceof THREE.MeshPhysicalMaterial);
         assert.equal(copy.material.clearcoat, 0.8);
