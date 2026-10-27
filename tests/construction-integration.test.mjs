@@ -236,7 +236,9 @@ test("fillable cavities preserve mesh identity and calculate volume-based levels
         );
         const runtime = prepareRuntimeModel(originalMesh);
         try {
-            const exported = runtime.root.getObjectByName(originalMesh.name);
+            const exported = runtime.root.children.find(
+                child => child.name === originalMesh.name
+            );
             assert.ok(exported instanceof THREE.Mesh);
             assert.equal(exported.geometry, geometry);
             assert.deepEqual(exported.morphTargetInfluences, weights);
