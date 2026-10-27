@@ -6,8 +6,14 @@ export function attachByFrames<T extends THREE.Object3D>(
     parentFrame: THREE.Matrix4, 
     childFrame: THREE.Matrix4
 ): T {
-    if (parent === child) {
-        throw new Error("Nope. Refusing to glue an object to itself");
+    // An object cannot be attached beneath one of its descendants.
+    // Object3D.add() does not reject this and would corrupt traversal.
+    let ancestor: THREE.Object3D | null = parent;
+    while (ancestor) {
+        if (ancestor === child) {
+            throw new Error("Attachment would create a black hole (circular dependency)");
+        }
+        ancestor = ancestor.parent;
     }
 
     if (
