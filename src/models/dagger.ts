@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { cm, mm } from "../toolbox/units/length";
 import { loftAxialProfile } from "../toolbox/geometry/construction/loftAxialProfile";
 import { mirrorStations } from "../toolbox/shapes/profiles/mirrorStations";
+import { profileSpans } from "../toolbox/shapes/profiles/profileSpans";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { oakVariant } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
@@ -83,34 +84,29 @@ function create(): THREE.Group {
         name: "ContinuousFittedOakAndIronHilt",
         geometry: loftAxialProfile({
             axis: "y",
-            stations: [
-                { at: mm(4.8),   radii: [mm(6.8),  mm(8.6)] },
-                { at: mm(7.0),   radii: [mm(8.2),  mm(9.6)] },
-                { at: mm(9.0),   radii: [mm(9.8),  mm(10.9)] },
-                { at: mm(10.6),  radii: [mm(11.7), mm(13.0)] },
-                { at: mm(12.0),  radii: [mm(11.8), mm(13.1)] },
-                { at: mm(13.8),  radii: [mm(10.9), mm(12.2)], surface: "oak" },
-                { at: mm(16.0),  radii: [mm(11.0), mm(12.5)], variation: 0.3 },
-                { at: mm(21.0),  radii: [mm(11.3), mm(12.9)], variation: 0.6 },
-                { at: mm(32.0),  radii: [mm(11.8), mm(13.65)], variation: 1.0 },
-                { at: mm(49.0),  radii: [mm(12.0), mm(14.1)], variation: 1.0 },
-                { at: mm(67.0),  radii: [mm(11.65), mm(13.5)], variation: 0.9 },
-                { at: mm(86.0),  radii: [mm(11.2), mm(12.8)], variation: 0.75 },
-                { at: mm(101.0), radii: [mm(11.1), mm(12.7)], variation: 0.45 },
-                { at: mm(108.0), radii: [mm(10.6), mm(12.0)], variation: 0.2 },
-                { at: mm(111.0), radii: [mm(10.5), mm(11.8)], surface: "iron" },
-                { at: mm(112.6), radii: [mm(10.9), mm(12.2)] },
-                { at: mm(114.0), radii: [mm(11.5), mm(12.9)] },
-                { at: mm(117.0), radii: [mm(13.2), mm(15.1)] },
-                { at: mm(120.0), radii: [mm(14.0), mm(16.0)] },
-                { at: mm(124.0), radii: [mm(14.2), mm(16.2)] },
-                { at: mm(127.0), radii: [mm(13.5), mm(15.2)] },
-                { at: mm(131.0), radii: [mm(8.6),  mm(9.4)] },
-                { at: mm(132.2), radii: [mm(4.0),  mm(4.3)] },
-                { at: mm(133.0), radii: [mm(2.85), mm(3.1)] },
-                { at: mm(134.0), radii: [mm(3.2),  mm(3.5)] },
-                { at: mm(135.1), radii: [mm(2.2),  mm(2.4)] }
-            ],
+            stations: profileSpans({
+                start: { at: mm(4.8), radii: [mm(6.8), mm(8.6)] },
+                spans: [
+                    // Fitted iron collar flares out of the guard.
+                    { length: mm(9), to: [mm(10.9), mm(12.2)],
+                        bulge: { radii: [mm(0.4), mm(0.9)], peak: 0.77 },
+                        easing: "out", samples: 4 },
+                    // Shaped oak, broader through the palm and thinner
+                    // where it sits inside the iron fittings.
+                    { length: mm(97.2), to: [mm(10.5), mm(11.8)],
+                        surface: "oak", easing: "smooth", samples: 9,
+                        bulge: { radii: [mm(1.55), mm(2.5)], peak: 0.38 },
+                        variation: 1 },
+                    // Swollen wheel-shaped pommel, with a narrower neck.
+                    { length: mm(20), to: [mm(8.6), mm(9.4)],
+                        surface: "iron", samples: 7,
+                        bulge: { radii: [mm(4.4), mm(5.5)], peak: 0.57 } },
+                    { length: mm(1.2), to: [mm(4.0), mm(4.3)], samples: 2 },
+                    // Peened tang, still part of the same continuous mesh.
+                    { length: mm(2.9), to: [mm(2.2), mm(2.4)], samples: 2,
+                        bulge: { radii: [mm(0.6), mm(0.6)] } }
+                ]
+            }),
             surface: "iron",
             smoothing: { iron: "smooth", oak: "faceted" },
             radialWaves: [

@@ -56,6 +56,8 @@ Use `loftAxialProfile()` when an asset is defined by a series of cross-sections 
 
 `mirrorStations()` reflects an authored half-profile, preserving its section offsets. `surfaceMesh()` converts `MeshData` to a named Three.js mesh, automatically deduplicating materials and retaining the control topology used by Quad View. Supply `capMaterial` only when a multi-material loft needs an end-cap fallback.
 
+For longer turned forms, `profileSpans()` generates shared axial stations from consecutive lengths, end radii, smooth bulges, and optional radial variation. Each span may change material; `samples` sets genuine longitudinal quad loops. This avoids hand-authoring every intermediate section while keeping the designed endpoints explicit.
+
 These are reusable construction tools, not model presets: proportions, station locations, contours, and material choices still belong in the model.
 
 
