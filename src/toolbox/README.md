@@ -40,7 +40,20 @@ These are building blocks, not model-specific presets. Their value comes from wh
 
 `cavityFromMeshSurfaces(staves).between(floorY, rimY)` derives the usable capacity from existing inner faces. `createFillableVolume(cavity, material, 0.5)` creates a persistent mesh with `setFillLevel(0..1)` and `getFillLevel()`. The amount is a **volume fraction**, not a height fraction. `beerMug.create()` exposes the same methods, and the viewer detects this capability.
 
-This models an upright liquid with a horizontal surface. Tilting, sloshing and pouring are not simulated. **GLB export is a static snapshot of the currently selected fill level:** changing contents at runtime in another engine requires implementing the behavior there; the TypeScript methods are not embedded in GLB.
+The persistent contents mesh contains **eight glTF morph targets / Godot blend shapes** named `Fill_0_of_8` through `Fill_7_of_8`; its unmodified base shape is full. GLB export preserves both these shapes **and the selected fill weights**. No replacement model or geometry-generation code is needed in Godot.
+
+For example, after finding the imported `AmberAleContents` MeshInstance3D, Godot can drive the same 0..1 fill value with the eight blend-shape weights:
+
+```gdscript
+func set_fill_level(contents: MeshInstance3D, amount: float) -> void:
+    var scaled := clampf(amount, 0.0, 1.0) * 8.0
+
+    for i in range(8):
+        var weight := maxf(0.0, 1.0 - absf(scaled - float(i)))
+        contents.set_blend_shape_value(i, weight)
+```
+
+The eight states interpolate smoothly; their shape heights are calibrated by **volume**. Intermediate amounts are approximated by interpolation. GLB carries the shapes and weights, **not the TypeScript methods**. This models an upright liquid with a horizontal surface; tilting, sloshing and pouring are separate capabilities.
 
 ## What combining them makes possible
 
