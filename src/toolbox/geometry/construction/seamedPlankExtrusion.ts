@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
 import { toBufferGeometry } from "../mesh/toBufferGeometry";
 import { adaptiveStations } from "../topology/adaptiveStations";
+import { edgeRecessStations, edgeRecessDepth } from "../../shapes/profiles/edgeRecess";
 
 /** A point in the X/Z plane. The board's grain runs along Z. */
 export type PanelPoint = readonly [x: number, z: number];
@@ -148,15 +149,15 @@ export function seamedPlankExtrusion(
     // The input outline is convex. Add two longitudinal support stations
     // per seam, then subdivide at every original polygon vertex to preserve
     // exactly the original trimmed outline, including the circular perimeter.
-    const stationsX = [...xs];
-    if (seamAtStart) {
-        if (grooveFloorWidth > 0) stationsX.push(start + grooveFloorWidth);
-        stationsX.push(start + shoulderWidth);
-    }
-    if (seamAtEnd) {
-        stationsX.push(end - shoulderWidth);
-        if (grooveFloorWidth > 0) stationsX.push(end - grooveFloorWidth);
-    }
+    const recess = {
+        start, end,
+        shoulder: shoulderWidth,
+        depth: recessDepth,
+        floor: grooveFloorWidth,
+        atStart: seamAtStart,
+        atEnd: seamAtEnd
+    };
+    const stationsX = [...xs, ...edgeRecessStations(recess)];
     stationsX.sort((a, b) => a - b);
 
     const uniqueX: number[] = [];
@@ -194,20 +195,9 @@ export function seamedPlankExtrusion(
         return [Math.min(...hits), Math.max(...hits)];
     }
 
-    function insetAt(x: number): number {
-        const ramp = shoulderWidth - grooveFloorWidth;
-        const a = seamAtStart
-            ? (start + shoulderWidth - x) / ramp
-            : 0;
-        const b = seamAtEnd
-            ? (x - (end - shoulderWidth)) / ramp
-            : 0;
-        return recessDepth * Math.max(0, Math.min(1, Math.max(a, b)));
-    }
-
     const stations: Station[] = uniqueX.map(x => {
         const [low, high] = spanAt(x);
-        const inset = insetAt(x);
+        const inset = edgeRecessDepth(x, recess);
         return {
             x, low, high,
             top: thickness / 2 - (detailedFace === "bottom" ? 0 : inset),

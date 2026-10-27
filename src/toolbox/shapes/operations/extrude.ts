@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { cleanClosedContour } from "./cleanClosedContour";
 import type { MeshData, QuadFace, TriangleFace } from "../../geometry/mesh/MeshData";
 import { toBufferGeometry } from "../../geometry/mesh/toBufferGeometry";
 
@@ -45,31 +46,10 @@ export function extrude(
 
     const sampled = shape.extractPoints(curveSegments);
 
-    // Preserve construction stations, while removing only duplicate points
-    // that would create zero-width side quads. Keep all curved support points.
-    function cleanLoop(points: readonly THREE.Vector2[]): THREE.Vector2[] {
-        const loop: THREE.Vector2[] = [];
-        for (const point of points) {
-            if (![point.x, point.y].every(Number.isFinite)) {
-                throw new RangeError("Invalid extrusion outline");
-            }
-            if (!loop.length || loop[loop.length - 1]!.distanceToSquared(point) > 1e-20) {
-                loop.push(point.clone());
-            }
-        }
-        if (loop.length > 2 && loop[0]!.distanceToSquared(loop.at(-1)!) <= 1e-20) {
-            loop.pop();
-        }
-        if (loop.length < 3 || Math.abs(THREE.ShapeUtils.area(loop)) <= 1e-20) {
-            throw new RangeError("Collapsed extrusion outline");
-        }
-        return loop;
-    }
-
-    const contour = cleanLoop(sampled.shape);
+    const contour = cleanClosedContour(sampled.shape);
     if (!THREE.ShapeUtils.isClockWise(contour)) contour.reverse();
 
-    const holes = sampled.holes.map(cleanLoop);
+    const holes = sampled.holes.map(hole => cleanClosedContour(hole));
     for (const hole of holes) {
         if (THREE.ShapeUtils.isClockWise(hole)) hole.reverse();
     }

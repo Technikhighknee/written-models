@@ -62,6 +62,14 @@ For longer turned forms, `profileSpans()` generates shared axial stations from c
 
 These are reusable construction tools, not model presets: proportions, station locations, contours, and material choices still belong in the model.
 
+### Shared contours, partitioning and fitted seams
+
+`cleanClosedContour()` removes repeated sampled points, including a near-duplicate at the cyclic seam, while preserving valid corners and winding. `clipConvexPolygon()` intersects a **convex** polygon with a half-plane; `partitionConvexPolygon()` divides it along shared parallel boundaries (concave/disconnected sections need a separate multi-polygon algorithm).
+
+`weightedCuts()` returns shared positions for a weighted interval, and `seededVariation()` produces repeatable variation indexed by piece and channel. Panel constructors use these shared helpers rather than inventing another seam layout or random hash.
+
+`edgeRecessStations()` and `edgeRecessDepth()` specify a recessed strip edge as geometric support loops plus a continuous height profile, without assuming wood or any material. Timber-specific plank constructors combine this operation with grain materials.
+
 ### Turned vessels and curved sections
 
 `turnedVessel()` constructs a closed-base, open-topped vessel from a few outer silhouette landmarks, wall/floor thickness, and optional rounded rim, turning grooves and local radial foot impressions. Its interior and exterior are one continuous control mesh; no hollow-cylinder illusion. `latheMeridian()` is the underlying generic solid-of-revolution operation and keeps real quad faces and axial triangle fans.

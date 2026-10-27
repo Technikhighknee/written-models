@@ -1,4 +1,7 @@
 import * as THREE from "three";
+import { partitionConvexPolygon } from "../../shapes/operations/clipConvexPolygon";
+import { weightedCuts } from "../../spatial/layout/weightedCuts";
+import { seededVariation } from "../../spatial/layout/seededVariation";
 import { extrude } from "../../shapes/operations/extrude";
 import {
     seamedPlankExtrusion,
@@ -149,15 +152,8 @@ export function groovedCircularPlankPanel(
         return x * x * (3 - 2 * x);
     };
 
-    const vary = (index: number, channel: number): number => {
-        const seed = handFitted?.seed ?? 0;
-        let h = Math.imul(seed + 67, 0x9e3779b1) ^
-            Math.imul(index + 1, 0x85ebca6b) ^
-            Math.imul(channel + 1, 0xc2b2ae35);
-        h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
-        h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
-        return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff * 2 - 1;
-    };
+    const vary = (index: number, channel: number): number =>
+        seededVariation(handFitted?.seed ?? 0, index, channel);
 
     const wander = (seam: number, z: number): number => {
         if (!handFitted || seam === 0 || seam === planks) return 0;
@@ -291,22 +287,8 @@ function circularPlankOutlines(
 
     const cuts = panelCuts(radius, planks, widthWeights);
 
-    return Array.from({ length: planks }, (_, i) => {
-        const clipped = clipAtX(
-            clipAtX(circle, cuts[i]!, true),
-            cuts[i + 1]!,
-            false
-        );
+    return partitionConvexPolygon(circle, cuts);
 
-        const outline = removeConsecutiveDuplicates(
-            clipped, radius * 1e-10
-        );
-
-        if (outline.length < 3) {
-            throw new RangeError("Panel plank has no usable area");
-        }
-        return outline;
-    });
 }
 
 /** Shared cut positions for all faces and all deformation profiles. */
@@ -315,15 +297,7 @@ function panelCuts(
     planks: number,
     widthWeights?: readonly number[]
 ): number[] {
-    const weights = widthWeights ?? Array.from({ length: planks }, () => 1);
-    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-    const cuts = [-radius];
-
-    for (let i = 0; i < planks - 1; i++) {
-        cuts.push(cuts[i]! + 2 * radius * weights[i]! / totalWeight);
-    }
-    cuts.push(radius);
-    return cuts;
+    return weightedCuts(-radius, radius, planks, widthWeights);
 }
 
 function validatePanel(
@@ -345,64 +319,4 @@ function validatePanel(
     ) {
         throw new RangeError("Invalid circular plank panel dimensions");
     }
-}
-
-function clipAtX(
-    polygon: readonly Point[],
-    boundary: number,
-    keepRight: boolean
-): Point[] {
-    const result: Point[] = [];
-
-    for (let i = 0; i < polygon.length; i++) {
-        const start = polygon[i]!;
-        const end = polygon[(i + 1) % polygon.length]!;
-        const startInside = keepRight
-            ? start[0] >= boundary
-            : start[0] <= boundary;
-        const endInside = keepRight
-            ? end[0] >= boundary
-            : end[0] <= boundary;
-
-        if (startInside !== endInside) {
-            const t = (boundary - start[0]) / (end[0] - start[0]);
-            result.push([
-                boundary,
-                start[1] + t * (end[1] - start[1])
-            ]);
-        }
-
-        if (endInside) result.push(end);
-    }
-
-    return result;
-}
-
-function removeConsecutiveDuplicates(
-    points: readonly Point[],
-    epsilon: number
-): Point[] {
-    const unique: Point[] = [];
-
-    for (const point of points) {
-        const previous = unique.at(-1);
-
-        if (
-            !previous ||
-            Math.hypot(point[0] - previous[0], point[1] - previous[1]) > epsilon
-        ) {
-            unique.push(point);
-        }
-    }
-
-    if (unique.length > 1) {
-        const first = unique[0]!;
-        const last = unique.at(-1)!;
-
-        if (Math.hypot(first[0] - last[0], first[1] - last[1]) <= epsilon) {
-            unique.pop();
-        }
-    }
-
-    return unique;
 }

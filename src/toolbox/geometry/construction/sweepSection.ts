@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { MeshData } from "../mesh/MeshData";
 import { loftRings } from "./loftRings";
+import { cleanClosedContour } from "../../shapes/operations/cleanClosedContour";
 
 export interface SweepSectionOptions {
     /** Spine controls, in metres, ordered along the solid. */
@@ -41,24 +42,7 @@ export function sweepSection({
     if (fixed.lengthSq() < 0.5) {
         throw new RangeError("Sweep reference axis is zero");
     }
-    // Sampled closed Shapes may end with TWO nearly identical versions
-    // of their starting point: the final curve's floating-point endpoint,
-    // followed by an explicit closePath vertex. Cleaning only consecutive
-    // duplicates leaves a zero-length edge across the ring's seam.
-    const tolerance = 1e-10;
-    const unique: THREE.Vector2[] = [];
-    for (const source of section) {
-        const point = new THREE.Vector2(source.x, source.y);
-        if (unique.length === 0 ||
-            point.distanceTo(unique[unique.length - 1]!) > tolerance) {
-            unique.push(point);
-        }
-    }
-    while (unique.length > 1 &&
-        unique[0]!.distanceTo(unique[unique.length - 1]!) <= tolerance) {
-        unique.pop();
-    }
-    if (unique.length < 3) throw new RangeError("Collapsed swept outline");
+    const unique = cleanClosedContour(section);
 
     const rings = Array.from({length: segments + 1}, (_, i) => {
         const t = i / segments;

@@ -1,6 +1,8 @@
 import type { MeshData } from "../mesh/MeshData";
 import { profiledBoard } from "./profiledBoard";
 import { straightBoard } from "./straightBoard";
+import { weightedCuts } from "../../spatial/layout/weightedCuts";
+import { seededVariation } from "../../spatial/layout/seededVariation";
 
 export interface HandWorkedPanelOptions {
     /** Stable imperfections: the same seed always produces the same cuts. */
@@ -30,15 +32,6 @@ export interface BoardPanelOptions {
     crown?: number;
     /** Hand-worked construction; omitted for perfectly straight boards. */
     handWorked?: HandWorkedPanelOptions;
-}
-
-function variation(seed: number, index: number, channel: number): number {
-    let h = Math.imul(seed + 67, 0x9e3779b1) ^
-        Math.imul(index + 1, 0x85ebca6b) ^
-        Math.imul(channel + 1, 0xc2b2ae35);
-    h = Math.imul(h ^ (h >>> 16), 0x7feb352d);
-    h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
-    return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff * 2 - 1;
 }
 
 /**
@@ -74,8 +67,8 @@ export function boardPanel({
 
     const available = width - gap * (count - 1);
     const weights = widthWeights ?? Array.from({ length: count }, () => 1);
-    const totalWeight = weights.reduce((total, weight) => total + weight, 0);
-    const widths = weights.map(weight => available * weight / totalWeight);
+    const cuts = weightedCuts(0, available, count, weights);
+    const widths = cuts.slice(1).map((cut, index) => cut - cuts[index]!);
 
     if (handWorked) {
         const {
@@ -110,9 +103,9 @@ export function boardPanel({
         boundaries.push(width / 2);
 
         const edges = boundaries.map((base, index) => {
-            const taper = variation(seed, index, 1) * edgeWander * 0.5;
-            const bow = variation(seed, index, 2) * edgeWander;
-            const wobble = variation(seed, index, 3) * edgeWander * 0.3;
+            const taper = seededVariation(seed, index, 1) * edgeWander * 0.5;
+            const bow = seededVariation(seed, index, 2) * edgeWander;
+            const wobble = seededVariation(seed, index, 3) * edgeWander * 0.3;
             return (progress: number): number =>
                 base + taper * (2 * progress - 1) +
                 bow * Math.sin(Math.PI * progress) ** 2 +
@@ -120,7 +113,7 @@ export function boardPanel({
         });
 
         const corner = (index: number, channel: number): number => {
-            const value = variation(seed, index, channel);
+            const value = seededVariation(seed, index, channel);
             // Some corners are intact, others are genuinely nicked.
             return value > -0.18 ? cornerWear * (0.3 + 0.7 * Math.abs(value)) : 0;
         };
@@ -135,24 +128,24 @@ export function boardPanel({
             rightEdge: progress => edges[index + 1]!(progress) -
                 (index === count - 1 ? 0 : gap / 2),
             start: {
-                offset: variation(seed, index, 10) * endStagger,
-                skew: variation(seed, index, 11) * endStagger * 0.35,
+                offset: seededVariation(seed, index, 10) * endStagger,
+                skew: seededVariation(seed, index, 11) * endStagger * 0.35,
                 cornerWear: [
                     corner(index, 20),
                     corner(index, 21)
                 ]
             },
             end: {
-                offset: variation(seed, index, 12) * endStagger,
-                skew: variation(seed, index, 13) * endStagger * 0.35,
+                offset: seededVariation(seed, index, 12) * endStagger,
+                skew: seededVariation(seed, index, 13) * endStagger * 0.35,
                 cornerWear: [
                     corner(index, 22),
                     corner(index, 23)
                 ]
             },
-            thicknessOffset: variation(seed, index, 30) * thicknessVariation,
+            thicknessOffset: seededVariation(seed, index, 30) * thicknessVariation,
             chamferVariation,
-            variationPhase: variation(seed, index, 31) * Math.PI
+            variationPhase: seededVariation(seed, index, 31) * Math.PI
         }));
     }
 
