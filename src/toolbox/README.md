@@ -35,11 +35,12 @@ These are building blocks, not model-specific presets. Their value comes from wh
 
 **A hollow bronze bell.** Shape a real thin-walled body with `revolveShell()`, wrap raised details around its profile with `bandAroundProfile()`, and use `fitBoundaryToSurface()` to make separately constructed fittings meet its curved surface.
 
-None of these is a one-click generator. They illustrate the point: **capabilities can be combined in ways the models that inspired them never anticipated.**
+These are just three examples, not a catalog of what's possible or a set of ready-made generators. The same capabilities can be combined in countless other ways, including for models nothing like the ones that originally inspired them. **The examples are finite. The possibilities aren't.**
 
 ## Principles worth keeping
 
 - **Design leads.** The model owns its shape, proportions, construction choices, and character. Generic tools must not dictate its appearance.
+- **Look before inventing.** Before building a model or introducing a new capability, inspect the relevant parts of the toolbox and how existing models use them. Follow what's relevant; there is no need to read everything every time. Prefer combining what already exists. If something genuinely missing stands in the way, grow the toolbox instead of hiding a one-off workaround inside the model.
 - **Generalize the problem, not the object.** A fitted surface is a toolbox capability. A particular handle, table, or trestle is a model or a composition of capabilities.
 - **Compose instead of accumulating special cases.** Prefer small, dependable operations that work together over a different bespoke solution for every asset.
 - **Construction topology is the source of truth.** Preserve authored faces and control edges. Never guess original quads from rendered triangles.
