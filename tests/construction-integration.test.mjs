@@ -419,3 +419,50 @@ test("curved loft caps use local end directions and nondegenerate section UVs", 
             "section UVs preserve the physical area of a diamond");
     }
 });
+
+test("sweeps transport section orientation through reference-axis alignment", async () => {
+    const {sweepSection} = await moduleAt(
+        "geometry/construction/sweepSection.ts"
+    );
+    const segments = 32;
+    const mesh = sweepSection({
+        path: [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0.8, 0),
+            new THREE.Vector3(0.8, 0.8, 0),
+            new THREE.Vector3(0.8, 0.8, 0.8)
+        ],
+        section: [
+            new THREE.Vector2(0.03, 0),
+            new THREE.Vector2(0, 0.02),
+            new THREE.Vector2(-0.03, 0),
+            new THREE.Vector2(0, -0.02)
+        ],
+        referenceAxis: new THREE.Vector3(0, 1, 0),
+        segments
+    });
+
+    assert.equal(mesh.quads.length, segments * 4);
+    assert.equal(mesh.triangles.length, 4);
+
+    const directions = Array.from({length: segments + 1}, (_, i) => {
+        const first = mesh.vertices[i * 4];
+        const third = mesh.vertices[i * 4 + 2];
+        return first.clone().sub(third).normalize();
+    });
+    for (let i = 1; i < directions.length; i++) {
+        assert.ok(directions[i - 1].dot(directions[i]) > 0.8,
+            "adjacent cross-sections must not suddenly flip");
+    }
+
+    const surfaces = {side: 0, "cap-start": 0, "cap-end": 0};
+    const {toBufferGeometry} = await moduleAt(
+        "geometry/mesh/toBufferGeometry.ts"
+    );
+    const geometry = toBufferGeometry(mesh, surfaces);
+    try {
+        assert.ok(geometry.getAttribute("position").count > 0);
+    } finally {
+        geometry.dispose();
+    }
+});
