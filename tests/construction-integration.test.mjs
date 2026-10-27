@@ -177,3 +177,55 @@ test("radial strips share boundaries despite differing inner and outer detail", 
     assert.ok(polygonalRadiusOutside(0.4, Math.PI / 4, 0.001) *
         Math.cos(Math.PI / 8) > 0.4);
 });
+
+
+test("fillable cavities preserve mesh identity and calculate volume-based levels", async () => {
+    const { radialStaves } = await moduleAt(
+        "geometry/construction/radialStaves.ts"
+    );
+    const { cavityFromMeshSurfaces } = await moduleAt(
+        "geometry/construction/profiledCavity.ts"
+    );
+    const { createFillableVolume } = await moduleAt(
+        "geometry/construction/fillableVolume.ts"
+    );
+
+    const staves = radialStaves([
+        new THREE.Vector2(0.4, 0),
+        new THREE.Vector2(0.55, 1)
+    ], {
+        count: 8,
+        thickness: 0.02,
+        innerWidthSamples: [0, 1]
+    });
+
+    const cavity = cavityFromMeshSurfaces(staves).between(0.1, 0.9);
+    const material = new THREE.MeshStandardMaterial();
+    const contents = createFillableVolume(cavity, material, 0);
+    const originalMesh = contents.mesh;
+    const originalPositions = originalMesh.geometry.getAttribute("position");
+
+    try {
+        assert.equal(contents.mesh.visible, false);
+
+        contents.setFillLevel(0.5);
+
+        assert.equal(contents.mesh, originalMesh);
+        assert.equal(contents.mesh.geometry.getAttribute("position"), originalPositions);
+        assert.equal(contents.getFillLevel(), 0.5);
+        assert.equal(contents.mesh.visible, true);
+
+        const filledVolume = cavity.volumeAt(cavity.heightAtFill(0.5));
+        assert.ok(Math.abs(filledVolume / cavity.capacity - 0.5) < 1e-7);
+
+        // The taper grows with height, so half the volume is not half height.
+        assert.ok(cavity.heightAtFill(0.5) > (cavity.bottom + cavity.top) / 2);
+
+        contents.setFillLevel(1);
+        assert.equal(contents.getFillLevel(), 1);
+        assert.throws(() => contents.setFillLevel(1.5), RangeError);
+    } finally {
+        originalMesh.geometry.dispose();
+        material.dispose();
+    }
+});
