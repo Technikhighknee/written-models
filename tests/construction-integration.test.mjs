@@ -261,8 +261,9 @@ test("wooden tavern tankard has an open stave-built body and low triangle cost",
         bands.reduce((n, band) => n + (band.getIndex()?.count ?? 0) / 3, 0);
     assert.equal(staves.length, 12);
     assert.equal(bands.length, 2);
-    assert.ok(triangles >= 700 && triangles < 1800,
+    assert.ok(triangles >= 700 && triangles < 1400,
         `expected an economical tankard, got ${triangles} triangles`);
+    console.log(`Tankard triangle budget: ${triangles} tris`);
     assert.ok(staves.every(mesh =>
         mesh.quads.some(face => face.surface === "inner") &&
         mesh.vertices.every(v => [v.x, v.y, v.z].every(Number.isFinite))
