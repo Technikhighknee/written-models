@@ -11,13 +11,16 @@ const vite = await createServer({
     },
     logLevel: "silent"
 });
+
 after(async () => {
     await vite.close();
 });
+
 const moduleAt = path => vite.ssrLoadModule(`/src/toolbox/${path}`);
 
 // Test durable geometry contracts, not the current contents or dimensions of
 // individual models. Their silhouettes and construction may change freely.
+
 test("surface fitting follows a curved target without losing authored topology", async () => {
     const {sweepSection} = await moduleAt("geometry/construction/sweepSection.ts");
     const {fitBoundaryToSurface} = await moduleAt(
@@ -26,7 +29,9 @@ test("surface fitting follows a curved target without losing authored topology",
     const target = new THREE.Mesh(
         new THREE.CylinderGeometry(0.05, 0.05, 0.15, 16)
     );
+
     target.position.y = 0.075;
+
     let sweep = sweepSection({
         path: [
             new THREE.Vector3(0.053, 0.115, 0),
@@ -43,7 +48,9 @@ test("surface fitting follows a curved target without losing authored topology",
         referenceAxis: new THREE.Vector3(0, 0, 1),
         segments: 10
     });
+
     const originalQuadCount = sweep.quads.length;
+
     try {
         for (const surface of ["cap-start", "cap-end"]) {
             sweep = fitBoundaryToSurface({
@@ -56,11 +63,14 @@ test("surface fitting follows a curved target without losing authored topology",
                 embed: 0.0005
             });
         }
+
         assert.equal(sweep.quads.length, originalQuadCount);
+
         for (const face of [...sweep.quads, ...(sweep.triangles ?? [])]) {
             if (face.surface !== "cap-start" && face.surface !== "cap-end") {
                 continue;
             }
+
             for (const index of face.corners) {
                 const vertex = sweep.vertices[index];
                 assert.ok(
@@ -89,8 +99,10 @@ test("revolved shells preserve control faces without collapsed quads", async () 
     });
     try {
         const control = getControlMesh(geometry);
+
         assert.ok(control);
         assert.ok(control.quads.length > 0);
+
         for (const face of control.quads) {
             const [a, b, c] = face.corners.map(i => control.vertices[i]);
             assert.ok(new THREE.Vector3().subVectors(b, a)
@@ -125,8 +137,11 @@ test("neighboring worked boards agree on shared subdivision stations", async () 
             chamferVariation: 0.33
         }
     });
+
     const stations = getProfiledBoardStations(panel[0]);
+
     assert.ok(stations.length > 1);
+
     for (const board of panel) {
         assert.deepEqual(getProfiledBoardStations(board), stations);
     }
@@ -147,14 +162,18 @@ test("radial strips share boundaries despite differing inner and outer detail", 
         outerRadius: radius => radius,
         innerRadius: radius => radius - 0.02
     });
+
     assert.equal(strips.length, 8);
     assert.notEqual(strips[0][0].outer.length, strips[0][0].inner.length);
+
     for (let i = 0; i < strips.length; i++) {
         const current = strips[i][0].outer.at(-1);
         const next = strips[(i + 1) % strips.length][0].outer[0];
+
         assert.ok(current.distanceTo(next) < 1e-12,
             "adjacent radial strips must have a shared seam");
     }
+
     assert.ok(polygonalRadiusOutside(0.4, Math.PI / 4, 0.001) *
         Math.cos(Math.PI / 8) > 0.4);
 });
