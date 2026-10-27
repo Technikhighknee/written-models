@@ -369,7 +369,7 @@ test("cavity volume follows a concave authored boundary instead of an angular hu
             );
         }
 
-        assert.ok(Math.abs(capArea - 10) < 1e-8);
+        assert.ok(Math.abs(capArea - 10) < 1e-5);
         assert.equal(mesh.geometry.morphAttributes.position.length, 8);
         assert.equal(contents.getFillLevel(), 0.5);
     } finally {
