@@ -1,4 +1,5 @@
 import { latheMeridian } from "./latheMeridian";
+import { monotoneProfile } from "../../shapes/profiles/monotoneProfile";
 import type { MeridianPoint } from "./latheMeridian";
 import type { MeshData } from "../mesh/MeshData";
 
@@ -68,34 +69,9 @@ export function turnedVessel({
         throw new RangeError("Invalid foot impression");
     }
 
-    const slopes = outline.slice(0, -1).map((point, index) => {
-        const next = outline[index + 1]!;
-        return (next.radius - point.radius) / (next.y - point.y);
-    });
-    const tangents = outline.map((_, index) => {
-        if (index === 0) return slopes[0]!;
-        if (index === outline.length - 1) return slopes.at(-1)!;
-        const a = slopes[index - 1]!;
-        const b = slopes[index]!;
-        if (a * b <= 0) return 0;
-        return 2 * a * b / (a + b);
-    });
-
-    function radiusAt(y: number): number {
-        const clipped = Math.min(outline.at(-1)!.y, Math.max(0, y));
-        let i = 0;
-        while (i < outline.length - 2 && clipped > outline[i + 1]!.y) i++;
-        const from = outline[i]!;
-        const to = outline[i + 1]!;
-        const width = to.y - from.y;
-        const t = (clipped - from.y) / width;
-        const t2 = t * t;
-        const t3 = t2 * t;
-        return (2 * t3 - 3 * t2 + 1) * from.radius +
-            (t3 - 2 * t2 + t) * width * tangents[i]! +
-            (-2 * t3 + 3 * t2) * to.radius +
-            (t3 - t2) * width * tangents[i + 1]!;
-    }
+    const radiusAt = monotoneProfile(outline.map(point => ({
+        x: point.y, y: point.radius
+    })));
 
     const maxY = outline.at(-1)!.y;
     const heights = new Set<number>([0, floorThickness, maxY]);

@@ -24,13 +24,18 @@ export interface MeridianPoint {
  *
  * Face UVs are measured in metres. No coincident triangles or collapsed
  * quads are introduced at the rotation axis.
+ *
+ * With {closed:true}, a positive-radius cyclic meridian wraps directly
+ * from its last station back to the first. This supports open-ended
+ * tubes, hollow shells and rings without duplicating the lathe engine.
  */
 export function latheMeridian(
     points: readonly MeridianPoint[],
-    radialSegments = 40
+    radialSegments = 40,
+    {closed = false}: {closed?: boolean} = {}
 ): MeshData {
-    if (points.length < 4 || !Number.isInteger(radialSegments) ||
-        radialSegments < 3) {
+    if (points.length < (closed ? 3 : 4) ||
+        !Number.isInteger(radialSegments) || radialSegments < 3) {
         throw new RangeError("Invalid meridian or radial segments");
     }
     for (const point of points) {
@@ -43,10 +48,14 @@ export function latheMeridian(
             throw new RangeError("Invalid meridian coordinate or wave");
         }
     }
-    if (points[0]!.radius !== 0 ||
-        points[points.length - 1]!.radius !== 0 ||
-        points.slice(1, -1).some(point => point.radius <= 0)) {
-        throw new RangeError("Closed meridian requires two axis poles");
+    if (closed
+        ? points.some(point => point.radius <= 0)
+        : points[0]!.radius !== 0 ||
+            points[points.length - 1]!.radius !== 0 ||
+            points.slice(1, -1).some(point => point.radius <= 0)) {
+        throw new RangeError(closed
+            ? "Cyclic meridian must remain away from the rotation axis"
+            : "Closed meridian requires two axis poles");
     }
 
     const vertices: THREE.Vector3[] = [];
@@ -88,11 +97,12 @@ export function latheMeridian(
 
     const quads: QuadFace[] = [];
     const triangles: TriangleFace[] = [];
-    for (let row = 0; row < points.length - 1; row++) {
+    for (let row = 0; row < (closed ? points.length : points.length - 1); row++) {
+        const nextRow = (row + 1) % points.length;
         const current = points[row]!;
-        const next = points[row + 1]!;
+        const next = points[nextRow]!;
         const first = rows[row]!;
-        const second = rows[row + 1]!;
+        const second = rows[nextRow]!;
         const surface = current.surface ?? "side";
         const smoothingGroup = current.smoothingGroup ?? surface;
         for (let side = 0; side < radialSegments; side++) {
@@ -100,7 +110,11 @@ export function latheMeridian(
             const u0 = side * step * Math.max(current.radius, next.radius);
             const u1 = (side + 1) * step * Math.max(current.radius, next.radius);
             const v0 = perimeters[row]!;
-            const v1 = perimeters[row + 1]!;
+            const v1 = nextRow === 0
+                ? perimeters[row]! + Math.hypot(
+                    next.radius - current.radius, next.y - current.y
+                )
+                : perimeters[nextRow]!;
             if (first.length === 1) {
                 // Pole -> circumference: no degenerate strip at the axis.
                 const corners: TriangleFace["corners"] = [

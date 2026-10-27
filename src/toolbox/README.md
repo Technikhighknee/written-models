@@ -62,6 +62,10 @@ For longer turned forms, `profileSpans()` generates shared axial stations from c
 
 These are reusable construction tools, not model presets: proportions, station locations, contours, and material choices still belong in the model.
 
+### Profiles and rotational geometry
+
+`monotoneProfile()` interpolates ordered scalar landmarks with extrema-preserving cubic slopes; `turnedVessel()` uses it for radius-vs-height instead of keeping a private curve engine. `latheMeridian()` now supports both axis-pole solids and cyclic positive-radius meridians; `revolveShell()` delegates all authored rotational topology to it, retaining a thin-walled convenience API.
+
 ### Shared contours, partitioning and fitted seams
 
 `cleanClosedContour()` removes repeated sampled points, including a near-duplicate at the cyclic seam, while preserving valid corners and winding. `clipConvexPolygon()` intersects a **convex** polygon with a half-plane; `partitionConvexPolygon()` divides it along shared parallel boundaries (concave/disconnected sections need a separate multi-polygon algorithm).
