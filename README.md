@@ -1,7 +1,7 @@
 # Written Models
 *by Jason Posch*
 
-> Code shall be my pencil.
+> Code shall be my pencil. Well... or rather, ChatGPT's pencil. 
 
 ## Structure
 
