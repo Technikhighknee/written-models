@@ -74,6 +74,10 @@ These are reusable construction tools, not model presets: proportions, station l
 
 `classifyExtrudedSurfaces()` selects material regions by a side face's normal relative to a reference axis while preserving ordinary extruded geometry; `assignExtrudedTimberSurfaces()` is its wood-specific material-slot adapter. `periodicFlowField()` provides continuous wrapped coordinate bending independently of any texture type; `flowedGrainField()` retains the established oak-recipe interface.
 
+### Adaptive model contours
+
+`adaptiveStations()` accepts optional mandatory `knots` for deliberate feature boundaries. `profiledBoard()` samples the real cross-section with geometric-error limits instead of maintaining a fixed 13-ring array; `boardPanel()` unions the chosen stations across EVERY adjacent plank, keeping shared seams compatible and preventing T-junctions.
+
 ### Shared topology transitions
 
 `stitchPolylines()` connects open contours with different station densities using genuine triangles and no invented hidden vertices. The caller retains responsibility for 3D UV projection. `loftBoard()` uses it at unequal-resolution end caps and still keeps true quads when both contour densities match. `linearProfile()` samples authored straight-sided scalar profiles, complementing the smooth `monotoneProfile()`; radial bands share the linear sampler.

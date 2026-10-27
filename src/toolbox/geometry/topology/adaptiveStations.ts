@@ -21,15 +21,19 @@ export interface AdaptiveStationsOptions {
     maxDeviation: number;
     /** Maximum recursion depth (at most 2^maxDepth intervals). */
     maxDepth?: number;
+    /** Mandatory shape landmarks; kept exactly while subdividing each span. */
+    knots?: readonly number[];
 }
 
 export function adaptiveStations(
     sample: (t: number) => readonly Position3[],
-    { maxDeviation, maxDepth = 5 }: AdaptiveStationsOptions
+    { maxDeviation, maxDepth = 5, knots = [] }: AdaptiveStationsOptions
 ): number[] {
     if (
         !Number.isFinite(maxDeviation) || maxDeviation <= 0 ||
-        !Number.isInteger(maxDepth) || maxDepth < 0 || maxDepth > 8
+        !Number.isInteger(maxDepth) || maxDepth < 0 || maxDepth > 8 ||
+        knots.some((t, i) => !Number.isFinite(t) || t <= 0 || t >= 1 ||
+            (i > 0 && t <= knots[i - 1]!))
     ) {
         throw new RangeError("Invalid adaptive station tolerance or depth");
     }
@@ -95,6 +99,15 @@ export function adaptiveStations(
         visit(mid, to, middle, end, depth + 1);
     }
 
-    visit(0, 1, first, last, 0);
+    const anchors = [0, ...knots, 1];
+    for (let i = 0; i < anchors.length - 1; i++) {
+        const from = anchors[i]!;
+        const to = anchors[i + 1]!;
+        const start = i === 0 ? first : sample(from);
+        const end = i === anchors.length - 2 ? last : sample(to);
+        check(start);
+        check(end);
+        visit(from, to, start, end, 0);
+    }
     return result;
 }

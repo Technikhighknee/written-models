@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { MeshData } from "../mesh/MeshData";
 import { loftBoard } from "./loftBoard";
+import { adaptiveStations } from "../topology/adaptiveStations";
 
 /** A longitudinal edge of a plank, expressed in the panel's local Z. */
 export type BoardEdgeProfile = (progress: number) => number;
@@ -29,6 +30,12 @@ export interface ProfiledBoardOptions {
     /** A little unevenness in the hand-broken longitudinal edge chamfer. */
     chamferVariation?: number;
     variationPhase?: number;
+    /** Maximum world-space departure of any section from its chord. */
+    maxDeviation?: number;
+    /** Maximum adaptive refinement depth per geometric interval. */
+    maxDepth?: number;
+    /** Exact stations shared by several neighboring pieces. */
+    longitudinalStations?: readonly number[];
 }
 
 /**
@@ -42,6 +49,15 @@ export interface ProfiledBoardOptions {
  * Chamfers and small corner losses affect the actual silhouette.
  * Sections remain ordered and UVs stay in physical meters.
  */
+const stationMetadata = new WeakMap<MeshData, readonly number[]>();
+
+/** Exact cross-section locations authored in the resulting mesh. */
+export function getProfiledBoardStations(
+    mesh: MeshData
+): readonly number[] | undefined {
+    return stationMetadata.get(mesh);
+}
+
 export function profiledBoard({
     length,
     thickness,
@@ -53,7 +69,10 @@ export function profiledBoard({
     end = {},
     thicknessOffset = 0,
     chamferVariation = 0,
-    variationPhase = 0
+    variationPhase = 0,
+    maxDeviation = 0.00045,
+    maxDepth = 6,
+    longitudinalStations
 }: ProfiledBoardOptions): MeshData {
     const { offset: startOffset = 0, skew: startSkew = 0,
         cornerWear: startCorners = [0, 0] } = start;
@@ -63,7 +82,7 @@ export function profiledBoard({
         length, thickness, chamfer, crown, thicknessOffset,
         chamferVariation, variationPhase,
         startOffset, startSkew, endOffset, endSkew,
-        ...startCorners, ...endCorners
+        ...startCorners, ...endCorners, maxDeviation, maxDepth
     ];
 
     if (
@@ -73,21 +92,26 @@ export function profiledBoard({
         length <= 0 || thickness <= 0 || chamfer < 0 ||
         crown < 0 || chamferVariation < 0 || chamferVariation > 0.5 ||
         thickness + thicknessOffset <= chamfer * 2 ||
-        [...startCorners, ...endCorners].some(value => value < 0)
+        [...startCorners, ...endCorners].some(value => value < 0) ||
+        maxDeviation <= 0 || !Number.isInteger(maxDepth) ||
+        maxDepth < 0 || maxDepth > 8 ||
+        (longitudinalStations !== undefined && (
+            longitudinalStations.length < 2 ||
+            longitudinalStations[0] !== 0 ||
+            longitudinalStations.at(-1) !== 1 ||
+            longitudinalStations.some((t, i) => !Number.isFinite(t) ||
+                (i > 0 && t <= longitudinalStations[i - 1]!))
+        ))
     ) {
         throw new RangeError("Invalid profiled board");
     }
 
-    // Extra stations near both ends give corner nicks a real, small
-    // silhouette without forcing high-frequency noise along entire boards.
-    const stations = [
-        0, 0.015, 0.045, 0.12, 0.25, 0.375, 0.5,
-        0.625, 0.75, 0.88, 0.955, 0.985, 1
-    ];
-
-    const sections = stations.map(progress => {
-        const nearStart = Math.max(0, 1 - progress / 0.045) ** 2;
-        const nearEnd = Math.max(0, 1 - (1 - progress) / 0.045) ** 2;
+    // End wear has finite support. Keep the feature boundaries exact,
+    // and use adaptive sampling only where the finished surface needs it.
+    const cornerExtent = 0.045;
+    const sectionAt = (progress: number) => {
+        const nearStart = Math.max(0, 1 - progress / cornerExtent) ** 2;
+        const nearEnd = Math.max(0, 1 - (1 - progress) / cornerExtent) ** 2;
 
         const left = leftEdge(progress) +
             startCorners[0] * nearStart + endCorners[0] * nearEnd;
@@ -144,7 +168,20 @@ export function profiledBoard({
         });
 
         return { outer, inner };
-    });
+    };
 
-    return loftBoard(sections);
+    const hasWear = [...startCorners, ...endCorners].some(value => value > 0);
+    const stations = longitudinalStations ?? adaptiveStations(
+        progress => {
+            const section = sectionAt(progress);
+            return [...section.outer, ...section.inner];
+        },
+        {
+            maxDeviation, maxDepth,
+            ...(hasWear ? { knots: [cornerExtent, 1 - cornerExtent] } : {})
+        }
+    );
+    const result = loftBoard(stations.map(sectionAt));
+    stationMetadata.set(result, stations);
+    return result;
 }

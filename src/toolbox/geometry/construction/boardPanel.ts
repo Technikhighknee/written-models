@@ -1,5 +1,7 @@
 import type { MeshData } from "../mesh/MeshData";
-import { profiledBoard } from "./profiledBoard";
+import {
+    profiledBoard, getProfiledBoardStations
+} from "./profiledBoard";
 import { straightBoard } from "./straightBoard";
 import { weightedCuts } from "../../spatial/layout/weightedCuts";
 import { seededVariation } from "../../spatial/layout/seededVariation";
@@ -118,7 +120,7 @@ export function boardPanel({
             return value > -0.18 ? cornerWear * (0.3 + 0.7 * Math.abs(value)) : 0;
         };
 
-        return widths.map((_, index) => profiledBoard({
+        const specifications = widths.map((_, index) => ({
             length,
             thickness,
             chamfer,
@@ -146,6 +148,21 @@ export function boardPanel({
             thicknessOffset: seededVariation(seed, index, 30) * thicknessVariation,
             chamferVariation,
             variationPhase: seededVariation(seed, index, 31) * Math.PI
+        }));
+        // Select loops from the actual finish of every adjacent piece.
+        // Then use the UNION of all stations for EVERY board, including
+        // both sides of shared seams; no mismatched edge-loop T-junctions.
+        const sampled = specifications.map(spec => profiledBoard(spec));
+        const shared = [...new Set(sampled.flatMap(mesh =>
+            getProfiledBoardStations(mesh) ?? []
+        ))].sort((a, b) => a - b);
+        if (sampled.every(mesh => {
+            const own = getProfiledBoardStations(mesh) ?? [];
+            return own.length === shared.length &&
+                own.every((t, i) => t === shared[i]);
+        })) return sampled;
+        return specifications.map(spec => profiledBoard({
+            ...spec, longitudinalStations: shared
         }));
     }
 

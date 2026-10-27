@@ -161,3 +161,42 @@ test("panels retain fitted groove faces and non-empty control topology", async (
         piece.dispose();
     }
 });
+
+// Adjacent worked pieces must agree on their longitudinal topology, even
+// when their curvature differs and adaptive sampling picks separate loops.
+test("worked panel shares adaptive stations across neighboring boards", async () => {
+    const {boardPanel} = await moduleAt(
+        "geometry/construction/boardPanel.ts"
+    );
+    const {getProfiledBoardStations} = await moduleAt(
+        "geometry/construction/profiledBoard.ts"
+    );
+    const panel = boardPanel({
+        length: 1.8, width: 0.9, thickness: 0.05,
+        count: 4, widthWeights: [1.07, 0.94, 1.03, 0.96],
+        gap: 0.0025, chamfer: 0.003, crown: 0.0006,
+        handWorked: {
+            seed: 1400, edgeWander: 0.0042, endStagger: 0.012,
+            cornerWear: 0.007, thicknessVariation: 0.0014,
+            chamferVariation: 0.33
+        }
+    });
+    const stations = getProfiledBoardStations(panel[0]);
+    assert.ok(stations.length >= 4);
+    for (const board of panel) {
+        assert.deepEqual(getProfiledBoardStations(board), stations);
+        assert.equal(board.quads.length,
+            (stations.length - 1) * 2 * (5 + 5));
+    }
+});
+
+test("plain profile needs no unnecessary longitudinal support loops", async () => {
+    const {profiledBoard, getProfiledBoardStations} = await moduleAt(
+        "geometry/construction/profiledBoard.ts"
+    );
+    const board = profiledBoard({
+        length: 1, thickness: 0.02, chamfer: 0,
+        leftEdge: () => -0.1, rightEdge: () => 0.1
+    });
+    assert.deepEqual(getProfiledBoardStations(board), [0, 1]);
+});
