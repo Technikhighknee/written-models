@@ -12,6 +12,8 @@ import {contactFrame} from "../src/toolbox/spatial/frames/contactFrame.ts";
 import {sectionsBetweenPlanes} from "../src/toolbox/geometry/construction/sectionsBetweenPlanes.ts";
 import {latheMeridian} from "../src/toolbox/geometry/construction/latheMeridian.ts";
 import {AuthoredMeshBuilder} from "../src/toolbox/geometry/mesh/AuthoredMeshBuilder.ts";
+import {classifyExtrudedSurfaces} from "../src/toolbox/geometry/materials/classifyExtrudedSurfaces.ts";
+import {periodicFlowField} from "../src/toolbox/texturing/periodicFlowField.ts";
 
 const near = (actual, expected, tolerance = 1e-9) =>
     assert.ok(Math.abs(actual - expected) < tolerance,
@@ -169,4 +171,38 @@ test("authored face assembly shares geometry while retaining distinct surfaces",
     assert.throws(() => mesh.addFace(
         [quad[0], quad[0], quad[1]], uv(triangle), "invalid"
     ), /collapsed/);
+});
+
+test("periodic flow is continuous across both tiling boundaries", () => {
+    const field = periodicFlowField({
+        cycles: 8, bend: 0.4, firstPhase: 0.7, secondPhase: 0.2
+    });
+    for (const v of [0, 0.11, 0.27, 0.8]) {
+        near(field(0, v), 0);
+        near(field(1, v), 8);
+    }
+    for (const u of [0, 0.11, 0.4, 1]) {
+        near(field(u, 0), field(u, 1));
+    }
+});
+
+test("extrusion face classification retains cap and side index coverage", () => {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.lineTo(2, 0);
+    shape.lineTo(2, 1);
+    shape.lineTo(0, 1);
+    shape.closePath();
+    const geometry = new THREE.ExtrudeGeometry(shape, {
+        depth: 0.3, bevelEnabled: false
+    });
+    const before = geometry.groups.reduce((sum, group) => sum + group.count, 0);
+    classifyExtrudedSurfaces(geometry, {
+        axis: new THREE.Vector3(1, 0, 0)
+    });
+    const after = geometry.groups.reduce((sum, group) => sum + group.count, 0);
+    assert.equal(before, after);
+    assert.ok(geometry.groups.some(group => group.materialIndex === 0));
+    assert.ok(geometry.groups.some(group => group.materialIndex === 1));
+    geometry.dispose();
 });

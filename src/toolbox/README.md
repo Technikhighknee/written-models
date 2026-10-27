@@ -70,6 +70,10 @@ These are reusable construction tools, not model presets: proportions, station l
 
 `AuthoredMeshBuilder` provides a material-agnostic way to add genuine quads and triangles from 3D corners and physical UVs. Shared positions become shared *construction* vertices even across UV/material seams. The existing conversion still owns GPU vertex splits, and the builder does not silently triangulate or repair degenerate input. `seamedPlankExtrusion()` uses it with generic surface IDs (`face`, `cut`, `recess`) rather than embedding wood material names.
 
+### Generic surface and material fields
+
+`classifyExtrudedSurfaces()` selects material regions by a side face's normal relative to a reference axis while preserving ordinary extruded geometry; `assignExtrudedTimberSurfaces()` is its wood-specific material-slot adapter. `periodicFlowField()` provides continuous wrapped coordinate bending independently of any texture type; `flowedGrainField()` retains the established oak-recipe interface.
+
 ### Shared topology transitions
 
 `stitchPolylines()` connects open contours with different station densities using genuine triangles and no invented hidden vertices. The caller retains responsibility for 3D UV projection. `loftBoard()` uses it at unequal-resolution end caps and still keeps true quads when both contour densities match. `linearProfile()` samples authored straight-sided scalar profiles, complementing the smooth `monotoneProfile()`; radial bands share the linear sampler.
