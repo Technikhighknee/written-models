@@ -41,12 +41,23 @@ export function sweepSection({
     if (fixed.lengthSq() < 0.5) {
         throw new RangeError("Sweep reference axis is zero");
     }
-    const outline = section.map(p => new THREE.Vector2(p.x, p.y));
-    if (outline[0]!.distanceTo(outline.at(-1)!) < 1e-10) outline.pop();
-    // Shapes returned by Shape.getPoints() often repeat segment endpoints;
-    // filter without changing the model's intended contour winding.
-    const unique = outline.filter((p, index) =>
-        index === 0 || p.distanceTo(outline[index - 1]!) > 1e-10);
+    // Sampled closed Shapes may end with TWO nearly identical versions
+    // of their starting point: the final curve's floating-point endpoint,
+    // followed by an explicit closePath vertex. Cleaning only consecutive
+    // duplicates leaves a zero-length edge across the ring's seam.
+    const tolerance = 1e-10;
+    const unique: THREE.Vector2[] = [];
+    for (const source of section) {
+        const point = new THREE.Vector2(source.x, source.y);
+        if (unique.length === 0 ||
+            point.distanceTo(unique[unique.length - 1]!) > tolerance) {
+            unique.push(point);
+        }
+    }
+    while (unique.length > 1 &&
+        unique[0]!.distanceTo(unique[unique.length - 1]!) <= tolerance) {
+        unique.pop();
+    }
     if (unique.length < 3) throw new RangeError("Collapsed swept outline");
 
     const rings = Array.from({length: segments + 1}, (_, i) => {
