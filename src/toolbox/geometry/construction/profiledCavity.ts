@@ -139,48 +139,139 @@ function polygonArea(outline: readonly THREE.Vector2Like[]): number {
 }
 
 /**
- * Derive horizontal cavity rings from the actual inner construction faces.
- * Works for vertical lofts with matching polygon outlines at each height.
+ * Reconstruct a lofted cavity from the edges of its authored inner faces.
+ * Each horizontal section must be one closed contour with matching vertices.
  */
 export function cavityFromMeshSurfaces(
     pieces: readonly MeshData[],
     surface = "inner"
 ): ProfiledCavity {
-    const rows = new Map<number, Map<string, THREE.Vector3>>();
+    interface Row {
+        points: Map<string, THREE.Vector3>;
+        edges: Map<string, readonly [string, string]>;
+    }
+
+    const rows = new Map<number, Row>();
+    const rising = new Map<string, Set<string>>();
+    const heightKey = (y: number) => Math.round(y * 1e7);
+    const pointKey = (p: THREE.Vector3Like) =>
+        `${Math.round(p.x * 1e7)}:${Math.round(p.z * 1e7)}`;
+    const vertexKey = (y: number, point: string) => `${y}/${point}`;
+
+    function rowAt(height: number): Row {
+        let row = rows.get(height);
+        if (!row) {
+            row = {points: new Map(), edges: new Map()};
+            rows.set(height, row);
+        }
+        return row;
+    }
 
     for (const piece of pieces) {
         for (const face of [...piece.quads, ...(piece.triangles ?? [])]) {
             if (face.surface !== surface) continue;
 
-            for (const index of face.corners) {
-                const p = piece.vertices[index]!;
-                const keyY = Math.round(p.y * 1e7);
-                const keyPoint = [
-                    Math.round(p.x * 1e7),
-                    Math.round(p.z * 1e7)
-                ].join(":");
+            for (let i = 0; i < face.corners.length; i++) {
+                const a = piece.vertices[face.corners[i]!]!;
+                const b = piece.vertices[face.corners[(i + 1) % face.corners.length]!]!;
+                const ay = heightKey(a.y);
+                const by = heightKey(b.y);
+                const ak = pointKey(a);
+                const bk = pointKey(b);
+                const row = rowAt(ay);
+                row.points.set(ak, a);
+                rowAt(by).points.set(bk, b);
 
-                if (!rows.has(keyY)) rows.set(keyY, new Map());
-                rows.get(keyY)!.set(keyPoint, p);
+                if (ay === by) {
+                    if (ak === bk) throw new RangeError("Collapsed cavity edge");
+                    const key = ak < bk ? `${ak}|${bk}` : `${bk}|${ak}`;
+                    row.edges.set(key, [ak, bk]);
+                } else {
+                    const lower = ay < by ? vertexKey(ay, ak) : vertexKey(by, bk);
+                    const upper = ay < by ? vertexKey(by, bk) : vertexKey(ay, ak);
+                    if (!rising.has(lower)) rising.set(lower, new Set());
+                    rising.get(lower)!.add(upper);
+                }
             }
         }
     }
 
+    let previousStart: string | undefined;
+    let previousHeight: number | undefined;
+
     const rings = [...rows.entries()]
         .sort(([a], [b]) => a - b)
-        .map(([_, points]) => {
-            const vertices = [...points.values()];
-            const cx = vertices.reduce((sum, p) => sum + p.x, 0) / vertices.length;
-            const cz = vertices.reduce((sum, p) => sum + p.z, 0) / vertices.length;
+        .map(([height, row]) => {
+            const adjacency = new Map<string, Set<string>>();
+            for (const key of row.points.keys()) {
+                adjacency.set(key, new Set());
+            }
+            for (const [a, b] of row.edges.values()) {
+                adjacency.get(a)!.add(b);
+                adjacency.get(b)!.add(a);
+            }
 
-            vertices.sort((a, b) =>
-                Math.atan2(a.z - cz, a.x - cx) -
-                Math.atan2(b.z - cz, b.x - cx)
-            );
+            if (adjacency.size < 3 || [...adjacency.values()].some(neighbors =>
+                neighbors.size !== 2
+            )) {
+                throw new RangeError("Cavity section must be a closed contour");
+            }
 
+            const first = [...adjacency.keys()].sort()[0]!;
+            const order = [first];
+            let previous: string | undefined;
+            let current = first;
+
+            while (true) {
+                const next = [...adjacency.get(current)!]
+                    .find(key => key !== previous);
+                if (!next) throw new RangeError("Disconnected cavity contour");
+                if (next === first) break;
+                if (order.includes(next)) {
+                    throw new RangeError("Cavity contour intersects itself");
+                }
+                order.push(next);
+                previous = current;
+                current = next;
+            }
+
+            if (order.length !== adjacency.size) {
+                throw new RangeError("Multiple cavity contours are not supported");
+            }
+
+            // Keep the same winding as the old X/Z convention, without
+            // discarding concavities or inventing edges between remote points.
+            const twiceArea = order.reduce((area, key, i) => {
+                const p = row.points.get(key)!;
+                const q = row.points.get(order[(i + 1) % order.length]!)!;
+                return area + p.x * q.z - q.x * p.z;
+            }, 0);
+            if (!(Math.abs(twiceArea) > 1e-15)) {
+                throw new RangeError("Collapsed cavity contour");
+            }
+            if (twiceArea < 0) {
+                order.splice(1, order.length - 1, ...order.slice(1).reverse());
+            }
+
+            if (previousStart !== undefined) {
+                const candidates = rising.get(vertexKey(previousHeight!, previousStart));
+                const match = order.find(key =>
+                    candidates?.has(vertexKey(height, key))
+                );
+                if (!match) {
+                    throw new RangeError("Cavity sections have no matching seam");
+                }
+                order.push(...order.splice(0, order.indexOf(match)));
+            }
+
+            previousStart = order[0];
+            previousHeight = height;
             return {
-                y: vertices[0]!.y,
-                outline: vertices.map(p => new THREE.Vector2(p.x, p.z))
+                y: row.points.get(order[0]!)!.y,
+                outline: order.map(key => {
+                    const point = row.points.get(key)!;
+                    return new THREE.Vector2(point.x, point.z);
+                })
             };
         });
 
