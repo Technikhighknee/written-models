@@ -68,6 +68,12 @@ These are reusable construction tools, not model presets: proportions, station l
 
 `sweepSection()` lofts any closed 2D section along a 3D curve using a stable reference axis. It is suitable for applied handles, curved members and bent strips, with real capped ends and optional attachment flare.
 
+### Surface contacts
+
+`MeshSurfaceQuery` raycasts the actual triangles of a target mesh in world space, independent of the display material's sidedness. `fitBoundaryToSurface()` uses this query to fit any named construction-mesh boundary (often a loft cap) to a curved target. An optional topological falloff reshapes adjacent loops while preserving the original quads, UVs and surface IDs. Specify the casting direction, reach and small insertion depth; missing intersections fail explicitly.
+
+This operation produces accurate *contact*, not a Boolean union or watertight welded joint. Source geometry may supply a world transform when target and source do not share local coordinates.
+
 
 
 ### Important rules

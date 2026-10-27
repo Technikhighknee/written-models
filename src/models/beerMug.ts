@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { cm, mm } from "../toolbox/units/length";
 import { turnedVessel } from "../toolbox/geometry/construction/turnedVessel";
 import { sweepSection } from "../toolbox/geometry/construction/sweepSection";
+import { fitBoundaryToSurface } from "../toolbox/geometry/construction/fitBoundaryToSurface";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { roundedRectangle } from "../toolbox/shapes/primitives/roundedRectangle";
 import { paleStoneware } from "../materials/ceramic/paleStoneware";
@@ -54,12 +55,9 @@ function create(): THREE.Group {
     });
     mug.add(bowl);
 
-    // A generous C-shaped finger opening. The strap's ends enter the
-    // actual clay wall; caps and most of each joint are buried, while
-    // the flared shoulders stay visible as hand-worked attachments.
-    const handle = surfaceMesh({
-        name: "AppliedClayStrapHandle",
-        geometry: sweepSection({
+    // A generous C-shaped finger opening. Its end contours are fitted
+    // to the actual fired-clay surface, not guessed from the path angle.
+    let handleGeometry = sweepSection({
             path: [
                 new THREE.Vector3(cm(3.65), cm(14.35), 0),
                 new THREE.Vector3(cm(5.7), cm(15.0), 0),
@@ -74,9 +72,26 @@ function create(): THREE.Group {
             referenceAxis: new THREE.Vector3(0, 0, 1),
             endFlare: 0.28,
             segments: 28
-        }),
+        });
+
+    // Both contact boundaries follow the actual curved mug wall.
+    // The same operation also works for beams, straps and other meshes.
+    for (const boundarySurface of ["cap-start", "cap-end"]) {
+        handleGeometry = fitBoundaryToSurface({
+            geometry: handleGeometry,
+            boundarySurface,
+            target: bowl,
+            direction: new THREE.Vector3(-1, 0, 0),
+            rayOffset: cm(10),
+            maxDistance: cm(20),
+            embed: mm(0.8),
+            falloffRings: 2
+        });
+    }
+    mug.add(surfaceMesh({
+        name: "AppliedClayStrapHandle",
+        geometry: handleGeometry,
         materials: clay.body
-    });
-    mug.add(handle);
+    }));
     return mug;
 }
