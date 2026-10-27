@@ -66,7 +66,7 @@ export function buildTankardGeometry(): TankardGeometry {
     );
 
     // An eight-sided bevelled grip, rather than a costly rounded extrusion.
-    const w = cm(1.1), d = mm(6), b = mm(1.8);
+    const w = mm(9), d = mm(6), b = mm(1.8);
     const section = [
         [-w + b, -d], [w - b, -d], [w, -d + b], [w, d - b],
         [w - b, d], [-w + b, d], [-w, d - b], [-w, -d + b]
@@ -83,7 +83,7 @@ export function buildTankardGeometry(): TankardGeometry {
             new THREE.Vector3(cm(5.0), cm(4.8), 0)
         ],
         section, referenceAxis: new THREE.Vector3(0, 0, 1),
-        segments: 14, endFlare: 0.15
+        segments: 14, endFlare: 0.10
     });
 
     const contactGeometry = toBufferGeometry(staves[0]!, STAVE_SURFACES);
