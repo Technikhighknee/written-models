@@ -10,9 +10,9 @@ export interface FlowedGrainOptions {
 }
 
 /**
- * Wood-facing recipe adapter for the generic continuous flow-coordinate
- * field. It deliberately preserves the old oak grain parameters, including
- * its phase wrapping and subordinate secondary-wave contribution.
+ * Wood grain adapter for the periodic flow field. Ring count, bend and
+ * phases control the continuous fiber pattern, with a subtle secondary
+ * wave contribution that maintains tile wrapping.
  */
 export function flowedGrainField({
     rings, bend, firstPhase = 0, secondPhase = 0

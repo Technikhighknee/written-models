@@ -31,8 +31,8 @@ export interface SeamedPlankOptions {
     recessDepth: number;
     /**
      * Width of the flat, recessed seam floor on each plank edge.
-     * Zero keeps the original pointed V-groove and two material slots.
-     * Positive values add a third material slot for the shaded floor.
+     * Zero produces a pointed V-groove with two material slots.
+     * Positive values add a third slot for the shaded floor.
      */
     grooveFloorWidth?: number;
     /** The minimum-X edge is a board seam (not the outer outline). */

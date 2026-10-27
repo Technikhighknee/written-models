@@ -53,8 +53,7 @@ export interface LoftAxialProfileOptions {
  * precedence over sideSurfaces, which is useful for bevels/edge bands.
  *
  * For Y sections U points along Z and V along X; for X sections U points
- * along Y and V along Z. These handed frames retain the winding of the
- * original hand-authored lofts.
+ * along Y and V along Z. These frames maintain consistent contour winding.
  */
 export function loftAxialProfile({
     axis, stations, outline, segments = 12, tipStart, tipEnd,

@@ -152,7 +152,7 @@ export class ModelViewer {
         const size = bounds.getSize(new THREE.Vector3());
         const extent = Math.max(size.x, size.y, size.z, 0.01);
 
-        // Fit the projected bounds instead of keeping a fixed wide distance.
+        // Choose camera distance from the model's projected bounds.
         const direction = new THREE.Vector3(1.8, 1.35, 1.8).normalize();
 
         this.camera.position.copy(center).add(direction);

@@ -15,8 +15,8 @@ export interface RevolveShellOptions {
  * The meridian travels up the outside, folds over the upper edge,
  * returns down the inside, and closes across the lower edge.
  *
- * This is a thin-wall convenience constructor: the shared latheMeridian()
- * now owns ALL rotational topology, poles, UVs and authored control faces.
+ * The shared latheMeridian() constructs rotational topology, poles,
+ * UVs and authored control faces for this thin-walled shell.
  */
 export function revolveShell(
     profile: readonly THREE.Vector2[],

@@ -14,7 +14,7 @@ Models import **materials**, never draw their own texture maps.
   together. `bakePbrMaps()` creates aligned Base Color, Roughness and
   tangent-space Normal maps from the same samples. Base Color is sRGB;
   the data maps have no color space. Metalness remains a material property
-  unless we later need a metalness map.
+  for these materials.
 - Mesh UVs are measured in **meters**, not arbitrary 0–1 coordinates.
   The map repeat factor is derived from the physical tile size.
   Longitudinal wood uses **V along the board's length**, U across its width.
@@ -36,8 +36,6 @@ Models import **materials**, never draw their own texture maps.
   GLB export keeps the tint without creating one material per board.
 - All textures are ordinary CanvasTextures attached to MeshStandardMaterials,
   compatible with the existing GLTFExporter / binary GLB workflow.
-- SVG can join the recipe toolbox when we need deliberately drawn vector marks
-  and masks. There is no unused SVG abstraction yet.
 
 The material library is **not** responsible for mesh shape, topology,
 UV unwrapping or installing materials on meshes. Those stay in the geometry

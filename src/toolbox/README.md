@@ -22,6 +22,8 @@ If the model needs a capability that does not exist yet, **implement that capabi
 
 **Test what should remain true, not what happens to be true today.** Keep focused tests for reusable geometry contracts and bugs likely to recur: valid topology, shared boundaries, correct contacts, determinism. Do not pin a model's current proportions, part count, triangle count, or artistic choices to CI. Inspect those while making the asset instead. Add tests when the protection justifies the maintenance, and remove obsolete tests when a design changes.
 
+**Document the code as it exists.** Comments and JSDoc explain current contracts, intent and non-obvious constraints. Do not narrate past implementations, fixes or design changes; commit history is for that. Remove comments that merely repeat the code.
+
 ## What the toolbox can already do
 
 - **Build forms.** Create basic shapes, extrude outlines, loft changing cross-sections, turn profiles around an axis, and sweep shapes along curves. Build anything from a straight beam to a hollow, curved vessel.
