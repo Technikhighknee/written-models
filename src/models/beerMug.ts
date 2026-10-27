@@ -185,8 +185,8 @@ function create(): THREE.Group & FillLevelController {
         cm(15.2) - mm(2)
     );
 
-    // A full serving equals 90% of the former usable capacity; the liquid
-    // no longer reaches almost all the way to the rim at fill level 1.
+    // Reserve headroom above a full serving: fill level 1 uses 90% of
+    // the geometric cavity capacity.
     const cavity = physicalCavity.between(
         physicalCavity.bottom,
         physicalCavity.heightAtFill(0.9)

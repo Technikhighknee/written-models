@@ -27,9 +27,7 @@ function create(): THREE.Group {
     const barrel = new THREE.Group();
     barrel.name = "Barrel";
 
-    // Medium coopered ale cask (~160 L inside), standing upright.
-    // 1 world unit = 1 meter; its crown, hoops and heads are modeled in
-    // actual dimensions rather than stretched from the old small prop.
+    // Upright coopered ale cask (~160 L inside), modeled in meters.
     const profile = bulgedProfile({
         height: cm(78),
         bottomDiameter: cm(52),
@@ -271,8 +269,8 @@ function createHoop(
         sweepAngle: sweep
     };
 
-    // The *outer* radius of the primary band is our new supporting profile
-    // for the lap. Preserve the exact same height-dependent bulge.
+    // The lap follows the primary band's outer radius and its
+    // height-dependent bulge.
     const lapProfile = profile.map(point => new THREE.Vector2(
         point.x / Math.cos(Math.PI / radialSegments) +
             clearance + thickness + mm(0.35),

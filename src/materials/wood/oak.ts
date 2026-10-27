@@ -17,7 +17,7 @@ export interface OakMaterials {
 
 const cuts = new Map<number, OakMaterials>();
 
-/** Canonical oak material; unchanged API for existing models. */
+/** Default oak material (seed 0). */
 export function oak(): OakMaterials {
     return oakVariant(0);
 }
@@ -37,9 +37,8 @@ export function oakVariant(seed: number): OakMaterials {
     const existing = cuts.get(seed);
     if (existing) return existing;
 
-    // One full board fits into a tile. The old texture repeated every 1.6m
-    // and stamped the same knots onto each stave; now unique seeds and
-    // longer grain flow remove both repetition mechanisms.
+    // Tiles span a full board length. Seeded cuts keep knot patterns
+    // distinct across neighboring pieces without changing grain scale.
     const faces = bakePbrMaps({
         width: 320,
         height: 768,

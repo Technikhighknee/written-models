@@ -47,7 +47,7 @@ export function warpGeometry<T extends THREE.BufferGeometry>(
             positions.setXYZ(i, point.x, point.y, point.z);
         }
     } else {
-        // Legacy third-party geometry: preserve the original behavior.
+        // Without authored topology, deform the GPU vertices directly.
         const point = new THREE.Vector3();
         const displaced: THREE.Vector3[] = [];
 

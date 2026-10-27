@@ -138,8 +138,7 @@ export function loftBoard(
         const offset = sectionIndex * ringSize;
         const start = sectionIndex === 0;
 
-        // Retain the original all-quad end grain for the many existing
-        // boards whose two surfaces have matching topology.
+        // Matching inner and outer contours form quad-only end caps.
         if (outerPoints === innerPoints) {
             for (let j = 0; j < outerPoints - 1; j++) {
                 const outerA = offset + j;

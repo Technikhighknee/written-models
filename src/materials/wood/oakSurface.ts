@@ -105,9 +105,8 @@ export function makeOakFace(seed: number): (u: number, v: number) => SurfaceSamp
 }
 
 /**
- * Cross-cut oak has subdued open ring ARCS and exposed pores.
- * Unlike the old centered-circle pattern there is no target/bullseye,
- * nor is there a visible circle stamped onto every timber end.
+ * Cross-cut oak shows subdued, open ring arcs and exposed pores,
+ * without centered bullseyes or repeated circular stamps.
  */
 export function makeOakEndGrain(seed: number): (u: number, v: number) => SurfaceSample {
     if (!Number.isInteger(seed) || seed < 0) {
@@ -144,16 +143,15 @@ export function makeOakEndGrain(seed: number): (u: number, v: number) => Surface
     };
 }
 
-// Preserve the original single-recipe API for external clients.
+// Seed-zero material recipes for callers that do not select a cut.
 export const oakFace = makeOakFace(0);
 export const oakEndGrain = makeOakEndGrain(0);
 
 /**
  * Quiet, continuously flowing broad-face grain for planed oak.
  *
- * Unlike painted ring contours, every grain line belongs to one global
- * fiber field and continues along the board. A few broad latewood bands
- * remain visible, but are subordinate to pores and fine longitudinal grain.
+ * Grain lines follow one continuous fiber field across the board.
+ * Broad latewood bands remain subordinate to pores and fine longitudinal grain.
  */
 export function makeOakBoardFace(seed: number): (u: number, v: number) => SurfaceSample {
     if (!Number.isInteger(seed) || seed < 0) {

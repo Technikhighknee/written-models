@@ -22,9 +22,8 @@ export function bladeSteel(): BladeSteel {
         tileWidth: 0.085,
         tileLength: 0.30,
         sample(u, v) {
-            // Plain, ground steel. The previous sinusoidal bands made the
-            // blade resemble pattern-welded / Damascus steel. A common
-            // workshop knife instead shows only quiet finishing marks.
+            // Plain workshop steel has subdued grinding marks without
+            // the conspicuous bands of pattern-welded blades.
             const forging = tileableNoise(u, v, 13, 11, 301);
             const finish = tileableNoise(u, v, 39, 27, 707);
             // Narrow variations across U persist along V: grinding strokes

@@ -1,10 +1,7 @@
 import * as THREE from "three";
 
-// A minor technical quirk: Normals are evaluated in the local geometry coordinates.
-// This is find for the current use case, but it's something to keep in mind if the
-// function later encounters geometries that have already been transformed.
-// TODO: Reread this at some point before you find yourself wondering, "WTF is going on here?"
-// TODO: Reread again at _another_ time.
+// Normal classification uses geometry-local coordinates, not world space.
+// Callers must account for mesh transforms when choosing the reference axes.
 
 export type MaterialResolver = (normal: THREE.Vector3) => number;
 
