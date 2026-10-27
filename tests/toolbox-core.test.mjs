@@ -9,6 +9,7 @@ import { seededVariation } from "../src/toolbox/spatial/layout/seededVariation.t
 import { edgeRecessDepth, edgeRecessStations } from "../src/toolbox/shapes/profiles/edgeRecess.ts";
 import { monotoneProfile } from "../src/toolbox/shapes/profiles/monotoneProfile.ts";
 import { contactFrame } from "../src/toolbox/spatial/frames/contactFrame.ts";
+import { attachByFrames } from "../src/toolbox/spatial/relationships/attachByFrames.ts";
 import { sectionsBetweenPlanes } from "../src/toolbox/geometry/construction/sectionsBetweenPlanes.ts";
 import { latheMeridian } from "../src/toolbox/geometry/construction/latheMeridian.ts";
 import { AuthoredMeshBuilder } from "../src/toolbox/geometry/mesh/AuthoredMeshBuilder.ts";
@@ -275,4 +276,20 @@ test("extrusion face classification retains cap and side index coverage", () => 
     assert.ok(geometry.groups.some(group => group.materialIndex === 1));
 
     geometry.dispose();
+});
+
+test("frame attachments reject scene-graph cycles before reparenting", () => {
+    const root = new THREE.Group();
+    const nested = new THREE.Group();
+    const leaf = new THREE.Group();
+    root.add(nested);
+    nested.add(leaf);
+
+    assert.throws(() => attachByFrames(
+        leaf, root, new THREE.Matrix4(), new THREE.Matrix4()
+    ), /circular dependency/);
+
+    assert.equal(root.parent, null);
+    assert.equal(nested.parent, root);
+    assert.equal(leaf.parent, nested);
 });
