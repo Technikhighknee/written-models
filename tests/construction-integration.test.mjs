@@ -243,6 +243,18 @@ test("fillable cavities preserve mesh identity and calculate volume-based levels
             assert.equal(exported.geometry, geometry);
             assert.deepEqual(exported.morphTargetInfluences, weights);
             assert.deepEqual(exported.userData, originalMesh.userData);
+
+            // Check the actual glTF representation, not only our Three.js
+            // meshes. Otherwise an export could silently flatten the fill.
+            const { GLTFExporter } = await import(
+                "three/addons/exporters/GLTFExporter.js"
+            );
+            const gltf = await new GLTFExporter().parseAsync(runtime.root, {
+                binary: false
+            });
+            const primitive = gltf.meshes[0].primitives[0];
+            assert.equal(primitive.targets.length, targets.length);
+            assert.deepEqual(gltf.meshes[0].weights, weights);
         } finally {
             runtime.dispose();
         }
