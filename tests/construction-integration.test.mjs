@@ -335,4 +335,45 @@ test("cavity volume follows a concave authored boundary instead of an angular hu
     const topStart = cavity.rings[1].outline[0];
     assert.ok(Math.abs(topStart.x - bottomStart.x - 0.3) < 1e-8);
     assert.ok(Math.abs(topStart.y - bottomStart.y) < 1e-8);
+
+    const {createFillableVolume} = await moduleAt(
+        "geometry/construction/fillableVolume.ts"
+    );
+    const material = new THREE.MeshBasicMaterial();
+    const contents = createFillableVolume(cavity, material, 0.5, 0);
+    try {
+        const mesh = contents.mesh;
+        const position = mesh.geometry.getAttribute("position");
+        const index = mesh.geometry.getIndex();
+        const sideIndices = n * 6 * (cavity.rings.length - 1);
+        let capArea = 0;
+
+        for (let i = 0; i < n - 2; i++) {
+            const offset = sideIndices + i * 6;
+            const points = [0, 1, 2].map(k => {
+                const vertex = index.getX(offset + k);
+                return new THREE.Vector3().fromBufferAttribute(position, vertex);
+            });
+            const [a, b, c] = points;
+            const signedArea = (b.x - a.x) * (c.z - a.z) -
+                (b.z - a.z) * (c.x - a.x);
+            assert.ok(signedArea < -1e-10, "top faces must point upward");
+            capArea -= signedArea / 2;
+
+            const x = (a.x + b.x + c.x) / 3 - 0.3;
+            const z = (a.z + b.z + c.z) / 3;
+            assert.ok(
+                x >= 0 && x <= 4 && z >= 0 && z <= 4 &&
+                (z <= 1 || x <= 1 || x >= 3),
+                "no cap triangle may cover the empty notch"
+            );
+        }
+
+        assert.ok(Math.abs(capArea - 10) < 1e-8);
+        assert.equal(mesh.geometry.morphAttributes.position.length, 8);
+        assert.equal(contents.getFillLevel(), 0.5);
+    } finally {
+        contents.mesh.geometry.dispose();
+        material.dispose();
+    }
 });
