@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { clone as cloneSkeletonHierarchy } from "three/addons/utils/SkeletonUtils.js";
 import {
     atlasUv, packPbrTextures,
     type AtlasSource, type AtlasPage, type AtlasTile
@@ -66,7 +67,7 @@ function supportedMaterial(material: THREE.Material): {
     key: string;
     source: AtlasSource | null;
 } | null {
-    if (!(material instanceof THREE.MeshStandardMaterial)) return null;
+    if (material.type !== "MeshStandardMaterial") return null;
     if (
         material.transparent || material.opacity !== 1 ||
         material.alphaTest !== 0 || material.side !== THREE.FrontSide ||
@@ -327,6 +328,42 @@ function makeGeometry(
 export function prepareRuntimeModel(model: THREE.Object3D): RuntimeAsset {
     model.updateWorldMatrix(true, true);
 
+    let hasSkin = false;
+    const members = new Set<THREE.Object3D>();
+    model.traverse(object => {
+        members.add(object);
+        if (object instanceof THREE.SkinnedMesh) hasSkin = true;
+    });
+
+    if (hasSkin) {
+        model.traverse(object => {
+            if (!(object instanceof THREE.SkinnedMesh)) return;
+            if (object.skeleton.bones.some(bone => !members.has(bone))) {
+                throw new Error("Skinned GLB export requires bones inside the model root");
+            }
+        });
+
+        const root = new THREE.Group();
+        root.name = model.name || "RuntimeAsset";
+        const rig = cloneSkeletonHierarchy(model);
+        rig.matrixAutoUpdate = false;
+        rig.matrix.copy(model.matrixWorld);
+        root.add(rig);
+
+        let meshes = 0;
+        rig.traverseVisible(object => {
+            if (object instanceof THREE.Mesh) meshes++;
+        });
+
+        return {
+            root,
+            sourceMeshes: meshes,
+            outputMeshes: meshes,
+            atlasPages: 0,
+            dispose() {}
+        };
+    }
+
     const root = new THREE.Group();
     root.name = model.name || "RuntimeAsset";
     const batches = new Map<string, Batch>();
@@ -379,7 +416,8 @@ export function prepareRuntimeModel(model: THREE.Object3D): RuntimeAsset {
             });
 
         if (!valid) {
-            const copy = new THREE.Mesh(object.geometry, object.material);
+            // Preserve instancing and its per-instance attributes.
+            const copy = object.clone(false);
             copy.name = object.name;
             copy.matrixAutoUpdate = false;
             copy.matrix.copy(object.matrixWorld);
