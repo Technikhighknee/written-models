@@ -229,6 +229,31 @@ button:disabled {
   background: #202731;
 }
 
+.model-parameters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fill-control {
+  color: #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.model-parameters input[type="range"] {
+  width: clamp(110px, 16vw, 210px);
+  accent-color: #b5d2f5;
+  cursor: pointer;
+}
+
+.model-parameters output {
+  min-width: 3.2em;
+  color: #edf3fd;
+  font: 600 0.8rem ui-monospace, monospace;
+  text-align: right;
+}
+
 .view-modes {
   display: inline-flex;
   gap: 2px;
