@@ -36,7 +36,12 @@ test("closed contours discard BOTH duplicate seam points without losing corners"
 });
 
 test("convex polygon partition retains total area and shared cut lines", () => {
-    const square = [[-2, -2], [2, -2], [2, 2], [-2, 2]];
+    const square = [
+        [-2, -2],
+        [2, -2],
+        [2, 2],
+        [-2, 2]
+    ];
     const cuts = [-2, -0.5, 1, 2];
     const pieces = partitionConvexPolygon(square, cuts);
     assert.equal(pieces.length, 3);
