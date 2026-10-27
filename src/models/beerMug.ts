@@ -58,12 +58,18 @@ export function buildTankardGeometry(): TankardGeometry {
         height: cm(1), radialSegments: STAVE_COUNT
     });
 
-    const bands = [cm(2.2), cm(13.2)].map(y =>
+    const bandWidth = cm(1.25);
+    const upperBandCenter = cm(13.2);
+    const bands = [cm(2.2), upperBandCenter].map(y =>
         bandAroundProfile(profile, {
-            y, width: cm(1.25), thickness: mm(2.1),
+            y, width: bandWidth, thickness: mm(2.1),
             clearance: mm(0.25), radialSegments: 24, angleOffset
         })
     );
+
+    // Keep the grip's entire upper arc below the iron hoop. The upper
+    // mounting point follows the hoop if its position or width changes.
+    const upperHandleY = upperBandCenter - bandWidth / 2 - cm(1.2);
 
     // An eight-sided bevelled grip, rather than a costly rounded extrusion.
     const w = mm(9), d = mm(6), b = mm(1.8);
@@ -74,10 +80,10 @@ export function buildTankardGeometry(): TankardGeometry {
 
     let handle = sweepSection({
         path: [
-            new THREE.Vector3(cm(4.95), cm(12.75), 0),
-            new THREE.Vector3(cm(6.8), cm(13.1), 0),
-            new THREE.Vector3(cm(8.2), cm(12.1), 0),
-            new THREE.Vector3(cm(9.2), cm(10.0), 0),
+            new THREE.Vector3(cm(4.95), upperHandleY, 0),
+            new THREE.Vector3(cm(6.8), upperHandleY + mm(1.5), 0),
+            new THREE.Vector3(cm(8.2), upperHandleY - mm(5.5), 0),
+            new THREE.Vector3(cm(9.2), cm(9.6), 0),
             new THREE.Vector3(cm(9.2), cm(6.1), 0),
             new THREE.Vector3(cm(7.8), cm(4.55), 0),
             new THREE.Vector3(cm(5.0), cm(4.8), 0)

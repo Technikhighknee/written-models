@@ -270,5 +270,19 @@ test("wooden tavern tankard has an open stave-built body and low triangle cost",
     ));
     assert.ok(handle.quads.length > 0);
     assert.ok((handle.triangles?.length ?? 0) > 0);
+    // Compare actual construction vertices against the rendered hoop's
+    // vertical bounds. This prevents a future handle/ring intersection
+    // even when either part's proportions are changed.
+    for (const band of bands) band.computeBoundingBox();
+    const handleTop = Math.max(...handle.vertices.map(point => point.y));
+    const handleBottom = Math.min(...handle.vertices.map(point => point.y));
+    assert.ok(
+        handleTop <= bands[1].boundingBox.min.y - 0.002,
+        "the wooden grip must clear the lower edge of the upper iron band"
+    );
+    assert.ok(
+        handleBottom >= bands[0].boundingBox.max.y + 0.002,
+        "the wooden grip must clear the upper edge of the lower iron band"
+    );
     for (const band of bands) band.dispose();
 });
