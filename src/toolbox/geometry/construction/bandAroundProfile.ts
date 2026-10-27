@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { MeshData, QuadFace } from "../mesh/MeshData";
 import { toBufferGeometry } from "../mesh/toBufferGeometry";
 import { linearProfile } from "../../shapes/profiles/linearProfile";
+import { polygonalRadiusOutside, radialPoint } from "./radialStripLayout";
 
 export interface BandAroundProfileOptions {
     y: number;
@@ -82,7 +83,7 @@ export function bandAroundProfile(
         ? arc.sweepAngle / radialSegments
         : Math.PI * 2 / radialSegments;
     const radiusForBand = (height: number): number =>
-        radiusAt(height) / Math.cos(angularStep / 2) + clearance;
+        polygonalRadiusOutside(radiusAt(height), angularStep, clearance);
 
     // Points are ordered counterclockwise around the strip section,
     // starting at the inner lower corner. Internal profile stations
@@ -145,11 +146,7 @@ export function bandAroundProfile(
 
         for (let j = 0; j < count; j++) {
             const radius = sectionRadii[j]!;
-            vertices.push(new THREE.Vector3(
-                radius * Math.sin(theta),
-                section[j]!.height,
-                radius * Math.cos(theta)
-            ));
+            vertices.push(radialPoint(radius, section[j]!.height, theta));
         }
     }
 

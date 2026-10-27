@@ -200,3 +200,29 @@ test("plain profile needs no unnecessary longitudinal support loops", async () =
     });
     assert.deepEqual(getProfiledBoardStations(board), [0, 1]);
 });
+
+// A generic radial partition must also serve strips that are not barrels.
+test("radial surface strips share angular boundaries and permit independent section density", async () => {
+    const {radialStripLayout, polygonalRadiusOutside} = await moduleAt(
+        "geometry/construction/radialStripLayout.ts"
+    );
+    const profile = [
+        new THREE.Vector2(0.4, 0),
+        new THREE.Vector2(0.5, 1)
+    ];
+    const strips = radialStripLayout({
+        profile, count: 8, outerSamples: [0, 0.25, 0.5, 0.75, 1],
+        innerSamples: [0, 1],
+        outerRadius: radius => radius,
+        innerRadius: radius => radius - 0.02
+    });
+    assert.equal(strips.length, 8);
+    assert.equal(strips[0][0].outer.length, 5);
+    assert.equal(strips[0][0].inner.length, 2);
+    const last = strips[0][0].outer.at(-1);
+    const next = strips[1][0].outer[0];
+    assert.ok(last.distanceTo(next) < 1e-12,
+        "radial neighbors must share the same angular boundary");
+    const radius = polygonalRadiusOutside(0.4, Math.PI / 4, 0.001);
+    assert.ok(radius * Math.cos(Math.PI / 8) > 0.4);
+});

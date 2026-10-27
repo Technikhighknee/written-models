@@ -74,6 +74,10 @@ These are reusable construction tools, not model presets: proportions, station l
 
 `classifyExtrudedSurfaces()` selects material regions by a side face's normal relative to a reference axis while preserving ordinary extruded geometry; `assignExtrudedTimberSurfaces()` is its wood-specific material-slot adapter. `periodicFlowField()` provides continuous wrapped coordinate bending independently of any texture type; `flowedGrainField()` retains the established oak-recipe interface.
 
+### Radial surface partitions
+
+`radialStripLayout()` divides a radius/height surface into corresponding outer and inner section rows with independently selectable transverse subdivisions and caller-defined radius rules. Neither material nor stave shape is baked into it; `radialStaves()` composes it with the board loft. `radialPoint()` and `polygonalRadiusOutside()` centralize radial coordinates and the polygon chord-clearance condition also used by `bandAroundProfile()`.
+
 ### Adaptive model contours
 
 `adaptiveStations()` accepts optional mandatory `knots` for deliberate feature boundaries. `profiledBoard()` samples the real cross-section with geometric-error limits instead of maintaining a fixed 13-ring array; `boardPanel()` unions the chosen stations across EVERY adjacent plank, keeping shared seams compatible and preventing T-junctions.
