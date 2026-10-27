@@ -13,6 +13,11 @@ import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
 import { oakVariant, oakBoardFace } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
+import { cavityFromMeshSurfaces } from "../toolbox/geometry/construction/profiledCavity";
+import {
+    createFillableVolume,
+    type FillLevelController
+} from "../toolbox/geometry/construction/fillableVolume";
 
 const STAVE_COUNT = 12;
 const STAVE_SURFACES = {
@@ -117,7 +122,7 @@ export function buildTankardGeometry(): TankardGeometry {
     return {staves, floor, bands, handle};
 }
 
-function create(): THREE.Group {
+function create(): THREE.Group & FillLevelController {
     const tankard = new THREE.Group();
     tankard.name = "WoodenTavernTankard";
     const parts = buildTankardGeometry();
@@ -172,5 +177,33 @@ function create(): THREE.Group {
     });
     tintVertices(grip.geometry, new THREE.Color(0.88, 0.83, 0.78));
     tankard.add(grip);
-    return tankard;
+
+    // The cavity follows the authored inner faces, including the bulge of
+    // each stave. Its usable range starts just above the wooden inset floor.
+    const cavity = cavityFromMeshSurfaces(parts.staves).between(
+        cm(1.9) + mm(0.2),
+        cm(15.2) - mm(2)
+    );
+    const beer = createFillableVolume(
+        cavity,
+        new THREE.MeshPhysicalMaterial({
+            name: "Amber Ale",
+            color: "#b77a2b",
+            metalness: 0,
+            roughness: 0.2,
+            clearcoat: 0.5,
+            clearcoatRoughness: 0.1,
+            side: THREE.DoubleSide
+        }),
+        0.65,
+        mm(0.35)
+    );
+    beer.mesh.name = "AmberAleContents";
+    tankard.add(beer.mesh);
+
+    // A stable model instance exposes live fill control to games and viewers.
+    return Object.assign(tankard, {
+        getFillLevel: beer.getFillLevel,
+        setFillLevel: beer.setFillLevel
+    });
 }
