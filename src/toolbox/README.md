@@ -62,6 +62,13 @@ For longer turned forms, `profileSpans()` generates shared axial stations from c
 
 These are reusable construction tools, not model presets: proportions, station locations, contours, and material choices still belong in the model.
 
+### Turned vessels and curved sections
+
+`turnedVessel()` constructs a closed-base, open-topped vessel from a few outer silhouette landmarks, wall/floor thickness, and optional rounded rim, turning grooves and local radial foot impressions. Its interior and exterior are one continuous control mesh; no hollow-cylinder illusion. `latheMeridian()` is the underlying generic solid-of-revolution operation and keeps real quad faces and axial triangle fans.
+
+`sweepSection()` lofts any closed 2D section along a 3D curve using a stable reference axis. It is suitable for applied handles, curved members and bent strips, with real capped ends and optional attachment flare.
+
+
 
 ### Important rules
 

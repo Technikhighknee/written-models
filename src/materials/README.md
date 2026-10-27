@@ -2,6 +2,8 @@
 
 Models import **materials**, never draw their own texture maps.
 
+- `ceramic/paleStoneware.ts` provides a cached, matte high-fired clay finish for utilitarian pottery, with restrained baked mineral variation and a subtly worn lip; geometry provides the potter's-wheel grooves.
+
 - `oak()` is the canonical oak finish. `oakVariant(seed)` gives several
   deterministic *cuts of that same species*: shared palette, roughness and
   physical scale, different ring flow, pores and sparse knot positions.
