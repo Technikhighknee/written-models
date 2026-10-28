@@ -238,6 +238,7 @@ Operation-specific selection behavior:
 | Operation | Face/edge and named region handling | Patch chart handling |
 | --- | --- | --- |
 | UV offset | Same topology; fresh result owner and remapped selections | Remains valid |
+| Face classification | Same topology; update face labels and derive regions from final labels | Remains valid |
 | Invertible transform | Same connectivity, transformed coordinates, reflected winding corrected | Chart composed with transform and its inverse; normal transformed correctly |
 | Arbitrary vertex deformation | Same connectivity if valid; fresh owner, faces and edge chains retained | Discard by default, unless caller explicitly supplies and validates a replacement chart |
 | Surface relief or opening | Rebuild affected faces, name newly created rims and wall/floor regions; discard obsolete selections | Return only a verified chart on the rebuilt patch |
