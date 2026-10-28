@@ -110,6 +110,23 @@ frame. Both use the same full-outline containment check and return
 discriminated contact information; neither is treated as an infinite
 plane.
 
+## Result and chart survival
+
+Every topology-changing edit reissues face, edge, and boundary
+selections for its output or explicitly drops those it cannot retain.
+An ordered boundary can refer to a cap's interior interface chain,
+not just an open mesh edge. Transforms preserve patch charts through
+composed coordinate mappings; arbitrary vertex deformations drop
+parameterizations by default. The collection of named regions is
+derived from the authored faces' surface classifications.
+
+The early partitioner handles noncrossing boundary-to-boundary
+cuts on a simple convex input, including concave output pieces.
+General concave input, holes, intersecting cuts and multi-component
+results remain Phase 6 work. Construction-time chamfers are available
+in Phase 3; general post-hoc selected-edge beveling waits for the
+Phase 6 local topology-refinement mechanism.
+
 ## Execution has two dependency paths
 
 **The existing-model migration is the first integrated proof.**
