@@ -123,7 +123,7 @@ function addSeatFrame(chair: THREE.Group, oak: Workshop): void {
     ));
 
     const rearRailY = APRON_Y;
-    const rearRailZ = rearZ(rearRailY) + cm(1.22);
+    const rearRailZ = rearZ(rearRailY) + cm(3);
     chair.add(oak.timber(
         "RearSeatRail",
         new THREE.Vector3(-innerRear, rearRailY, rearRailZ),
