@@ -189,7 +189,8 @@ and two real rivet heads.
 5. Partition a circular head into five profiles using shared
    clipped boundaries and weighted cuts. Preserve the common
    circular exterior outline.
-6. Build a **detailed outward surface patch** for each head plank.
+6. Create a single `SampledProfile2` for each head plank and use
+   it for the outward patch, inward patch and sidewall boundaries.
    Combine every adjoining seam and its groove/shoulder/edge-wear
    profile into **one** `shapeSurfaceRelief` call. This preserves
    coherent sampling even for planks with two seams. Build the
@@ -326,6 +327,7 @@ rail and several oriented draw-pegs.
    position through the 3.8 cm thickness to follow the raked
    rear stiles.
 5. Align matching contour landmarks between the two layers.
+   Give the upper/lower patches their shared sampled boundaries.
    Loft corresponding upper/lower boundary edges to produce
    slanted cheek walls. Construct a crowned upper patch and
    simpler lower patch, then connect the perimeter. This is a

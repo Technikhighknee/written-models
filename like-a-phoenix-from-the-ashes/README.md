@@ -28,12 +28,12 @@ can use the same geometric vocabulary.
 | 10 | [Operation semantics](10-geometry-semantics.md) | Exact behavior of seams, cuts, caps, fitting and topology changes |
 | 11 | [Numerics and query fidelity](11-numerics-and-query-fidelity.md) | Precision policy, sampling limits, triangle provenance and failure behavior |
 | 12 | [Existing-model construction proof](12-model-by-model-proof.md) | Part-by-part reconstruction of all eight models and their components |
+| 13 | [Architecture decisions](13-architecture-lock.md) | Settled contracts, dependency boundaries, integrated completion criteria |
 
-These documents describe one architecture. **09 defines the API,
-10 defines geometric behavior, 11 defines numerical behavior,
-12 proves the construction against the existing models, 06 maps
-the code and 07 gives the implementation sequence.** The remaining
-files explain individual techniques and show compositions.
+The documents describe one architecture. **09 defines the public
+contracts, 10 and 11 their geometric and numerical behavior,
+12 reconstructs the existing models, 13 records the architecture
+decisions, 06 maps the code, and 07 specifies implementation order.**
 
 ## The geometry pipeline
 
@@ -107,9 +107,9 @@ Float32 precision have separate validity checks.
 ## How it becomes real
 
 The [implementation sequence](07-implementation-sequence.md) starts
-with a usable authored geometry kernel, builds shared construction
-and editing operations, unifies contact fitting, and migrates models
-through working vertical slices.
+with an authored geometry-to-render path, proves shared construction
+through the existing assets, completes their migration, and then
+extends general cutting and editing on that integrated foundation.
 
 Each completed item records a commit and has a concrete geometric
 result. The examples in [08](08-composition-examples.md) demonstrate

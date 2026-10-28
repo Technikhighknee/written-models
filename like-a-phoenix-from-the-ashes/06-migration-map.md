@@ -1,8 +1,10 @@
 # 06 — Migration Map
 
-The target is a set of shared geometric operations with consistent authored
-geometry results. This document assigns concrete destinations to the existing
-toolbox APIs and identifies the model changes that complete the migration.
+The target is a set of shared geometric operations with consistent
+authored geometry results. This document assigns destinations to
+existing toolbox functions and maps each model to the shared paths.
+The dependency order for implementing them is fixed in
+[07](07-implementation-sequence.md).
 
 ## Target source layout
 
@@ -89,7 +91,8 @@ when its call sites use the corresponding shared operation.
 | `geometry/topology/stitchPolylines.ts` | Keep; use for unequal-resolution boundary bridges |
 
 Add shared topology indexing, ordered boundary loops, face/edge
-selection, region queries, and explicit operation results. Return
+selection, region queries, opaque result ownership and explicit
+operation results. Return
 `BoundaryRef[]` per named boundary, since a region can have multiple
 loops and internal holes.
 Functions currently duplicating adjacency and region selection

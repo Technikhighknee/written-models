@@ -28,9 +28,10 @@ Coincident points belonging to separate parts can keep distinct IDs.
 
 ### Geometry ownership
 
-Operations produce fresh vertices and face arrays. A builder may mutate
-while assembling a result; the result itself is treated as immutable
-by later operations.
+Operations produce fresh vertices and face arrays. A builder may mutate while assembling. On result creation,
+vertices, face corners, UVs and selections become owned snapshot
+data. Consumers must not mutate those THREE vector objects or
+arrays; operations make deep copies on edited paths.
 
 The current `warpGeometry()` modifies both GPU vertices and the
 `MeshData` referenced through a WeakMap. That changes with the
@@ -95,6 +96,7 @@ That rule is necessary for caching geometry queries safely.
 
 ```ts
 interface BoundaryRef {
+  owner: symbol;
   vertices: readonly number[];
   closed: boolean;
 }
@@ -114,6 +116,7 @@ the caller select the one it intends to fit.
 
 ```ts
 interface GeometryResult {
+  id: symbol;
   geometry: MeshData;
   boundaries: Readonly<Record<string, readonly BoundaryRef[]>>;
   regions: Readonly<Record<string, readonly FaceRef[]>>;
@@ -125,8 +128,10 @@ A loft can expose `start` and `end` loops; a hollow extrusion
 may expose outer and inner rims; a split can expose several cut
 loops per side.
 
-The returned references are valid for that result. An edit that
-changes vertex or face indexing emits new references. It carries
+Named boundaries and patches carry the source result's opaque
+identity. An operation rejects a selection whose owner differs
+from the supplied result. An edit creates a new result identity
+and returns remapped selections. It carries
 selected boundaries, regions and patch charts forward when they
 remain valid, and exposes newly created selections with names
 chosen by the operation. A chart that no longer describes the

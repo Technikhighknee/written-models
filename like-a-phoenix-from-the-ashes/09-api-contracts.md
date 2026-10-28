@@ -25,12 +25,16 @@ type EdgeRef = {
 };
 
 interface BoundaryRef {
+  /** Identity of the GeometryResult that owns this selection. */
+  owner: symbol;
   /** Ordered oriented construction vertex IDs, with one edge per pair. */
   vertices: readonly number[];
   closed: boolean;
 }
 
 interface GeometryResult {
+  /** Opaque identity, fresh for each newly authored result. */
+  id: symbol;
   geometry: MeshData;
   boundaries: Readonly<Record<string, readonly BoundaryRef[]>>;
   regions: Readonly<Record<string, readonly FaceRef[]>>;
@@ -43,15 +47,21 @@ A boundary name resolves to **a list** of loops or chains. A single
 surface region can have several disconnected edges, including hole rims.
 `BoundaryRef` refers to one particular chain.
 
-A `FaceRef` or `BoundaryRef` is valid for its owning result. After
-a topology-changing operation, use the returned references. Old
-numeric indices are never assumed to survive reindexing.
+A `BoundaryRef` or `SurfacePatchRef` is tied to a result by its
+opaque `owner` token. Operations reject a selection whose owner is
+different from the supplied result's `id`. A `FaceRef` is a compact
+face index interpreted only alongside its source geometry/result.
+After any geometry-producing operation, consumers use the returned
+selections and IDs. The tokens do not enter GLB.
 
 A `MeshData` is accepted directly by core operations that need no
 named selections. Operations involving named cuts, fits, or surfaces
 use `GeometryResult` when they need to retain those selections.
-Geometry edits return fresh arrays and vertices; source geometry
-is unchanged.
+Geometry edits deep-copy their authored vertex, face, UV and
+selection data. A builder may mutate while building, but a returned
+result is a snapshot. To integrate an existing `MeshData`, the
+`geometryResult` adapter constructs an owned result with empty
+named selections.
 
 ## Geometry definitions
 
@@ -69,6 +79,18 @@ interface Contour3 {
 interface Profile2 {
   outer: Contour2;
   holes?: readonly Contour2[];
+}
+
+interface SampledContour2 {
+  /** Closed loop; first point is not repeated at the end. */
+  points: readonly THREE.Vector2Like[];
+  /** Ordered normalized perimeter stations matching the points. */
+  parameters: readonly number[];
+}
+
+interface SampledProfile2 {
+  outer: SampledContour2;
+  holes?: readonly SampledContour2[];
 }
 
 interface Section3 {
@@ -177,6 +199,7 @@ interface SurfaceChart {
 }
 
 interface SurfacePatchRef {
+  owner: symbol;
   faces: readonly FaceRef[];
   chart: SurfaceChart; // coordinates valid within this patch
 }
@@ -221,7 +244,26 @@ adaptiveStations(
   sample: (t: number) => readonly THREE.Vector3Like[],
   options: AdaptiveStationsOptions
 ): StationSamplingResult;
+
+/** Resamples a planar outline and holes, retaining every authored corner. */
+sampleProfile(
+  profile: Profile2,
+  stations: {
+    outer: readonly number[];
+    holes?: readonly (readonly number[])[];
+  },
+  precision?: GeometryPrecision
+): SampledProfile2;
+
+/** Gives an existing authored mesh its own result identity. */
+geometryResult(source: MeshData): GeometryResult;
 ```
+
+The `SampledProfile2` used for a filled patch contains exact
+ordered boundary stations, including each hole loop independently.
+Shared boundaries are sampled before patch construction. The fill
+operation can refine the interior but does not silently add vertices
+to an interface already consumed by a neighboring part.
 
 A shared seam is sampled once. Each interface identifies the owner
 of both boundary references with part indices. The pieces reuse
@@ -308,10 +350,11 @@ interface ContourCorrespondence {
 }
 
 interface SurfaceFillOptions extends PrecisionOptions {
-  profile: Profile2; // outer shape and holes, in chart coordinates
+  /** Fully sampled outer and inner boundaries, in chart coordinates. */
+  profile: SampledProfile2;
   chart: SurfaceChart; // may produce a curved/crowned 3D surface
   region: string;
-  boundaryStations?: Readonly<Record<string, readonly number[]>>;
+  /** Refines only the interior; boundary stations remain unchanged. */
   maxDeviation?: number;
 }
 

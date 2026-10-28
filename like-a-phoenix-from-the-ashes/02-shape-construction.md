@@ -206,8 +206,11 @@ Each operation returns authored geometry with meaningful region
 and boundary names. For example, a loft exposes `start`, `end`,
 `side`; a shell exposes `outer`, `inner`, and `rim`.
 The caller can rename regions to suit the model. Named boundary
-arrays include every resulting outer rim and each opening around an
-inner wall. Sampling and precision behavior follow
+arrays include every outer rim and each opening around an inner
+wall. `fillSurfacePatch` takes an explicitly sampled planar profile,
+including the separate hole loops. Its chart maps exact boundary
+points into 3D; only the interior may be refined. Neighboring
+walls consume that same boundary. Sampling and precision follow
 [11](11-numerics-and-query-fidelity.md).
 
 ### Longitudinal materials and hard edges

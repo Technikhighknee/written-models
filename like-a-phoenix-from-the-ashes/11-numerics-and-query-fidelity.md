@@ -59,9 +59,12 @@ precision.
 
 ## Deterministic construction
 
-Same dimensions, seed, contour winding, station parameters, and
-precision policy produce the same construction positions, face
-order, surfaces, and UV coordinates.
+With pure geometric input functions, identical dimensions, seed,
+contour winding, station parameters and precision policy produce
+the same construction positions, face order, surfaces and UVs.
+The opaque result-generation tokens are deliberately different.
+Arbitrary user callbacks that read nondeterministic external state
+cannot satisfy this construction guarantee.
 
 - Sort unordered maps/sets at public geometry boundaries where
   iteration order would otherwise affect the authored result.

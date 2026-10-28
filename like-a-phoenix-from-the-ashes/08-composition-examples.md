@@ -285,17 +285,15 @@ const walls = loftSections([
 ], { ends: "open" });
 
 const bottom = fillSurfacePatch({
-  profile: bottomFootprint,
+  profile: sampleProfile(bottomFootprint, { outer: match.stations }),
   chart: bottomSurfaceChart,
-  region: "underside",
-  boundaryStations: { rim: match.stations }
+  region: "underside"
 });
 
 const top = fillSurfacePatch({
-  profile: topFootprint,
+  profile: sampleProfile(topFootprint, { outer: match.stations }),
   chart: crownedTopSurfaceChart,
-  region: "upper",
-  boundaryStations: { rim: match.stations }
+  region: "upper"
 });
 
 const seat = joinGeometry([walls, bottom, top], {
@@ -304,9 +302,10 @@ const seat = joinGeometry([walls, bottom, top], {
 ```
 
 The walls inherit the slanted cheek profiles. The top patch can
-carry a crown while the underside remains simpler. The boundary
-vertex stations are common to all three pieces, so joining
-creates a genuine solid without duplicate internal boundaries.
+carry a crown while the underside remains simpler. Both surface
+patches consume exactly the same authored contour stations as their
+adjoining walls. Patch refinement adds vertices in the interior.
+Joining creates a solid with shared interface vertices.
 
 The same operations can construct a tapered opening in a
 metal plate or a sloped building component.
@@ -318,20 +317,20 @@ incidence is valid.
 ## 10. Rebuild a barrel head with a detailed outer face
 
 The head is partitioned into boards using common cut curves.
-Each part has one richly shaped outward face and a simpler
-inward-facing patch.
+Each part has one detailed outward face and a simpler inward face.
+The same sampled planar outline controls both faces and the
+connecting walls.
 
 ```ts
 const pieces = partitionContour(diskProfile, weightedSeamCuts);
 
 const headBoards = pieces.parts.map((footprint, index) => {
   const chart = headCrownChart(index); // model-authored shape
-  const boundaryStations = headSeamStations(index);
+  const sampled = sampleProfile(footprint, headSeamStations(index));
   const outer = fillSurfacePatch({
-    profile: footprint,
+    profile: sampled,
     chart,
-    region: "outer",
-    boundaryStations
+    region: "outer"
   });
 
   // Each seam is a 2D partition interface projected through the
@@ -355,10 +354,9 @@ const headBoards = pieces.parts.map((footprint, index) => {
   );
 
   const inner = fillSurfacePatch({
-    profile: footprint,
+    profile: sampled,
     chart: headUndersideChart(index),
-    region: "inner",
-    boundaryStations
+    region: "inner"
   });
 
   const outerRim = detailed.boundaries.rim[0]!;

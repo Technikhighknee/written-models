@@ -165,8 +165,12 @@ splitting first.
 ## 6. Surface edits and chart ownership
 
 A parameterized surface patch is selected with exact faces and a
-chart mapping the patch's local 2D coordinates to the 3D surface.
-The selection belongs to a particular geometry result. A
+chart mapping its local 2D coordinates to 3D. Its selection includes
+the source result's generation token; source/result mismatches fail.
+The patch is constructed from an explicitly sampled outer boundary
+and, where needed, explicitly sampled hole loops. The chart cannot
+silently change the stations of an interface shared with another
+piece. Interior refinement is independent. A
 subsequent topology edit returns updated patch references only
 when a valid chart still describes the edited surface.
 
@@ -183,9 +187,9 @@ intended. Regions and local UV projections for the new floors and
 shoulders are returned with the edited geometry. The mating side
 and floor thickness are checked for unintended break-through.
 
-A caller can reuse the returned patch selection if the new chart is
-valid; otherwise that patch selection is absent, requiring a new
-chart for another coordinate-based edit. This prevents stale
+An edit assigns a new result token. A caller uses the returned
+patch selection if the updated chart is valid. Otherwise that
+selection is absent and a new chart must be explicitly supplied. This prevents stale
 parametric mappings from being treated as valid geometry.
 
 ## 7. Surface queries refer back to authored faces
