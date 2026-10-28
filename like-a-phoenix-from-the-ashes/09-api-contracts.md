@@ -178,6 +178,40 @@ interface SurfacePatchRef {
   faces: readonly FaceRef[];
   chart: SurfaceChart; // coordinates valid within this patch
 }
+
+interface PolarStripOptions extends PrecisionOptions {
+  /** Radius/height pairs along an axisymmetric source shape. */
+  meridian: readonly THREE.Vector2Like[];
+  count: number;
+  angleOffset?: number;
+  gap?: number; // meters along each circumferential cut
+  outerStations: readonly number[];
+  innerStations: readonly number[];
+  outerRadiusAt(radius: number, height: number, station: number): number;
+  innerRadiusAt(radius: number, height: number, station: number): number;
+}
+
+interface MeshRegionTarget {
+  geometry: MeshData;
+  localToWorld: THREE.Matrix4;
+  regions: readonly string[];
+}
+
+interface CavitySectionsOptions extends PrecisionOptions {
+  /** Open wall pieces whose combined sections enclose a single contour. */
+  pieces: readonly MeshRegionTarget[];
+  axis: "y";
+  heights: readonly number[];
+}
+
+interface ClearanceOptions extends PrecisionOptions {
+  minimum: number;
+}
+
+interface ClearanceResult {
+  closestDistance: number; // meters, between actual finite surfaces
+  intersects: boolean;
+}
 ```
 
 ```ts
@@ -337,6 +371,13 @@ type DeformationField = (
   vertexId: number
 ) => THREE.Vector3Like; // displacement
 
+interface GrooveOptions extends PrecisionOptions {
+  /** Normal displacement profile across the groove and shoulders. */
+  depthAt(distanceAcross: number, progressAlong: number): number;
+  affectedRegion: string;
+  grooveRegion: string;
+}
+
 interface Ray3 {
   origin: THREE.Vector3Like;
   direction: THREE.Vector3Like;
@@ -419,6 +460,14 @@ booleanSolids(
   second: MeshData,
   operation: BooleanOperation,
   options: BooleanOptions
+): GeometryResult;
+
+/** Surface-local groove while retaining the underlying part contact. */
+grooveAlongSurface(
+  source: GeometryResult,
+  patch: SurfacePatchRef,
+  seam: SampledBoundary,
+  options: GrooveOptions
 ): GeometryResult;
 ```
 
@@ -554,6 +603,32 @@ Queries operate on authored geometry plus a transform. A triangle
 acceleration structure or render-backed ray implementation may be
 used internally without requiring callers to own a `THREE.Mesh`.
 
+```ts
+/** Full finite triangle-surface clearance; detects intersections. */
+surfaceClearance(
+  first: SurfaceTarget,
+  second: SurfaceTarget,
+  options: ClearanceOptions
+): ClearanceResult;
+
+/** Ordered cavity sections from an assembled set of inner wall regions. */
+cavitySectionsFromSurfaces(
+  options: CavitySectionsOptions
+): readonly CavityRing[];
+```
+
+The cavity source may contain **separate** meshes. At every selected
+height, the requested regions intersect the plane to form segments
+which must connect into one ordered, simple, closed contour within
+the configured geometric precision. Missing, branching, doubled
+and disconnected loops fail clearly. Successive sections retain
+corresponding contour stations and winding for `ProfiledCavity`.
+
+`surfaceClearance` checks actual finite triangles, including their
+interiors and edges. It is usable after a circular-band sweep to
+verify that a band which clears a profile at its sampled vertices
+also clears the real faceted supporting surface between samples.
+
 The query and renderer share the triangulation of each authored face.
 A query triangle records its originating `FaceRef` and the three
 face-corner offsets. Barycentric coordinates provide interpolation
@@ -567,8 +642,15 @@ side was hit.
 surfaceMesh(options: {
   name: string;
   geometry: MeshData;
-  materials: THREE.Material | Record<string, THREE.Material>;
+  materials: THREE.Material | Readonly<Record<string, THREE.Material>>;
+  tint?: THREE.ColorRepresentation; // GPU vertex color tint, if requested
 }): THREE.Mesh;
+
+offsetMeshUvs(
+  source: MeshData | GeometryResult,
+  u: number,
+  v: number
+): GeometryResult;
 
 attachAtFrames(options: {
   parent: THREE.Object3D;
@@ -587,6 +669,13 @@ Mating rotation is explicit. The attachment operation applies the
 result to the scene object and checks for hierarchy cycles.
 
 Geometry fitting remains independent of scene parenting.
+
+Rendering can apply a model-wide tint after converting authored
+geometry. That tint is stored in GPU vertex colors and exported
+with the material, as current oak recipes require. UV offsets are
+applied through an authored **non-mutating** `offsetMeshUvs` edit;
+callers use its returned geometry. These operations have separate
+responsibilities from the underlying mesh topology.
 
 `surfaceMesh` calls the one authored-to-render compiler.
 `toBufferGeometry` handles triangulation, render vertex splits,
