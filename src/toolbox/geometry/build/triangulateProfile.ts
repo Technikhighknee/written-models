@@ -97,7 +97,15 @@ export function triangulateProfile(
     }
 
     for (const triangle of triangles) {
-        split(triangle);
+        const [a, b, c] = triangle;
+        if (a === undefined || b === undefined || c === undefined) {
+            throw new GeometryOperationError(
+                "triangulateProfile", "invalid-topology",
+                "Incomplete cap triangle"
+            );
+        }
+
+        split([a, b, c]);
     }
 
     return result;
