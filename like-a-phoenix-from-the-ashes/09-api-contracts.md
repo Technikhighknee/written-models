@@ -320,7 +320,7 @@ The geometric controls are explicit. All dimensions below are meters.
 
 ```ts
 interface ExtrudeOptions extends PrecisionOptions {
-  frame: THREE.Matrix4; // local XY → construction space; depth along local +Z
+  frame: THREE.Matrix4; // rigid local XY→construction; depth along local +Z
   depth: number; // meters, positive
   caps?: boolean;
   layers?: readonly {
@@ -512,6 +512,13 @@ For a closed-path sweep, `ends` is inapplicable and must be
 omitted. Caps already produced by a constructor are never capped
 a second time.
 
+The extrusion frame is rigid and invertible so that `depth`,
+layer offsets and profile coordinates remain physical meters;
+nonrigid scaling is an explicit later geometry transform.
+For revolution, the axis and radial direction must be finite
+and nonzero; the radial direction must be perpendicular to
+the axis within angular precision.
+
 For `revolveProfile`, an open meridian may start or end on the
 rotation axis, producing real pole triangles. A cyclic positive-
 radius meridian wraps through its closing segment. These two
@@ -585,7 +592,15 @@ outer/inner open rows are combined into one closed profile contour;
 the precise per-edge surface classification distinguishes the
 outer face, inner face and both connecting sides.
 
-A sweep produces 3D sections using parallel transport before
+For a sweep, the `startingFrame` is rigid: its origin equals
+`path.at(0)` within precision, its local +Z agrees with the
+nonzero forward `path.tangent(0)`, and local +X/+Y define
+the section's physical profile axes and roll. Inconsistent
+starting frames and zero tangents are invalid rather than
+silently adjusted. Subsequent section frames use parallel
+transport along the same forward path; section profiles must
+have consistent loop correspondence and remain nondegenerate.
+A sweep constructs faces using those transported sections before
 calling the same loft engine. For `closedPath: true`, position
 and tangent are periodic, the stations occupy `[0, 1)`, frame
 transport closes without residual seam twist, and the final
@@ -939,7 +954,10 @@ also clears the real faceted supporting surface between samples.
 triangle surfaces, not their volumes. `minimum` must be non-negative.
 Actual touching or crossing triangles report `intersects: true`
 and zero distance; nested but non-touching closed solids are not a
-surface intersection. `meetsMinimum` checks the requested threshold
+surface intersection. Minimum unsigned surface distance does not
+classify which side of an oriented solid a second object occupies.
+An exterior-fitting construction must separately establish its
+intended outward placement, not infer it from `meetsMinimum`. `meetsMinimum` checks the requested threshold
 using operation precision. Callers wanting *solid* overlap
 classification must use a solid-specific query.
 
