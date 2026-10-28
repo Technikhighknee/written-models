@@ -105,7 +105,7 @@ will call the shared system.
 | `construction/loftRings.ts` | Common closed-section loft operation |
 | `construction/loftSections.ts` | Fold four-corner loft behavior into the same section loft engine |
 | `construction/loftBoard.ts` | Extract independently sampled boundaries and mixed-resolution transitions into general loft/bridge |
-| `construction/loftAxialProfile.ts` | Generic section field and axial sampler feeding the loft engine |
+| `construction/loftAxialProfile.ts` | Generic section field, radial waves and axial sampler; its per-edge/per-interval face materials/smoothing move into the loft engine |
 | `construction/sweepSection.ts` | General path sweep with changing section, transported frames, and periodic-frame closure for closed paths |
 | `construction/latheMeridian.ts` | Core revolve implementation, including correct pole topology |
 | `shapes/operations/extrude.ts` | Authored contour extrusion with cap/side region outputs |
@@ -128,9 +128,9 @@ operations consistently return `GeometryResult` containing authored
 | `construction/circularPlankPanel.ts` | Move circular wooden-panel assembly to models; generic contour partition and grooves remain in toolbox |
 | `construction/seamedPlankExtrusion.ts` | Extract local surface construction, seams, cut/corner wear, and adaptive sampling |
 | `construction/cutBoard.ts` | Replace with planar `recessPatch`, `openPatch` and supported `cutThrough`; metal and wood use the same surface-patch algorithms |
-| `construction/radialStripLayout.ts` | Pure radial placement/shape sampling returning geometric data, no `BoardSection` coupling |
+| `construction/radialStripLayout.ts` | Pure polar section layout with outer/inner sampling, returning Section3 for general lofting, no BoardSection coupling |
 | `construction/radialStaves.ts` | Barrel/mug stave assembly moves into model code |
-| `construction/bandAroundProfile.ts` | Extract section-following bands/ribbons and surface offsets, return authored geometry |
+| `construction/bandAroundProfile.ts` | Compose periodic and open partial sweeps, shared bevel profile, radius/chord clearance and finite-surface validation; return authored geometry |
 | `geometry/features/rectangleCornerMounts.ts` | Geometry-independent placement pattern; object-specific mount construction resides in models |
 | `shapes/operations/cleanClosedContour.ts` | General contour normalization |
 | `shapes/operations/clipConvexPolygon.ts` | General contour clipping and shared-boundary partitioning; retain fast convex implementation |
@@ -171,7 +171,7 @@ operations.
 | `construction/beamBetweenPlanes.ts` | Rectangular-profile convenience composition outside geometric fitting core |
 | `construction/beams.ts` | Generic member geometry or model composition using section and frame tools |
 | `construction/timber.ts` | Wood face/material and grain policy goes with models/materials; geometric fitting remains shared |
-| `construction/fitBoundaryToSurface.ts` | Fitting layer consuming exact boundary references |
+| `construction/fitBoundaryToSurface.ts` | Fitting layer consuming exact boundary references and retaining opposite-end loops across consecutive fittings |
 | `spatial/queries/MeshSurfaceQuery.ts` | Query adapter over authored geometry + transform; ray hits report actual winding normals, original face/corner mapping and barycentrics |
 | `spatial/queries/bounds.ts` | Keep general bounding queries |
 | `spatial/frames/contactFrame.ts` | Shared frame based on point/normal/tangent |
@@ -196,10 +196,10 @@ may accelerate their implementation internally.
 | `geometry/materials/assignMaterialsByNormal.ts` | Classify authored face regions by normal, then render compiler maps materials |
 | `geometry/materials/classifyExtrudedSurfaces.ts` | Fold into general face classification, remove extrusion draw-group assumption |
 | `geometry/materials/assignExtrudedTimberSurfaces.ts` | Model-specific wood grain/end-grain policy; shared geometric face classifier |
-| `geometry/materials/tintVertices.ts` | Keep vertex tinting at rendering/material boundary |
+| `geometry/materials/tintVertices.ts` | Expose per-piece tint in the rendering adapter; generate exportable vertex colors without coupling color to authored topology |
 | `geometry/uv/boxUVsInMeters.ts` | General physical UV projection |
-| `geometry/uv/offsetMeshUvs.ts` | General authored-geometry UV transformation |
-| `construction/profiledCavity.ts` | Geometric section extraction and volume queries |
+| `geometry/uv/offsetMeshUvs.ts` | Pure authored-geometry UV edit returning new geometry; update model/component call sites formerly relying on mutation |
+| `construction/profiledCavity.ts` | Multi-mesh inner-region section stitching and stable contour correspondence; keep ProfiledCavity interpolation and exact section volume |
 | `construction/fillableVolume.ts` | Separate geometry/volume operations from runtime morph-target controller |
 | `texturing/fields.ts` | Keep general scalar/vector field operations |
 | `texturing/flowedGrainField.ts` | Keep reusable texture field with material-independent core sampling |
@@ -211,6 +211,38 @@ may accelerate their implementation internally.
 `textureAtlas.ts`, and `exportGlb.ts` retain the runtime
 compilation/export boundary. Their behavior is covered by
 [05](05-surfaces-and-export.md).
+
+## Cross-model capabilities discovered by rebuilding the assets
+
+The current implementations reveal several geometric dependencies that
+the original migration map did not fully represent:
+
+| Source / consumer | Shared target operation | Detail retained |
+| --- | --- | --- |
+| `loftAxialProfile.ts`, `dagger.ts` | `loftSections` with per-edge/interval region and smoothing callbacks | Blade edge strips, ricasso, iron–oak–iron grip, faceted/smooth transitions |
+| `profiledMesh.ts`, `dagger.ts` | `profileSpans` → sections → loft → `tipBoundary` | Pointed blade/quillon ends, mirrored guard arms, radial waves |
+| `cutBoard.ts`, `tavernChair.ts` | `correspondContours` + `loftSections` + `fillSurfacePatch` + `joinGeometry` | Rear-seat cheek cuts with distinct top/bottom outlines following raked stiles |
+| `circularPlankPanel.ts`, `seamedPlankExtrusion.ts` | Shared seam partition + `grooveAlongSurface` + separate detailed/hidden patches | Head-board crown, narrow groove floor, shoulders, solid contact below visible recess |
+| `radialStripLayout.ts`, `loftBoard.ts` | `samplePolarStripSections` + section loft + mixed-density cap bridge | Stave outside bevel row, sparse inside row and authentic end faces |
+| `bandAroundProfile.ts` | Periodic/partial `sweepSection` with `polygonalRadiusOutside` and `surfaceClearance` | Hoops, overlap arcs, angled end faces, whole-face clearance against staves |
+| `profiledCavity.ts`, `beerMug.ts` | `cavitySectionsFromSurfaces` → `ProfiledCavity` | Complete ordered cavity extracted from twelve **separate** stave meshes |
+| `fillableVolume.ts`, `beerMug.ts` | Cavity geometry → fixed-topology morph snapshots → existing runtime controller | Eight blend shapes, nondegenerate neutral base, calibrated 1.0 |
+| `oakSeating.ts`, `table.ts`, `barrel.ts` | Pure `offsetMeshUvs` and render tint/material adapter | Seeded UV offsets, end grain, per-piece physical vertex color variation |
+| `trestleSupport.ts`, `tavernChair.ts` | Shared section fitting with either real support patches or explicitly authored planes | Diagonal brace miters, rails and drawpeg positions |
+
+Model recipes still choose the part counts, sizes, relative transforms,
+wear, materials and construction style. The shared operations retain
+the full geometry responsibilities described above.
+
+**Call-site change that matters:** the existing `offsetMeshUvs()`
+mutates `MeshData` in place. Migrating it to a pure authored edit
+means every caller must use its return value. In particular,
+`oakPlank()` and the chair's crest currently call it for its
+side effect. The adapted model and component code must take ownership
+of the returned result before compilation.
+
+The construction walk-through for all eight models and two shared
+components is in [12](12-model-by-model-proof.md).
 
 ## Model migrations
 

@@ -46,12 +46,20 @@ material and UV seams.
 - New subdivisions interpolate original UVs at created corners.
 - Newly constructed cut walls and floors use their explicit local
   chart and receive new UVs, region names and smoothing policy.
-- `offsetMeshUvs()` remains a general transformation over authored UVs.
+- `offsetMeshUvs()` becomes a **non-mutating authored edit**. Its
+  returned `GeometryResult` owns the new face-corner UV data.
 - UV operations can target selected surfaces or faces.
 
-Materials in `src/materials/` determine the visual properties.
+Materials in `src/materials/` determine visual appearance.
 The geometric tools provide coordinates and meaningful surface
-regions for applying those materials.
+regions for applying those materials. The per-piece oak variants
+and UV offsets of the table, barrel, chair and bench remain
+model-selected parameters.
+
+The current `offsetMeshUvs()` mutates the original authored UVs.
+Several existing model call sites discard its result because they
+rely on that mutation. Migration updates those sites to use the
+returned non-mutating geometry before rendering.
 
 ## Quad View
 
@@ -74,6 +82,12 @@ reflect the final GPU triangles, while the control view retains
 the original construction topology.
 
 ## Render compilation
+
+The render adapter accepts an optional per-piece tint and applies
+it as GPU vertex colors, just as the current `tintVertices()` does.
+This preserves the table, barrel, chair, bench and mug's subtle
+oak-tone variations and their GLB export without inserting
+appearance-specific vertex color fields into the construction kernel.
 
 `toBufferGeometry()` stays the single compiler responsible for:
 
@@ -120,7 +134,11 @@ Retain the runtime features already present:
 The beer mug's fill level is an existing runtime capability,
 implemented with a persistent contents mesh and eight named
 volume-calibrated morph targets. Godot controls the resulting
-blend-shape weights with a value from 0 to 1.
+blend-shape weights with a value from 0 to 1. The physical cavity
+comes from **twelve separate stave inner surfaces**, which must
+be intersected and assembled into ordered closed height sections
+with matching sample stations. `cavitySectionsFromSurfaces`
+returns those cross-sections for the existing `ProfiledCavity`.
 
 Separate the geometric and runtime capabilities:
 

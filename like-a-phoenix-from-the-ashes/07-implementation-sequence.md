@@ -66,6 +66,19 @@ constructors, each yielding the same kind of geometry result.
       of shared shape-building code.
 - [ ] **2.11** Build different profile-driven forms (solid bar,
       curved hollow tube, tapered grip) with the same machinery.
+- [ ] **2.12** Let lofts assign surface regions and smoothing groups
+      by contour edge and longitudinal interval, preserving the
+      dagger's blade/ricasso and iron/oak transitions.
+- [ ] **2.13** Add `tipBoundary` with actual triangle fans for pointed
+      blade and guard ends.
+- [ ] **2.14** Add contour-landmark correspondence for differently
+      shaped top/bottom profiles, including the chair's sloped
+      rear-seat housings.
+- [ ] **2.15** Add `fillSurfacePatch` and explicit boundary-based
+      `joinGeometry` so crowned top faces, sparse undersides and
+      corresponding sidewalls form valid solids.
+- [ ] **2.16** Extract the polar strip sampler and mixed-density
+      outer/inner cross-sections used by the barrel and mug.
 
 **Working proof:** All three forms retain real control faces,
 correct end/rim construction and useful UVs.
@@ -101,6 +114,9 @@ that can make an iron plate, a stone surface or separate solid parts.
       and report disconnected components.
 - [ ] **3.12** Apply these tools to a wooden panel, circular barrel
       head and metal plate, using shared cuts and source boundaries.
+- [ ] **3.13** Add `grooveAlongSurface` for shoulders, real recessed
+      groove floors and edge wear on a selected face, preserving
+      the underlying contact surface of barrel-head boards.
 
 **Working proof:** Adjacent parts use precisely matching boundaries.
 A hole produces actual wall/rim faces; the quad view reports real
@@ -129,6 +145,11 @@ support surfaces without object-specific fitting code.
       including parenting-cycle protection.
 - [ ] **4.8** Demonstrate reuse in a wooden chair rail, metal brace,
       and curved mug-handle connection.
+- [ ] **4.9** Implement finite triangle-surface clearance queries;
+      validate closed barrel hoops and raised laps against the
+      complete polygonal stave surfaces, including between samples.
+- [ ] **4.10** Support explicit contact planes for model-authored
+      trestle braces alongside geometrically queried support patches.
 
 **Working proof:** Fitted ends are geometrically located on the
 selected real support patches. Rays missing a target or inverted
@@ -157,6 +178,16 @@ pipeline across construction and editing operations.
       active fill level in GLB/Godot.
 - [ ] **5.9** Detect authoring details that become degenerate
       after Float32 conversion at export scale.
+- [ ] **5.10** Make authored UV offsets non-mutating and convert
+      model callers that currently rely on in-place changes.
+- [ ] **5.11** Preserve model-selected material palettes and
+      per-object vertex tint in the rendering/export adapter.
+- [ ] **5.12** Extract ordered cavity sections from separate inner
+      stave surfaces, validating their stitched loop and matching
+      station correspondence across height.
+- [ ] **5.13** Keep the liquid's complete base mesh and eight fixed-
+      topology morph targets; confirm that 1.0 represents the
+      current 90%-physical-capacity serving.
 
 **Working proof:** A mesh with a new cut surface renders with its
 correct material and UVs. Dynamic fill retains its morph shapes
@@ -185,9 +216,15 @@ Their authored design stays under `src/models/`.
 - [ ] **6.9** Keep `models/components/oakSeating.ts` and
       `trestleSupport.ts` as model-level assembly/material
       recipes built from general operations.
+- [ ] **6.10** Reproduce each specific construction and appearance
+      requirement in [12](12-model-by-model-proof.md), including
+      stave caps, face-specific head grooves, the dagger's
+      material regions, the chair's slanted cuts and mug filling.
 
 **Working proof:** All eight models retain their intended scale,
 shape, visual character, material behavior and relevant controls.
+The specific part-by-part acceptance is documented in
+[12](12-model-by-model-proof.md).
 
 ## 7. Finish the toolbox
 
@@ -267,9 +304,10 @@ Some individual model conversions can happen as soon as their
 required shared operations work. Phase 6 records completion of
 the entire collection.
 
-The output contracts, operation semantics and numerical behavior
-are defined in [09](09-api-contracts.md),
-[10](10-geometry-semantics.md) and
-[11](11-numerics-and-query-fidelity.md).
+The output contracts, operation semantics, numerical behavior and
+existing-model construction proofs are defined in
+[09](09-api-contracts.md), [10](10-geometry-semantics.md),
+[11](11-numerics-and-query-fidelity.md) and
+[12](12-model-by-model-proof.md).
 Once those decisions are embodied in the code and documented by
 the permanent toolbox README, this temporary directory can go.

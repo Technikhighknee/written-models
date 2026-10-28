@@ -179,6 +179,14 @@ exist in one place.
 
 Fitting a shape is independent from choosing the parent object.
 The geometry can be prepared before the scene hierarchy exists.
+A circular hoop or curved strip also needs a finite-surface
+clearance check: the sampled path's vertices may clear a support
+while its straight render segments intersect it. The reusable
+`surfaceClearance` query reports the closest actual finite
+surface distance and intersection status. The barrel bands use
+the existing analytic radial-chord offset as their starting
+geometry and validate against the actual stave surfaces.
+
 The geometric operation semantics are in [10](10-geometry-semantics.md).
 Numerical tolerances and exact query-normal behavior are defined
 in [11](11-numerics-and-query-fidelity.md).

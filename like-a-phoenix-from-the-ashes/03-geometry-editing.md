@@ -149,7 +149,11 @@ insetBoundary(geometry, boundary, widthField, depthField);
 
 The relevant faces and edges are selected geometrically. Models
 supply profiles and detail parameters. The same tools shape wood,
-iron, ceramics, stone, and organic surfaces.
+iron, ceramics, stone, and organic surfaces. `grooveAlongSurface`
+uses an authored surface chart and a shared sampled seam to create
+a groove with real shoulders, walls and an explicit floor region.
+A model selects the depth/width profile and where it fades out.
+The opposite mating surface remains available to maintain contact.
 
 The edge/corner work in `profiledBoard`,
 `seamedPlankExtrusion`, and `circularPlankPanel` becomes composed
@@ -183,6 +187,13 @@ Related parts may sample one common field to preserve continuity.
 half, and three-quarter samples and retains authored knots.
 `stitchPolylines()` connects mismatched edge densities with genuine
 triangles.
+
+A surface-local groove follows a sampled seam curve across a selected
+patch. A caller supplies the groove/shoulder cross-section as a
+normal-displacement field. Its generated faces preserve the solid's
+underlying side contact and leave the far surface unaffected.
+The barrel heads use this operation to produce real narrow groove
+floors and shallow edge wear on only their outward faces.
 
 These become the common tools for local refinement:
 

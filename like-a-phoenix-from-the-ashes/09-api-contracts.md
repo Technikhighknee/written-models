@@ -250,12 +250,21 @@ interface ExtrudeOptions extends PrecisionOptions {
   layers?: readonly { position: number; contourOffset: number }[];
 }
 
+interface LoftFaceContext {
+  /** Outer contour = -1; internal contours = 0, 1, ... */
+  loop: number;
+  edge: number;     // edge connecting successive contour points
+  interval: number; // span between adjacent sections
+}
+
 interface LoftOptions extends PrecisionOptions {
   ends?: "open" | "cap";
   outerRegion?: string;
   innerRegions?: readonly string[];
   startRegion?: string;
   endRegion?: string;
+  surfaceAt?: (face: LoftFaceContext) => string;
+  smoothingGroupAt?: (face: LoftFaceContext) => string | undefined;
 }
 
 interface RevolveOptions extends PrecisionOptions {
@@ -277,6 +286,38 @@ interface CapOptions extends PrecisionOptions {
   region: string;
   uvFrame: THREE.Matrix4;
   tessellation: "quad-if-planar" | "triangulate";
+}
+
+interface TipOptions extends PrecisionOptions {
+  region: string;
+  uvFrame: THREE.Matrix4;
+}
+
+interface ContourCorrespondence {
+  stations: readonly number[];
+  landmarks: readonly {
+    id: string;
+    first: number;
+    second: number;
+  }[];
+}
+
+interface SurfaceFillOptions extends PrecisionOptions {
+  profile: Profile2; // outer shape and holes, in chart coordinates
+  chart: SurfaceChart; // may produce a curved/crowned 3D surface
+  region: string;
+  boundaryStations?: Readonly<Record<string, readonly number[]>>;
+  maxDeviation?: number;
+}
+
+interface GeometryJoinOptions extends PrecisionOptions {
+  /** Matching boundary pairs to share topology between input meshes. */
+  weld: readonly {
+    firstPart: number;
+    first: BoundaryRef;
+    secondPart: number;
+    second: BoundaryRef;
+  }[];
 }
 ```
 
@@ -312,6 +353,32 @@ bridgeBoundaries(
   options: BridgeOptions
 ): GeometryResult;
 
+correspondContours(
+  first: Contour3,
+  second: Contour3,
+  landmarks: ContourCorrespondence["landmarks"],
+  precision?: GeometryPrecision
+): ContourCorrespondence;
+
+fillSurfacePatch(options: SurfaceFillOptions): GeometryResult;
+
+tipBoundary(
+  source: GeometryResult,
+  boundary: BoundaryRef,
+  point: THREE.Vector3Like,
+  options: TipOptions
+): GeometryResult;
+
+/** Combines authored faces, welding only designated boundary pairs. */
+joinGeometry(
+  parts: readonly GeometryResult[],
+  options: GeometryJoinOptions
+): GeometryResult;
+
+samplePolarStripSections(
+  options: PolarStripOptions
+): readonly (readonly Section3[])[];
+
 capBoundary(
   geometry: GeometryResult,
   boundary: BoundaryRef,
@@ -333,6 +400,30 @@ densities. It uses actual ordered sample station parameters instead
 of inferring correspondence solely from vertex counts. Caps follow their own topology rules: planar four-corner
 caps can be quads, nonconvex or holed caps need triangulation or
 explicit authored patches.
+
+Loft side regions and smoothing can vary independently by contour
+edge and longitudinal interval. The dagger's sharp edge strips,
+ricasso and iron/wood grip spans therefore share one loft engine.
+An interval boundary must coincide with an authored station.
+
+`tipBoundary` creates genuine triangles connecting an existing ring
+to an explicit apex. `correspondContours` matches landmark features
+of differing top/bottom contours and creates shared stations.
+`fillSurfacePatch` creates an authored surface from a 2D footprint,
+including crowned interiors and a boundary that matches the side
+geometry. It uses quads on compatible regular grids and genuine
+triangles at irregular trims and holes.
+
+`joinGeometry` combines separate authored pieces and intentionally
+shares vertices only along specified matching boundary pairs.
+Joining the crowned top, lower patch and profile-layer walls creates
+a single solid without silently welding independent parts.
+
+`samplePolarStripSections` returns radial strip cross-sections
+described by the same `Section3` type used by all lofts. Its
+outer/inner open rows are combined into one closed profile contour;
+the precise per-edge surface classification distinguishes the
+outer face, inner face and both connecting sides.
 
 A sweep produces 3D sections using parallel transport before
 calling the same loft engine. For `closedPath: true`, position

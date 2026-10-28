@@ -91,6 +91,11 @@ sampling parameters rather than assuming equal spacing by index.
 | `bridgeBoundaries` | Two oriented boundary loops, correspondence | Surface strip using quads and necessary triangles |
 | `revolveProfile` / `sweepSection` | Paired wall contours or annular profile | Hollow shell with actual wall and rim topology |
 | `capBoundary` | Closed planar loop, triangulation policy | End surface and referenced cap region |
+| `tipBoundary` | Open end loop and explicit apex | Genuine triangle-fan tip |
+| `correspondContours` | Two outlined sections, matched landmarks | Consistent station correspondence across different shapes |
+| `fillSurfacePatch` | Footprint and a 2D→3D surface chart | Crowned or irregular face with matching boundary |
+| `joinGeometry` | Authored pieces with explicit shared loops | One connected mesh without indiscriminate welding |
+| `samplePolarStripSections` | Axisymmetric profile, angular cuts, outer/inner samples | Sections for radial cladding, staves or metal shells |
 
 Names above describe intended responsibilities. Existing names can
 be retained when their semantics already match.
@@ -204,6 +209,50 @@ The caller can rename regions to suit the model. Named boundary
 arrays include every resulting outer rim and each opening around an
 inner wall. Sampling and precision behavior follow
 [11](11-numerics-and-query-fidelity.md).
+
+### Longitudinal materials and hard edges
+
+A loft can assign surface regions and smoothing groups for **each
+contour edge and section interval**. Surface changes begin at
+existing station boundaries. The same construction handles a
+faceted dagger with steel edge strips and ricasso, a smooth forged
+guard, and a hilt that changes iron → wood → iron while keeping
+its uninterrupted shape.
+
+`tipBoundary` connects an open end loop to an explicit point with
+real triangles, preserving per-corner UVs and correct winding.
+
+### Curved faces and independent section layers
+
+`correspondContours` aligns landmarks between two differently
+shaped outlines and produces shared sample stations. Lofting
+those resulting sections constructs actual sidewalls, including
+a wall that slopes between a notch's top and bottom position.
+
+`fillSurfacePatch` builds the top or bottom face from a local
+2D footprint and a 3D chart. Its interior can have crown,
+cupping, carved seams or asymmetric form. Boundary stations
+match the corresponding loft wall. `joinGeometry` shares
+topology along the designated loops, preserving the connected solid.
+This reconstructs the chair's raked rear-seat housings as well
+as the barrel head's separately detailed faces.
+
+### Radial strip construction
+
+`samplePolarStripSections` samples a radius/height profile into
+separate circumferential strips. Each section can have a densely
+sampled outside and a sparse inside joined by two lateral edges.
+The same section loft provides the outer face, inner face,
+side contacts and mixed-density end caps. A closed path sweep
+constructs hoops; a partial sweep constructs overlaps.
+
+For a polygonal hoop, `polygonalRadiusOutside` provides an
+analytic chord clearance around an axisymmetric profile. The
+`surfaceClearance` query validates actual finite surfaces,
+including the segment interiors between angular vertices.
+
+These construction paths are exercised for every existing model
+in [12](12-model-by-model-proof.md).
 
 Caps, rims, and transitions are real surfaces. Models select their
 materials and choose how individual constructed parts fit together.

@@ -265,6 +265,152 @@ future rigging can consume.
 and metal. It supports continuous organic surfaces while keeping
 actual face structure explicit.
 
+## 9. Build a chair seat whose housings tilt through thickness
+
+The rear-seat cutouts follow the rake of the two back stiles.
+Their upper and lower outlines therefore have **different
+positions** at the same corner.
+
+```ts
+const match = correspondContours(
+  bottomContour,
+  topContour,
+  housingLandmarks
+);
+
+// The model supplies two Section3 outlines sampled at match.stations.
+const walls = loftSections([
+  bottomSectionAt(match),
+  topSectionAt(match)
+], { ends: "open" });
+
+const bottom = fillSurfacePatch({
+  profile: bottomFootprint,
+  chart: bottomSurfaceChart,
+  region: "underside",
+  boundaryStations: { rim: match.stations }
+});
+
+const top = fillSurfacePatch({
+  profile: topFootprint,
+  chart: crownedTopSurfaceChart,
+  region: "upper",
+  boundaryStations: { rim: match.stations }
+});
+
+const seat = joinGeometry([walls, bottom, top], {
+  weld: matchingRimPairs
+});
+```
+
+The walls inherit the slanted cheek profiles. The top patch can
+carry a crown while the underside remains simpler. The boundary
+vertex stations are common to all three pieces, so joining
+creates a genuine solid without duplicate internal boundaries.
+
+The same operations can construct a tapered opening in a
+metal plate or a sloped building component.
+
+**Proof:** Top and bottom cutout corners retain their distinct
+positions, the walls slope accordingly, and the final edge
+incidence is valid.
+
+## 10. Rebuild a barrel head with a detailed outer face
+
+The head is partitioned into boards using shared cut curves.
+Each part has one richly shaped outward face and a simpler
+inward-facing patch.
+
+```ts
+const pieces = partitionContour(diskProfile, weightedSeamCuts);
+
+const headBoards = pieces.parts.map((footprint, index) => {
+  const outer = fillSurfacePatch({
+    profile: footprint,
+    chart: headCrownChart(index),
+    region: "outer",
+    boundaryStations: headSeamStations(index)
+  });
+
+  const detailed = grooveAlongSurface(
+    outer,
+    headSurfacePatch(outer),
+    pieces.interfaces[index]?.source ?? outerSeam(index),
+    headGrooveOptions(index)
+  );
+
+  const inner = fillSurfacePatch({
+    profile: footprint,
+    chart: headUndersideChart(index),
+    region: "inner",
+    boundaryStations: headSeamStations(index)
+  });
+
+  const sides = buildHeadSidewalls(detailed, inner);
+  return joinGeometry([detailed, inner, sides], {
+    weld: matchedHeadRims(detailed, inner, sides)
+  });
+});
+```
+
+The helper names `headCrownChart`, `headSurfacePatch`,
+`buildHeadSidewalls` and `matchedHeadRims` denote the
+**model's composition** of the shared chart, bridge and
+boundary operations; they are not additional toolbox APIs.
+
+The groove has its own shoulders and floor topology. It
+changes the outward face while the inner face and actual
+wood-contact interfaces stay closed.
+
+**Proof:** Five independently authored boards, exact circular
+outline, no gap through the head and correct Quad View topology
+on both faces.
+
+## 11. Extract a drinking cavity from separate staves
+
+A mug body has twelve independent wooden parts. The inner
+faces collectively enclose the contents, even though no
+single stave defines a closed cavity.
+
+```ts
+const rings = cavitySectionsFromSurfaces({
+  pieces: staves.map(stave => ({
+    geometry: stave.geometry,
+    localToWorld: stave.transform,
+    regions: ["inner"]
+  })),
+  axis: "y",
+  heights: mugSectionHeights
+});
+
+const physicalCavity = new ProfiledCavity(rings).between(
+  usableBottom,
+  usableTop
+);
+const servingCavity = physicalCavity.between(
+  physicalCavity.bottom,
+  physicalCavity.heightAtFill(0.9)
+);
+
+const liquid = createFillableVolume(
+  servingCavity, aleMaterial, initialFill
+);
+```
+
+The extractor intersects each supplied wall region at each
+requested height and stitches the segments into one ordered
+closed contour. Correspondence across heights retains the
+actual stave-internal silhouette.
+
+`ProfiledCavity` retains its volume integration and inverse
+height mapping. `createFillableVolume` remains a runtime
+morph-target technique: its full neutral mesh, eight named
+morph targets and fill controller are retained.
+
+**Proof:** The liquid surface follows the faceted mug interior
+and Godot's `fill_level = 1` still represents the calibrated
+90%-physical serving.
+
 ## Cross-category demonstrations
 
 | Shared capability | Models | Visible result |
@@ -277,3 +423,6 @@ actual face structure explicit.
 | Planar patch editing | Wood mortise + metal slot | A real recess and a correctly open or through-cut surface |
 | Deformation | Worn board + organic limb | Controlled detail and valid topology |
 | Rendering | Timber + dagger blade | Material regions and real Quad View faces |
+| Layer correspondence | Chair rear-seat housings + tapered plate | Different top/bottom outlines produce valid sloped walls |
+| Detailed surface patches | Barrel head + crowned tabletop | Face-specific relief without breaking mating surfaces |
+| Multi-piece cavity sections | Wooden mug staves + other segmented vessel | One continuous ordered cavity from independent walls |

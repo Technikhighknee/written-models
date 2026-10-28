@@ -27,11 +27,13 @@ can use the same geometric vocabulary.
 | 09 | [API contracts](09-api-contracts.md) | Shared TypeScript contracts used throughout the other files |
 | 10 | [Operation semantics](10-geometry-semantics.md) | Exact behavior of seams, cuts, caps, fitting and topology changes |
 | 11 | [Numerics and query fidelity](11-numerics-and-query-fidelity.md) | Precision policy, sampling limits, triangle provenance and failure behavior |
+| 12 | [Existing-model construction proof](12-model-by-model-proof.md) | Part-by-part reconstruction of all eight models and their components |
 
 These documents describe one architecture. **09 defines the API,
-10 defines operation behavior, 11 defines numerical behavior,
-06 maps existing code and 07 gives the implementation sequence.**
-The remaining files explain the geometric constructions.
+10 defines geometric behavior, 11 defines numerical behavior,
+12 proves the construction against the existing models, 06 maps
+the code and 07 gives the implementation sequence.** The remaining
+files explain individual techniques and show compositions.
 
 ## The geometry pipeline
 
@@ -71,12 +73,15 @@ operations and reusable query methods.
   selects faces and may have several disconnected boundaries.
 - **Adjacent pieces share one boundary definition and sample stations.**
   Gaps and wear modify that shared construction deliberately.
+  Detailed surface patches and simple undersides can join through
+  matching boundaries without unnecessary extra subdivisions.
 - **Every geometric edit returns usable selections.** Cut faces,
   part ownership, region IDs and boundary loops are available to
   subsequent operations.
 - **The same construction path accepts different profiles.**
   Rectangular members, hollow sections, tapered grips and curved
-  forms are compositions of general operations.
+  forms are compositions of general operations. Material and
+  smoothing regions can vary by contour edge and section interval.
 - **Contacts use real surfaces and explicit transforms.**
   Plane fitting checks entire outlines against finite support patches;
   curved fitting uses actual sampled target surfaces and consistent
@@ -90,6 +95,9 @@ operations and reusable query methods.
 - **Complex geometry is represented as it actually exists.**
   Booleans can produce real triangles. Opening a surface, creating
   a recess and cutting through a solid are distinct operations.
+- **Independent model parts stay independently modeled.**
+  Cavity sections can be assembled from multiple inner surfaces;
+  rendering keeps their separate materials and per-piece colors.
 
 Meters, intentional topology, physical UV scale, predictable
 precision and failure behavior, Quad View and current runtime
@@ -104,9 +112,9 @@ and editing operations, unifies contact fitting, and migrates models
 through working vertical slices.
 
 Each completed item records a commit and has a concrete geometric
-result. The examples in [08](08-composition-examples.md) serve as
-cross-object demonstrations: a capability proves useful when it
-survives a genuinely different model.
+result. The examples in [08](08-composition-examples.md) demonstrate
+cross-object reuse. The [model-by-model proof](12-model-by-model-proof.md)
+sets specific acceptance conditions for the existing collection.
 
 The finished code and the permanent toolbox README will embody
 this architecture. This directory is temporary.
