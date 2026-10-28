@@ -112,6 +112,13 @@ curve-specific bounds can be added for curve types that support
 them, but the generic sampler never reports sampled error as a
 proof over all real-valued parameters.
 
+A station list supplied to `sampleProfile` must include every authored
+corner in correct cyclic order. It is rejected rather than silently
+expanded when a corner is missing, because hidden station insertion
+would break adjoining topology. Matching *station values* across two
+different contours identify correspondence, not matching 3D positions;
+shared geometry is validated after chart evaluation.
+
 When multiple connected surfaces are built, their station results
 are merged first. Every consumer uses the merged sorted list
 to avoid an edge with a vertex on only one side.
@@ -203,6 +210,10 @@ support patch, excluding holes.
 Checking corner points alone is insufficient: on a concave
 support patch, an edge can pass outside even when both
 its endpoints are inside.
+
+Contact supports may be real selected mesh patches or explicitly
+authored finite planar footprints. Both must pass the same containment
+check; a face-less authored plane cannot return invented face IDs.
 
 The contact solver projects the member's full end outline,
 clips or classifies it against the selected support footprint,
