@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
-import { GeometryOperationError } from "./GeometryOperationError";
+import { GeometryOperationError, type GeometryFailure } from "./GeometryOperationError";
 import {
     resolvePrecision,
     triangleQuality,
