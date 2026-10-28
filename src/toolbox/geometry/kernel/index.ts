@@ -18,3 +18,5 @@ export { capBoundary, capSectionEnd, tipBoundary } from "../build/finishBoundari
 export type { CapOptions, TipOptions } from "../build/finishBoundaries";
 export { bridgeBoundaries } from "../build/bridgeBoundaries";
 export type { BridgeOptions } from "../build/bridgeBoundaries";
+export { sweepSection } from "../build/sweepSection";
+export type { PathSweepOptions } from "../build/sweepSection";
