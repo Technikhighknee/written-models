@@ -207,9 +207,10 @@ and two real rivet heads.
    bulged profile. The band profile provides wall thickness,
    width and bevels.
 9. **Account for polygon chord sagitta**, using the reusable
-   `polygonalRadiusOutside` helper or a geometric minimum-clearance
-   fit, so the straight segments between sample points do not
-   intersect the stave surface.
+   `polygonalRadiusOutside` helper or an explicit oriented exterior
+   fit, so the whole hoop is on the *outside* of the stave envelope.
+   Validate its finite-surface clearance afterward; a positive
+   unsigned distance alone would not establish exterior placement.
 10. The raised lap is an open arc sweep with genuine end caps,
     offset beyond the main band. Two oriented cylinder heads
     use explicit surface normals and controlled penetration.
