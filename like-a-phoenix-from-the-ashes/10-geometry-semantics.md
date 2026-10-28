@@ -231,7 +231,11 @@ while an uncapped cut returns the open rim. `capBoundary` consumes
 the original open-rim selection as an open edge and may retain
 the same ordered chain as an interior region-border selection.
 `joinGeometry` consumes paired open rims and preserves only named
-chains that remain meaningful after welding.
+chains that remain meaningful after welding. An input boundary edge
+may be matched to exactly one other boundary edge; a second match
+would create a nonmanifold edge. All pairings must agree globally on
+vertex identity. Duplicate coincident faces and nonmanifold vertex
+fans fail even if each individual edge pair looks locally valid.
 
 Operation-specific selection behavior:
 
