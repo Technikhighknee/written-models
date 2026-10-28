@@ -164,6 +164,43 @@ required stations before their faces are built.
 
 ## Construction
 
+The geometric controls are explicit. All dimensions below are meters.
+
+```ts
+interface ExtrudeOptions {
+  frame: THREE.Matrix4; // local 2D profile → construction space
+  depth: number;
+  caps?: boolean;
+  layers?: readonly { position: number; contourOffset: number }[];
+}
+
+interface LoftOptions {
+  ends?: "open" | "cap";
+  sideRegion?: string;
+  startRegion?: string;
+  endRegion?: string;
+}
+
+interface RevolveOptions {
+  axisOrigin: THREE.Vector3Like;
+  axisDirection: THREE.Vector3Like;
+  angle: number; // radians, 2π for a complete revolution
+  segments: number;
+  caps?: boolean;
+}
+
+interface BridgeOptions {
+  region?: string;
+  reverseWinding?: boolean;
+}
+
+interface CapOptions {
+  region: string;
+  uvFrame: THREE.Matrix4;
+  tessellation: "quad-if-planar" | "triangulate";
+}
+```
+
 ```ts
 extrudeContour(
   profile: Profile2,
@@ -217,6 +254,35 @@ A path sweep produces 3D sections using parallel transport before
 calling the same loft machinery.
 
 ## Editing
+
+```ts
+interface Plane3 {
+  point: THREE.Vector3Like;
+  normal: THREE.Vector3Like;
+}
+
+interface SplitOptions {
+  cap: boolean;
+  cutRegion: string;
+}
+
+interface PatchCutOptions {
+  depth: number; // 0 for an opening without a recessed floor
+  wallRegion: string;
+  floorRegion?: string;
+}
+
+type DeformationField = (
+  position: THREE.Vector3Like,
+  vertexId: number
+) => THREE.Vector3Like; // displacement
+
+interface Ray3 {
+  origin: THREE.Vector3Like;
+  direction: THREE.Vector3Like;
+  maxDistance: number;
+}
+```
 
 ```ts
 clipContour(
