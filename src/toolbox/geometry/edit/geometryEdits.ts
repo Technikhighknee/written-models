@@ -9,6 +9,11 @@ import {
     type SurfaceChart,
     type SurfacePatchRef
 } from "../kernel/GeometryResult";
+import {
+    assertAffineTransform,
+    resolvePrecision,
+    type GeometryPrecision
+} from "../kernel/precision";
 
 type GeometrySource = MeshData | GeometryResult;
 
@@ -16,8 +21,31 @@ function isResult(source: GeometrySource): source is GeometryResult {
     return "geometry" in source;
 }
 
-function copy(source: GeometrySource): GeometryResult {
-    return geometryResult(isResult(source) ? source.geometry : source);
+function copy(
+    source: GeometrySource,
+    precision?: GeometryPrecision
+): GeometryResult {
+    return geometryResult(
+        isResult(source) ? source.geometry : source,
+        precision
+    );
+}
+
+function validated(
+    geometry: MeshData,
+    operation: string,
+    precision?: GeometryPrecision
+): GeometryResult {
+    try {
+        return geometryResult(geometry, precision);
+    } catch (error) {
+        if (error instanceof GeometryOperationError) {
+            throw new GeometryOperationError(
+                operation, error.reason, error.message, error.context
+            );
+        }
+        throw error;
+    }
 }
 
 function remap(
@@ -62,17 +90,6 @@ function invalid(operation: string, message: string): never {
     throw new GeometryOperationError(operation, "invalid-input", message);
 }
 
-function assertAffineTransform(matrix: THREE.Matrix4): void {
-    const elements = matrix.elements;
-    const determinant = matrix.determinant();
-    if (!elements.every(Number.isFinite) ||
-        !Number.isFinite(determinant) || Math.abs(determinant) < 1e-15 ||
-        elements[3] !== 0 || elements[7] !== 0 ||
-        elements[11] !== 0 || elements[15] !== 1) {
-        invalid("transformGeometry", "Transform must be finite, affine and invertible");
-    }
-}
-
 function transformedChart(
     original: SurfaceChart,
     transform: THREE.Matrix4,
@@ -92,10 +109,12 @@ function transformedChart(
 /** Applies an invertible affine transform without changing the source geometry. */
 export function transformGeometry(
     source: GeometrySource,
-    localToDestination: THREE.Matrix4
+    localToDestination: THREE.Matrix4,
+    precision?: GeometryPrecision
 ): GeometryResult {
-    assertAffineTransform(localToDestination);
-    const result = copy(source);
+    const policy = resolvePrecision(precision);
+    assertAffineTransform(localToDestination, "transformGeometry", policy);
+    const result = copy(source, policy);
     const reflection = localToDestination.determinant() < 0;
 
     for (const vertex of result.geometry.vertices) {
@@ -114,8 +133,9 @@ export function transformGeometry(
 
     const inverse = localToDestination.clone().invert();
     const normalMatrix = new THREE.Matrix3().getNormalMatrix(localToDestination);
+    const output = validated(result.geometry, "transformGeometry", policy);
     return remap(
-        source, result, "keep",
+        source, output, "keep",
         chart => transformedChart(chart, localToDestination, inverse, normalMatrix),
         reflection
     );
@@ -129,9 +149,10 @@ export type DeformationField = (
 /** Changes each authored vertex once; parameterized patches are invalidated. */
 export function deformVertices(
     source: GeometrySource,
-    field: DeformationField
+    field: DeformationField,
+    precision?: GeometryPrecision
 ): GeometryResult {
-    const result = copy(source);
+    const result = copy(source, precision);
     for (let id = 0; id < result.geometry.vertices.length; id++) {
         const vertex = result.geometry.vertices[id]!;
         const displacement = field(vertex.clone(), id);
@@ -145,21 +166,22 @@ export function deformVertices(
     }
 
     // Validate changed geometry before returning a new owned snapshot.
-    const validated = geometryResult(result.geometry);
-    return remap(source, validated, "drop");
+    const output = validated(result.geometry, "deformVertices", precision);
+    return remap(source, output, "drop");
 }
 
 /** Offsets authored per-face-corner UVs, preserving topology and patch charts. */
 export function offsetMeshUvs(
     source: GeometrySource,
     u: number,
-    v: number
+    v: number,
+    precision?: GeometryPrecision
 ): GeometryResult {
     if (![u, v].every(Number.isFinite)) {
         invalid("offsetMeshUvs", "UV offset must be finite");
     }
 
-    const result = copy(source);
+    const result = copy(source, precision);
     for (const face of [
         ...result.geometry.quads,
         ...(result.geometry.triangles ?? [])
@@ -167,7 +189,12 @@ export function offsetMeshUvs(
         for (const uv of face.uvs) {
             uv.x += u;
             uv.y += v;
+
+            if (!Number.isFinite(uv.x) || !Number.isFinite(uv.y)) {
+                invalid("offsetMeshUvs", "UV offset exceeds finite precision");
+            }
         }
     }
+
     return remap(source, result, "keep");
 }

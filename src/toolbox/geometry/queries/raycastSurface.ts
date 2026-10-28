@@ -5,6 +5,12 @@ import {
     type FaceRef
 } from "../kernel/GeometryResult";
 import { triangulateAuthoredFaces } from "../kernel/triangulation";
+import {
+    assertAffineTransform,
+    resolvePrecision,
+    triangleQuality,
+    type GeometryPrecision
+} from "../kernel/precision";
 
 export interface SurfaceTarget {
     geometry: MeshData;
@@ -31,8 +37,10 @@ export interface SurfaceHit {
 /** Raycast authored geometry, preserving exact triangle and face-corner identity. */
 export function raycastSurface(
     target: SurfaceTarget,
-    ray: Ray3
+    ray: Ray3,
+    precision?: GeometryPrecision
 ): SurfaceHit | null {
+    const policy = resolvePrecision(precision);
     const { origin, direction, maxDistance } = ray;
     if (!Number.isFinite(maxDistance) || maxDistance <= 0 ||
         ![origin.x, origin.y, origin.z,
@@ -43,21 +51,12 @@ export function raycastSurface(
     }
 
     const transform = target.localToWorld;
-    const elements = transform.elements;
-    const determinant = transform.determinant();
-    if (!elements.every(Number.isFinite) ||
-        !Number.isFinite(determinant) || Math.abs(determinant) < 1e-15 ||
-        elements[3] !== 0 || elements[7] !== 0 ||
-        elements[11] !== 0 || elements[15] !== 1) {
-        throw new GeometryOperationError(
-            "raycastSurface", "invalid-input", "Invalid surface transform"
-        );
-    }
+    assertAffineTransform(transform, "raycastSurface", policy);
 
     const heading = new THREE.Vector3(
         direction.x, direction.y, direction.z
     );
-    if (heading.lengthSq() <= 1e-24) {
+    if (!(heading.lengthSq() > 0) || !Number.isFinite(heading.lengthSq())) {
         throw new GeometryOperationError(
             "raycastSurface", "invalid-input", "Zero ray direction"
         );
@@ -82,7 +81,7 @@ export function raycastSurface(
         const areaNormal = new THREE.Vector3().subVectors(b, a)
             .cross(new THREE.Vector3().subVectors(c, a));
         const magnitude = areaNormal.length();
-        if (!(magnitude > 0) || !Number.isFinite(magnitude)) {
+        if (!triangleQuality(a, b, c, policy)) {
             throw new GeometryOperationError(
                 "raycastSurface", "degenerate-geometry",
                 "Degenerate source triangle",

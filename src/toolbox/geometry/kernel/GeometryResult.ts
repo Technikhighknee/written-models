@@ -1,5 +1,14 @@
 import * as THREE from "three";
 import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import { GeometryOperationError } from "./GeometryOperationError";
+import {
+    resolvePrecision,
+    triangleQuality,
+    type GeometryPrecision
+} from "./precision";
+
+export { GeometryOperationError } from "./GeometryOperationError";
+export type { GeometryFailure } from "./GeometryOperationError";
 
 export type FaceRef =
     | { kind: "quad"; index: number }
@@ -37,41 +46,6 @@ export interface GeometryResult {
     readonly patches?: Readonly<Record<string, readonly SurfacePatchRef[]>>;
 }
 
-export type GeometryFailure =
-    | "invalid-input"
-    | "invalid-topology"
-    | "degenerate-geometry"
-    | "sampling-limit"
-    | "no-intersection"
-    | "outside-contact-patch"
-    | "self-intersection"
-    | "unsupported-topology"
-    | "precision-loss";
-
-export class GeometryOperationError extends Error {
-    readonly operation: string;
-    readonly reason: GeometryFailure;
-    readonly context?: {
-        face?: FaceRef;
-        vertex?: number;
-        station?: number;
-        boundary?: string;
-    };
-
-    constructor(
-        operation: string,
-        reason: GeometryFailure,
-        message: string,
-        context?: GeometryOperationError["context"]
-    ) {
-        super(message);
-        this.name = "GeometryOperationError";
-        this.operation = operation;
-        this.reason = reason;
-        if (context !== undefined) this.context = context;
-    }
-}
-
 function invalid(
     reason: GeometryFailure,
     message: string,
@@ -81,7 +55,11 @@ function invalid(
 }
 
 /** Creates an owned snapshot. Mutable input vectors and face arrays are never retained. */
-export function geometryResult(source: MeshData): GeometryResult {
+export function geometryResult(
+    source: MeshData,
+    precision?: GeometryPrecision
+): GeometryResult {
+    const policy = resolvePrecision(precision);
     if (!Array.isArray(source.vertices) ||
         !Array.isArray(source.quads) ||
         (source.triangles !== undefined && !Array.isArray(source.triangles))) {
@@ -121,17 +99,27 @@ export function geometryResult(source: MeshData): GeometryResult {
         const a = vertices[face.corners[0]!]!;
         const b = vertices[face.corners[1]!]!;
         const c = vertices[face.corners[2]!]!;
-        const first = new THREE.Vector3().subVectors(b, a)
-            .cross(new THREE.Vector3().subVectors(c, a));
-        if (!(first.lengthSq() > 0)) {
-            invalid("degenerate-geometry", "Collapsed authored face", { face: ref });
+
+        if (!triangleQuality(a, b, c, policy)) {
+            invalid("degenerate-geometry", "Degenerate authored face", { face: ref });
         }
+
         if (count === 4) {
             const d = vertices[face.corners[3]!]!;
+
+            if (!triangleQuality(a, c, d, policy) ||
+                !triangleQuality(a, b, d, policy) ||
+                !triangleQuality(b, c, d, policy)) {
+                invalid("degenerate-geometry", "Degenerate authored quad", { face: ref });
+            }
+
+            const first = new THREE.Vector3().subVectors(b, a)
+                .cross(new THREE.Vector3().subVectors(c, a));
             const second = new THREE.Vector3().subVectors(c, a)
                 .cross(new THREE.Vector3().subVectors(d, a));
-            if (!(second.lengthSq() > 0) || first.dot(second) <= 0) {
-                invalid("degenerate-geometry", "Collapsed or folded quad", { face: ref });
+
+            if (first.dot(second) <= 0) {
+                invalid("degenerate-geometry", "Folded authored quad", { face: ref });
             }
         }
     }
