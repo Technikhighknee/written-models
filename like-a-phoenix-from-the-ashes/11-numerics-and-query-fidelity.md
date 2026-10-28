@@ -72,6 +72,9 @@ cannot satisfy this construction guarantee.
   deterministically.
 - Shared edge intersections are evaluated once per undirected
   edge, then reused in all adjacent faces and output pieces.
+- A face coplanar with a splitting plane is assigned according to
+  incident volume and oriented winding, not duplicated on both
+  sides; ambiguous contact-only geometry fails.
 - Independent pieces with matching interfaces receive identical
   sample parameter sequences.
 - Transformations and deformation never modify the source
