@@ -189,11 +189,12 @@ and two real rivet heads.
 5. Partition a circular head into five profiles using shared
    clipped boundaries and weighted cuts. Preserve the common
    circular exterior outline.
-6. Build a **detailed outward surface patch** for each head plank:
-   shoulders, a narrow recessed groove floor, crown, slight wear
-   and a controlled physical deviation tolerance. Build the
-   sparse inward surface separately; bridge both boundary contours
-   with actual sidewalls.
+6. Build a **detailed outward surface patch** for each head plank.
+   Combine every adjoining seam and its groove/shoulder/edge-wear
+   profile into **one** `shapeSurfaceRelief` call. This preserves
+   coherent sampling even for planks with two seams. Build the
+   sparse inward surface separately and bridge the two boundary
+   contours with actual sidewalls.
 7. The head pieces keep complete contact below the shallow grooves.
    Top/bottom surface orientation and end-grain assignments are
    mirrored as intended.
@@ -395,9 +396,10 @@ present in the target design:
 3. **Correspondence between independently varying planar
    contours**, plus surface patches that can fill crowned or
    asymmetric faces (chair seat, panel faces).
-4. **Patch detail along shared seams** with shallow shoulders,
-   grooves and edge wear that preserve the underlying contact
-   surface (table, barrel heads).
+4. **Batched surface relief along shared seams** with shallow
+   shoulders, grooves and edge wear. All features on one face are
+   combined before geometry is reconstructed, preserving the
+   underlying contact surface (table, barrel heads).
 5. **Polar layout and surface-following closed or partial sweeps**,
    including minimum clearance between actual polygonal faces
    (barrel hoops, mug bands).

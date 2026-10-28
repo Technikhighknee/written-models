@@ -149,11 +149,12 @@ insetBoundary(geometry, boundary, widthField, depthField);
 
 The relevant faces and edges are selected geometrically. Models
 supply profiles and detail parameters. The same tools shape wood,
-iron, ceramics, stone, and organic surfaces. `grooveAlongSurface`
-uses an authored surface chart and a shared sampled seam to create
-a groove with real shoulders, walls and an explicit floor region.
-A model selects the depth/width profile and where it fades out.
-The opposite mating surface remains available to maintain contact.
+iron, ceramics, stone, and organic surfaces. `shapeSurfaceRelief`
+accepts all detail paths on one connected patch together. Each
+feature has a half-width and signed displacement profile; sampled
+stations are merged before rebuilding the surface. New shoulder,
+wall and floor faces receive explicit surface regions. The
+opposite mating face remains available for contact.
 
 The edge/corner work in `profiledBoard`,
 `seamedPlankExtrusion`, and `circularPlankPanel` becomes composed
@@ -188,12 +189,16 @@ half, and three-quarter samples and retains authored knots.
 `stitchPolylines()` connects mismatched edge densities with genuine
 triangles.
 
-A surface-local groove follows a sampled seam curve across a selected
-patch. A caller supplies the groove/shoulder cross-section as a
-normal-displacement field. Its generated faces preserve the solid's
-underlying side contact and leave the far surface unaffected.
-The barrel heads use this operation to produce real narrow groove
-floors and shallow edge wear on only their outward faces.
+Surface relief uses one connected parameterized patch and all
+specified seam/feature curves in a single reconstruction. Overlaps
+combine by the declared rule (minimum signed relief or sum). The
+sampling plan includes all shoulder, groove-floor and end-fade
+landmarks before constructing actual faces. Every result returns
+updated regions, boundaries and any still-valid patch charts.
+
+Barrel-head boards use this for their outward faces. The inward
+surface and full-thickness seam contact remain intact. One surface
+chart is never silently reused after a deformation invalidates it.
 
 These become the common tools for local refinement:
 

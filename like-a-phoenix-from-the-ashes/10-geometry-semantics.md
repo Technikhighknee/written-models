@@ -162,7 +162,33 @@ parameterization with a valid domain. A surface with folds,
 singularities, or overlapping coordinates needs local patch
 splitting first.
 
-## 6. Surface queries refer back to authored faces
+## 6. Surface edits and chart ownership
+
+A parameterized surface patch is selected with exact faces and a
+chart mapping the patch's local 2D coordinates to the 3D surface.
+The selection belongs to a particular geometry result. A
+subsequent topology edit returns updated patch references only
+when a valid chart still describes the edited surface.
+
+`shapeSurfaceRelief` accepts a set of path-aligned relief features
+**together**. It combines the feature station requirements before
+rebuilding any face. A board with two adjoining grooves therefore
+uses one connected surface chart and one reconstruction, keeping
+both shoulders and groove floors in the same topology.
+
+Overlapping negative relief fields use the specified minimum rule,
+so two crossing grooves do not accidentally double their depths.
+A summed field is available when additive deformation is explicitly
+intended. Regions and local UV projections for the new floors and
+shoulders are returned with the edited geometry. The mating side
+and floor thickness are checked for unintended break-through.
+
+A caller can reuse the returned patch selection if the new chart is
+valid; otherwise that patch selection is absent, requiring a new
+chart for another coordinate-based edit. This prevents stale
+parametric mappings from being treated as valid geometry.
+
+## 7. Surface queries refer back to authored faces
 
 The rendering/query triangles are derived from authored faces.
 Their creation records the source `FaceRef` for each triangle.
@@ -188,7 +214,7 @@ This establishes a clean division of responsibility:
 `MeshData` owns shape/topology, the query compiler can accelerate
 intersections, and the renderer owns GPU attributes.
 
-## 7. A fitted plane has a finite footprint
+## 8. A fitted plane has a finite footprint
 
 The contact finder first selects a relevant planar face or connected
 coplanar patch near the intended joint.
@@ -213,7 +239,7 @@ back to the source's authored coordinate space.
 A fitted boundary is geometric contact. Welding or solid union is a
 separate operation chosen by the model.
 
-## 8. Topology edits preserve surface data
+## 9. Topology edits preserve surface data
 
 When splitting a face, the operation interpolates its per-corner
 UVs at the new edge positions. Newly created walls, caps and inset
@@ -231,7 +257,7 @@ A solid boolean uses the `manifold-3d` adapter and produces the
 actual resulting triangle topology. Surface/UV transfer happens
 explicitly. General automatic quad retopology is not assumed.
 
-## 9. Rendering and asset behavior remain separate
+## 10. Rendering and asset behavior remain separate
 
 `toBufferGeometry` compiles authored faces to GPU triangles,
 applying per-corner UVs, smoothing, and model-selected material

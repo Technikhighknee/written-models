@@ -19,8 +19,9 @@ and the viewer shows the faces that were actually authored.
       welding options, including independent coincident vertices.
 - [ ] **1.3** Build one topology index for directed edges, face
       adjacency, region boundaries, open loops and non-manifold edges.
-- [ ] **1.4** Add `GeometryResult` with precise named boundary loops
-      and face selections; indices remain local to each result.
+- [ ] **1.4** Add `GeometryResult` with named boundary loops,
+      face selections and chart-backed patch references; edits
+      propagate valid selections and invalidate obsolete charts.
 - [ ] **1.5** Implement authored geometry clone/transform operations,
       with reflection winding and normal/frame handling.
 - [ ] **1.6** Implement non-mutating authored vertex deformation.
@@ -114,9 +115,10 @@ that can make an iron plate, a stone surface or separate solid parts.
       and report disconnected components.
 - [ ] **3.12** Apply these tools to a wooden panel, circular barrel
       head and metal plate, using shared cuts and source boundaries.
-- [ ] **3.13** Add `grooveAlongSurface` for shoulders, real recessed
-      groove floors and edge wear on a selected face, preserving
-      the underlying contact surface of barrel-head boards.
+- [ ] **3.13** Add batched `shapeSurfaceRelief` so all seam/groove
+      features on one connected patch are sampled and constructed
+      together with explicit overlap behavior, real floors and
+      unchanged mating surfaces.
 
 **Working proof:** Adjacent parts use precisely matching boundaries.
 A hole produces actual wall/rim faces; the quad view reports real

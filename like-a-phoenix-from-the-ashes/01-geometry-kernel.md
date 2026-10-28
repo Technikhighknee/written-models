@@ -117,6 +117,7 @@ interface GeometryResult {
   geometry: MeshData;
   boundaries: Readonly<Record<string, readonly BoundaryRef[]>>;
   regions: Readonly<Record<string, readonly FaceRef[]>>;
+  patches?: Readonly<Record<string, readonly SurfacePatchRef[]>>;
 }
 ```
 
@@ -126,8 +127,10 @@ loops per side.
 
 The returned references are valid for that result. An edit that
 changes vertex or face indexing emits new references. It carries
-selected boundaries or regions forward when their meaning survives,
-and exposes newly created ones with names chosen by the operation.
+selected boundaries, regions and patch charts forward when they
+remain valid, and exposes newly created selections with names
+chosen by the operation. A chart that no longer describes the
+modified surface is explicitly absent from the new result.
 
 This avoids the current pattern of hiding sampling metadata in
 WeakMaps, as `profiledBoard` and `seamedPlankExtrusion` do.

@@ -222,7 +222,7 @@ operations and data flows:
 | `loftAxialProfile.ts`, `dagger.ts` | `loftSections` with per-edge/interval region and smoothing callbacks | Blade edge strips, ricasso, iron–oak–iron grip, faceted/smooth transitions |
 | `profiledMesh.ts`, `dagger.ts` | `profileSpans` → sections → loft → `tipBoundary` | Pointed blade/quillon ends, mirrored guard arms, radial waves |
 | `cutBoard.ts`, `tavernChair.ts` | `correspondContours` + `loftSections` + `fillSurfacePatch` + `joinGeometry` | Rear-seat cheek cuts with distinct top/bottom outlines following raked stiles |
-| `circularPlankPanel.ts`, `seamedPlankExtrusion.ts` | Shared seam partition + `grooveAlongSurface` + separate detailed/hidden patches | Head-board crown, narrow groove floor, shoulders, solid contact below visible recess |
+| `circularPlankPanel.ts`, `seamedPlankExtrusion.ts` | Shared seam partition + batched `shapeSurfaceRelief` + separate detailed/hidden patches | Head-board crown, combined groove floors, shoulders, solid contact below visible recess |
 | `radialStripLayout.ts`, `loftBoard.ts` | `samplePolarStripSections` + section loft + mixed-density cap bridge | Stave outside bevel row, sparse inside row and authentic end faces |
 | `bandAroundProfile.ts` | Periodic/partial `sweepSection` with `polygonalRadiusOutside` and `surfaceClearance` | Hoops, overlap arcs, angled end faces, whole-face clearance against staves |
 | `profiledCavity.ts`, `beerMug.ts` | `cavitySectionsFromSurfaces` → `ProfiledCavity` | Complete ordered cavity extracted from twelve **separate** stave meshes |

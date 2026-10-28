@@ -339,19 +339,20 @@ const headBoards = pieces.parts.map((footprint, index) => {
   const pieceSeams = pieces.interfaces.filter(
     seam => seam.firstPart === index || seam.secondPart === index
   );
-  let detailed = outer;
-  for (const seam of pieceSeams) {
-    detailed = grooveAlongSurface(
-      detailed,
-      { faces: detailed.regions.outer, chart },
-      {
-        points: seam.points.map(point => chart.at(point)),
-        parameters: seam.stations,
-        closed: false
-      },
-      headGrooveOptions(index)
-    );
-  }
+  const relief = pieceSeams.map(seam => ({
+    path: {
+      points: seam.points.map(point => chart.at(point)),
+      parameters: seam.stations,
+      closed: false
+    },
+    ...headGrooveProfile(index) // model-authored widths, depths and regions
+  }));
+  const detailed = shapeSurfaceRelief(
+    outer,
+    outer.patches!.surface[0]!,
+    relief,
+    { overlap: "minimum" }
+  );
 
   const inner = fillSurfacePatch({
     profile: footprint,
@@ -383,9 +384,10 @@ const headBoards = pieces.parts.map((footprint, index) => {
 and cut/outline stations are authored by the model. The actual
 geometry operations are shared toolbox functions.
 
-The groove has real shoulders and a floor. It changes the
-outward patch while preserving the underside and the
-mating surfaces beneath the shallow relief.
+All seams are sampled and resolved together on the original
+surface chart. The resulting grooves have real shoulders and
+floors, with deterministic overlap. The underside and the
+mating surfaces beneath the shallow relief remain intact.
 
 **Proof:** Five independent boards with matching circular
 silhouette, no seam opened through the entire head and correct

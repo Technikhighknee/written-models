@@ -34,6 +34,8 @@ interface GeometryResult {
   geometry: MeshData;
   boundaries: Readonly<Record<string, readonly BoundaryRef[]>>;
   regions: Readonly<Record<string, readonly FaceRef[]>>;
+  /** Valid parameterized patch selections owned by this exact result. */
+  patches?: Readonly<Record<string, readonly SurfacePatchRef[]>>;
 }
 ```
 
@@ -480,11 +482,19 @@ type DeformationField = (
   vertexId: number
 ) => THREE.Vector3Like; // displacement
 
-interface GrooveOptions extends PrecisionOptions {
-  /** Normal displacement profile across the groove and shoulders. */
-  depthAt(distanceAcross: number, progressAlong: number): number;
-  affectedRegion: string;
-  grooveRegion: string;
+interface SurfaceReliefFeature {
+  path: SampledBoundary;
+  /** Physical half-width at a normalized location along the path. */
+  halfWidthAt(t: number): number;
+  /** Signed normal displacement, with u in [-1,1] across the path. */
+  displacementAt(u: number, t: number): number;
+  /** Name generated shoulder/floor faces where relevant. */
+  regionAt?(u: number, t: number): string;
+}
+
+interface SurfaceReliefOptions extends PrecisionOptions {
+  /** How overlapping feature displacement fields are combined. */
+  overlap: "minimum" | "sum";
 }
 
 interface Ray3 {
@@ -572,11 +582,11 @@ booleanSolids(
 ): GeometryResult;
 
 /** Surface-local groove while retaining the underlying part contact. */
-grooveAlongSurface(
+shapeSurfaceRelief(
   source: GeometryResult,
   patch: SurfacePatchRef,
-  seam: SampledBoundary,
-  options: GrooveOptions
+  features: readonly SurfaceReliefFeature[],
+  options: SurfaceReliefOptions
 ): GeometryResult;
 ```
 
@@ -590,6 +600,18 @@ faces and supplies an explicit two-way 2D chart. For a planar
 patch, this is a plane-oriented projection. A curved patch needs
 its own well-defined chart, with consistent mapping and normals.
 An arbitrary collection of faces has no implicit 2D chart.
+
+`shapeSurfaceRelief` takes all seam/wear/detail features for one
+connected patch **in a single call**. It merges their required
+sample stations and constructs the final patch once. With
+`overlap: "minimum"`, overlapping negative relief fields select
+the deepest displacement; `"sum"` permits intentionally
+combined deformations. Both are deterministic. New shoulder,
+groove and floor regions become authored faces. The underlying
+mating surfaces remain intact when the feature depth fits
+the available thickness. A patch whose chart is no longer valid
+must be respecified from the returned geometry before another
+parameterized edit.
 
 An `openPatch` removes faces and leaves an open rim. A
 `recessPatch` inserts walls and a floor. `cutThrough` connects
