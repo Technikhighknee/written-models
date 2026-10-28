@@ -11,6 +11,11 @@ type Contour2 = {
   closed: boolean;
 };
 
+type Profile2 = {
+  outer: Contour2;
+  holes?: readonly Contour2[];
+};
+
 type Contour3 = {
   points: readonly Vector3Like[];
   closed: boolean;
@@ -26,7 +31,7 @@ type Path3 = {
   tangent(t: number): Vector3Like;
 };
 
-type SectionField = (t: number) => Section3;
+type SectionField = (t: number) => Profile2;
 type ScalarField = (t: number) => number;
 ```
 
@@ -43,7 +48,9 @@ A contour has a specific vertex order and winding. Corresponding
 sections must establish which point or boundary feature maps to which
 one on the next section.
 
-A section has an outer contour and optionally one or more inner contours.
+A 3D loft section has an outer contour and optionally one or more
+inner contours. Sweeps take a 2D profile and place it in transported
+3D frames along the path.
 An annular section produces separate outer and inner wall strips and
 an end cap spanning the two contours.
 
