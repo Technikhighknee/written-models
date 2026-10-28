@@ -18,14 +18,19 @@ Their face references identify the **authored** face on the target.
 The target's transform is explicit, so a model can query authored
 geometry before creating a Three.js scene object.
 
-| Query | Returns |
+The public query vocabulary is defined in [09](09-api-contracts.md):
+
+| Query | Result |
 | --- | --- |
-| `raycastSurface(target, ray)` | Hit position, normal, face, region, distance |
-| `intersectPlane(target, plane)` | Intersection loops |
-| `facePlane(target, face)` | A planar face's plane |
-| `findFacingPatch(target, direction, near)` | A facing, spatially relevant contact patch |
-| `closestSurfacePoint(target, point)` | Closest point, normal, region, distance |
-| `boundaryOfRegion(target, region)` | Ordered region-border loops |
+| `raycastSurface(target, ray)` | World-space hit with authored face provenance |
+| `findFacingPatch(target, point, direction)` | Finite, spatially relevant planar contact patch |
+| `surfaceClearance(first, second, options)` | Minimum finite-surface distance and threshold result |
+| `topologyOf(result).regionBoundaries(region)` | Authored region-border chains |
+
+Face-plane extraction, closest-point search and mesh-plane
+intersection are reusable *internal algorithms* supporting these
+operations, fitting and cavity extraction. They are not extra public
+functions with unspecified return types.
 
 `MeshSurfaceQuery` currently builds a temporary double-sided
 Three.js mesh from BufferGeometry and raycasts its triangles in
