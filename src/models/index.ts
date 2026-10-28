@@ -6,6 +6,8 @@ import sandingpaper from "./sandingpaper";
 import plank from "./plank";
 import dagger from "./dagger";
 import beerMug from "./beerMug";
+import tavernChair from "./tavernChair";
+import tavernBench from "./tavernBench";
 
 export interface ModelDefinition {
     slug: string;
@@ -20,5 +22,7 @@ export const models: readonly ModelDefinition[] = [
     sandingpaper,
     plank,
     dagger,
-    beerMug
+    beerMug,
+    tavernChair,
+    tavernBench
 ];
