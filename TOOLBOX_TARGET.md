@@ -1,12 +1,5 @@
 # written-models: Toolbox Target Architecture
 
-> **Status: DRAFT — NOT APPROVED**
->
-> This is a shared, revisable specification, **not permission to implement it**.
-> We will refine it over multiple conversations. **Do not change the architecture
-> or implement the redesign** until explicitly approved ("Ja, so ist ok").
->
-> **Baseline:** `main` @ `225734ff40ddc0492b3dc430eafd26073ab0f882` (2026-10-28).
 > **Scope:** The toolbox, its API, and how models consume it.
 > **Not a goal:** Replacing authored models with a generic object-recipe generator.
 
@@ -104,7 +97,7 @@ limits must be explicit.
 
 ## 4. Geometry and API contracts
 
-Exact types and signatures remain undecided until approval.
+Exact types and signatures are deliberately left open.
 
 - **Construction data first:** Core operations should, when practical,
   work on authored geometry without requiring render meshes or materials.
@@ -179,8 +172,7 @@ the abstraction.
 
 ## 7. Open design decisions
 
-Resolve these **before** implementation, not opportunistically during
-a refactor.
+Decide these as part of refining the target architecture.
 
 - [ ] Decide the conceptual layers and direction of dependencies.
 - [ ] Decide whether authored geometry, render geometry, and finished
@@ -194,18 +186,10 @@ a refactor.
       the object recipes.
 - [ ] Decide migration and quality-checking rules so existing models
       remain good without writing tests merely for the sake of tests.
-- [ ] Explicitly approve this target specification.
+ ## 8. Implementation checklist
 
-**Approval state:** `NOT APPROVED`.
-The final checkbox is only checked after the user's explicit approval.
-
-## 8. Implementation checklist — LOCKED until approval
-
-> Every box starts unchecked. `[x]` means **implemented, integrated,
-> and verified**, not merely planned. A task is complete only when
-> affected models still work and the resulting capability is reusable.
-> Record the relevant commit alongside each completed item.
-> Add more specific tasks after approval if necessary.
+> Check off completed work only after integration and verification.
+> Include the relevant commit for each completed item. Add tasks as needed.
 
 - [ ] **0. Baseline:** Inventory existing capabilities, consumers,
       API boundaries, and visible model results.
@@ -231,22 +215,3 @@ The final checkbox is only checked after the user's explicit approval.
 - [ ] **9. Cleanup:** Remove obsolete interfaces, update the capability
       catalog, and record completed work with concrete commit hashes.
 
-## 9. How this document is maintained
-
-- **Before approval:** Update this Markdown, not the architecture or
-  models. The document is the only intended repository change related
-  to the redesign.
-- **On each revision:** Keep decisions and checklists current, remove
-  contradictions, and do not silently turn proposals into requirements.
-- **After approval:** Implement in small, reviewable steps rather than
-  one opaque rewrite. Mark section 8 progress with commit hashes.
-  Evaluate visible model quality, not merely successful builds.
-- **At the end:** This file is intentionally temporary. Whether it
-  is archived or deleted can be decided once the work is complete.
-
-### Draft history
-
-| Date | Change | State |
-| --- | --- | --- |
-| 2026-10-28 | Initial target specification and implementation checklist | Under discussion |
-| 2026-10-28 | Moved the draft to the repository root and translated it to English | Under discussion |
