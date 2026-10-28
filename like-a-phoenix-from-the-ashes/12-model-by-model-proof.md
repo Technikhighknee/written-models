@@ -252,8 +252,9 @@ visible `fill_level = 1` represents 90% of the physical cavity.
    boundary references. The projection keeps the topological
    structure and checks face inversion.
 6. **Extract cavity section loops from the collection of
-   independent stave inner faces.** Reuse the authored horizontal
-   row edges to form the XZ contour at each authored height,
+   independent stave inner faces.** Supply a rigid mug-local section
+   frame independent of scene placement. Reuse horizontal row edges
+   in that frame to form the XZ contour at authored local heights,
    preserving seam correspondence and a stable starting station.
    Reject missing, doubled and open sections. Interpolation at
    intermediate heights belongs to `ProfiledCavity`.
