@@ -1,11 +1,12 @@
 # 01 — Geometry Kernel
 
-The kernel is the common representation of shapes as they are constructed,
-edited, queried, and combined.
+The kernel is the source of geometric truth. A shape can be built,
+edited, queried and rendered without reconstructing its topology
+from GPU triangles.
 
-## Canonical representation
+## Representation
 
-Keep the current `MeshData` concept:
+We keep the current `MeshData`:
 
 ```ts
 interface MeshData {
@@ -13,46 +14,49 @@ interface MeshData {
   quads: QuadFace[];
   triangles?: TriangleFace[];
 }
-
-interface QuadFace {
-  corners: [number, number, number, number];
-  uvs: [Vector2, Vector2, Vector2, Vector2];
-  surface: string;
-  smoothingGroup?: string;
-}
 ```
 
-The actual `TriangleFace` has the same metadata with three corners.
-A vertex ID refers to a construction position. Different UVs, materials,
-and smoothing groups may share that position. The vertex is duplicated
-only when preparing the renderer's attributes.
+Each face has its corner indices, a `surface` string, per-corner
+UV coordinates, and optionally `smoothingGroup`.
+This is already implemented in `MeshData.ts` and
+`AuthoredMeshBuilder.ts`.
 
-This representation is already real in
-`geometry/mesh/MeshData.ts`, `AuthoredMeshBuilder.ts`, and
-`toBufferGeometry.ts`. Extend it without requiring a new modeling
-kernel or a class hierarchy for every shape.
+A construction vertex is a position shared across faces. UV seams,
+hard normals and material changes belong to face corners or surface
+metadata. They do not create extra construction vertices.
 
-### Geometry rules
+### Geometry ownership
 
-- Coordinates are finite and expressed in meters.
-- A face references three or four distinct vertices, with valid winding
-  and nonzero geometric area.
-- UV coordinates live **per face corner**. A UV seam does not split a
-  construction vertex.
-- Each face identifies its surface region. These regions describe
-  the role of the surface (for example `outer`, `inner`, `cut`,
-  or `end`); the model maps regions to materials.
-- A smoothing group controls normal continuity in the rendering
-  conversion, independently of topology.
-- Open surfaces and complete solids use the same `MeshData` type.
-  Closedness is determined by topology.
+Operations produce fresh vertices and face arrays. A builder may mutate
+while assembling a result; the result itself is treated as immutable
+by later operations.
 
-### Read-only topology queries
+The current `warpGeometry()` modifies both GPU vertices and the
+`MeshData` referenced through a WeakMap. That changes with the
+migration: the authored geometry is deformed first, and a new render
+mesh is derived from it.
 
-Build an edge index from the face-corner arrays:
+Two geometrically coincident vertices are **not necessarily one
+topological vertex**. `AuthoredMeshBuilder` currently welds by rounded
+position with a default resolution of `1e-9`. Its target behavior
+supports explicit sharing/welding policies:
+
+- Vertices intentionally shared within one solid use the same ID.
+- Independent pieces may have coincident positions and separate IDs.
+- Position-based welding is an explicit construction choice.
+- A later weld/merge operation can join matching boundaries.
+
+This matters for touching parts, overlapping shells, cuts and
+intentionally disconnected geometry.
+
+## Topology index
+
+Build one edge/face adjacency index over authored face corners.
 
 ```ts
-type EdgeKey = readonly [lowVertexId: number, highVertexId: number];
+type FaceRef =
+  | { kind: "quad"; index: number }
+  | { kind: "triangle"; index: number };
 
 interface EdgeUse {
   face: FaceRef;
@@ -61,134 +65,134 @@ interface EdgeUse {
 }
 
 interface TopologyIndex {
-  uses(edge: EdgeKey): readonly EdgeUse[];
-  neighbors(face: FaceRef): readonly FaceRef[];
-  boundaryLoops(): readonly BoundaryLoop[];
-  regionFaces(name: string): readonly FaceRef[];
-  regionBoundary(name: string): readonly BoundaryLoop[];
+  edgeUses(a: number, b: number): readonly EdgeUse[];
+  faceNeighbors(face: FaceRef): readonly FaceRef[];
+  openBoundaries(): readonly BoundaryRef[];
+  regionBoundaries(region: string): readonly BoundaryRef[];
 }
 ```
 
-`FaceRef` identifies a quad or triangle by collection and index.
-`BoundaryLoop` is an ordered sequence of directed edges or vertex IDs,
-with explicit closed/open state.
+A directed face edge runs from its current corner to the next one.
+The undirected edge key is the sorted pair of IDs.
 
-An edge appearing once is an open-mesh boundary. Two opposing uses form
-a regular interior edge. More than two uses are non-manifold. The index
-detects winding conflicts and T-junction candidates before a later
-operation compounds the problem.
+- **One use**: open boundary.
+- **Two opposed uses**: ordinary shared edge.
+- **Two same-direction uses**: winding conflict.
+- **Three or more uses**: non-manifold edge.
 
-Adjacency is computed when requested and cached only for a particular,
-unchanged `MeshData` instance. Operations return fresh geometry; there
-is no mutable global mesh registry.
+Region boundaries can exist between two adjacent faces with different
+surface names even when the mesh is closed. A region may have multiple
+disconnected loops and holes.
 
-### Boundaries as usable outputs
+The index is a read-only view of a specific geometry result. It can
+be cached with that result and discarded when topology changes.
+No global mutable registry is needed.
 
-Surface names alone cannot identify every boundary precisely: the existing
-`fitBoundaryToSurface()` gathers *every vertex of each face* in a named
-surface. A rectangular cap works because that region contains only its end;
-a complex region needs an exact edge-loop selection.
+### A boundary is an ordered edge chain
 
-Introduce explicit boundary references in operation results:
+```ts
+interface BoundaryRef {
+  vertices: readonly number[];
+  closed: boolean;
+}
+```
+
+The ordering conveys direction and adjacency. A closed chain's last
+vertex connects back to its first. A region name selects faces;
+a boundary reference selects the *actual edges* of one chain.
+
+The current `fitBoundaryToSurface()` selects every vertex belonging
+to faces named `cap-start` or `cap-end`. That happens to work for
+simple end caps, but selecting an entire region is insufficient
+for complex patches. The new query extracts exact loops and lets
+the caller select the one it intends to fit.
+
+## Results and selections
 
 ```ts
 interface GeometryResult {
   geometry: MeshData;
-  boundaries: Readonly<Record<string, BoundaryRef>>;
+  boundaries: Readonly<Record<string, readonly BoundaryRef[]>>;
   regions: Readonly<Record<string, readonly FaceRef[]>>;
 }
 ```
 
-A constructor can return `boundaries.start`, `boundaries.end`,
-`boundaries.innerRim`, or another semantic key chosen by its caller.
-A split returns boundaries for the new cut faces, with both sides
-linked to the same geometric source.
+A loft can expose `start` and `end` loops; a hollow extrusion
+may expose outer and inner rims; a split can expose several cut
+loops per side.
 
-A `BoundaryRef` contains the ordered vertex IDs of a boundary and its
-open/closed state. `FaceRef` identifies a quad or triangle by index.
-These references are local to the returned geometry. An operation that
-changes indexing produces a new result with updated references.
-Topology is never selected by hoping old vertex indices still match.
+The returned references are valid for that result. An edit that
+changes vertex or face indexing emits new references. It carries
+selected boundaries or regions forward when their meaning survives,
+and exposes newly created ones with names chosen by the operation.
 
-The API can retain the existing `MeshData` returns internally while
-migrating consumers to `GeometryResult` where named outputs are useful.
-Core geometric operations accept plain `MeshData`. Operations using
-named boundaries can take the accompanying `GeometryResult`.
+This avoids the current pattern of hiding sampling metadata in
+WeakMaps, as `profiledBoard` and `seamedPlankExtrusion` do.
+Sampling stations should be returned by their sampling or partition
+operation, so neighboring pieces can reuse the actual parameters.
 
-## Composition
+For a geometric operation needing no named boundaries, plain
+`MeshData` is sufficient input. A caller can wrap it with empty
+selections or use the operation's `GeometryResult`.
 
-The central contract is simple:
+## Working on geometry
 
-```ts
-// Illustrative target signatures.
-loft(sections: readonly Section3[], options?: LoftOptions): GeometryResult;
-deform(geometry: MeshData, field: DeformationField): GeometryResult;
-split(geometry: MeshData, plane: Plane): SplitResult;
-fitBoundary(
-  geometry: MeshData,
-  boundary: BoundaryLoop,
-  target: SurfaceTarget,
-  options: FitOptions
-): GeometryResult;
-```
+### Construction
 
-Operations do not need material instances, scene objects, or the viewer.
-A model can create a Three.js mesh after finishing its geometric work.
+An extrusion, loft, sweep, or revolve produces `MeshData` plus
+regions and boundary loops useful for later operations.
 
-For transforms, add `transformGeometry(geometry, matrix)` that applies
-a matrix to construction vertices, updates winding for reflections,
-and returns valid local references. This makes coordinate spaces
-explicit and allows queries to reuse the same algorithm for a mesh
-and for geometry carried in an assembly transform.
+### Vertex deformation
 
-## Editing and topology identity
+`deformVertices()` moves construction vertices and preserves face
+indices, UVs, and named selections. The result is rechecked for
+collapsed or inverted faces. It can require additional local
+subdivision to represent high curvature accurately.
 
-A geometric edit has two separate concerns: shape and provenance.
+### Topology-changing edits
 
-- **Vertex-only deformation:** preserve face structure and face-corner
-  UVs; revalidate non-degenerate faces.
-- **Subdivision:** return created vertices and descendants of the
-  affected faces/edges; transfer surface regions and interpolate UVs.
-- **Cut/split:** emit new faces and boundaries for each resulting piece.
-  A cut face gets an explicit `cut` region or caller-provided region.
-- **Combine pieces:** retain separate parts where that reflects
-  construction; explicit mesh welding/union is its own geometric operation.
+A split, cut, bevel, or subdivision creates new vertices and faces.
+It returns updated selections, real cut regions, and explicit boundary
+correspondence between parts when those parts should meet.
 
-The reusable output of an edit contains references to its newly created
-regions and edges. Algorithms that truly change topology provide a
-mapping when subsequent operations require it. We do not promise stable
-numeric IDs across rebuilds.
+UVs on surviving faces are interpolated at split edges. New cap/wall
+faces receive their own UV projection. Region meaning is transferred
+or assigned to the new faces.
 
-## Geometry validity
-
-The shared kernel provides concrete checks:
+## Geometry integrity
 
 | Check | Meaning |
 | --- | --- |
-| Finite values | Vertex positions and UVs are finite |
-| Face validity | All corner IDs exist; no repeated corner or zero-area face |
-| Edge incidence | Boundary, interior, non-manifold, and inconsistent-winding edges |
-| Connectivity | Open loops, connected components, isolated vertices |
-| Orientation | Consistent local face winding; outward winding for closed solids |
-| Intersections | Local edge/face clashes where an operation requires clean geometry |
-| Resolution | Neighboring surfaces share actual edge stations or receive explicit transition faces |
+| Positions | Finite coordinates in meters |
+| Faces | Valid indices, distinct corners, nonzero area |
+| Face orientation | Consistent winding; mirrored transforms correct it |
+| Edges | Open, shared, winding-conflicted, or non-manifold |
+| Connectivity | Connected components and ordered boundary loops |
+| Surface membership | Every face belongs to a named region |
+| Shared interfaces | Same stations on both sides of a joined boundary |
+| Render mapping | Every render vertex maps back to its authored source |
 
-The checks are callable operations. Construction algorithms enforce the
-invariants they depend on. Focused automated checks protect those
-invariants as the toolbox changes.
+These checks are reusable functions. Constructors and editors enforce
+the invariants needed for their supported inputs. A model can inspect
+topology without involving Three.js materials.
 
-## Immediate consolidation
+A curved quadrilateral is still a four-corner polygon, but its two
+GPU triangles approximate that surface with a chosen diagonal.
+Construction either keeps such quads within a defined planarity
+tolerance or subdivides them to represent the desired curvature.
+The quad count never conceals a degenerate face.
 
-- Keep `MeshData`, `AuthoredMeshBuilder`, `toBufferGeometry` as the
-  initial kernel.
-- Move the topology reconstruction currently performed separately
-  by `controlOutline`, `fitBoundaryToSurface`, and related functions
-  behind one edge/region query API.
-- Replace the `WeakMap<BufferGeometry, MeshData>` as a *modeling*
-  dependency. The renderer may keep a source reference for Quad View;
-  geometric algorithms carry `MeshData` explicitly.
-- Move vertex deformation into the construction layer. The current
-  `warpGeometry` mutates both a BufferGeometry and its WeakMap-backed
-  control mesh; future edits happen once, then render geometry is compiled.
-- Keep the renderer's per-corner vertex expansion, normal calculation,
-  triangulation, and material grouping in one conversion path.
+## Existing implementation retained
+
+- `MeshData.ts` is the canonical authored representation.
+- `AuthoredMeshBuilder.ts` supplies face authoring with configurable
+  vertex sharing.
+- `toBufferGeometry.ts` stays the rendering compiler; its source
+  association supports Quad View.
+- `controlOutline.ts`, face selection, fitted boundary traversal
+  and geometry validity use the same topology index.
+- `adaptiveStations.ts` and `stitchPolylines.ts` remain the
+  foundation for compatible subdivision and boundary bridging.
+
+The output is a kernel every construction and editing function can use
+without depending on object-specific geometry or render meshes.

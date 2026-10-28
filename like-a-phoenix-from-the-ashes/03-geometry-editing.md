@@ -20,8 +20,8 @@ interface PartitionResult {
 }
 ```
 
-A `SharedBoundary` contains a curve, its sample parameters and its
-actual points. Neighboring pieces use those very same stations.
+A shared boundary contains a curve, its sample parameters and its
+actual points. The shared API calls this `SampledBoundary`. Neighboring pieces use those very same stations.
 Clearance or gap width is applied to each side as a deliberate offset.
 
 This is how irregular tabletop planks, barrel heads, segmented metal
@@ -30,7 +30,11 @@ plates, and stone blocks can share one partitioning system.
 ### Contour operations
 
 `clipConvexPolygon()` and `partitionConvexPolygon()` already
-implement planar half-plane clipping. Expand that vocabulary:
+implement **convex** planar half-plane clipping. Today,
+`circularPlankPanel()` also collects every piece's adaptive
+stations and rebuilds them on a union of sample positions.
+The generic partition operation coordinates stations before
+constructing the output faces. Expand that vocabulary:
 
 | Operation | Output |
 | --- | --- |
@@ -41,7 +45,9 @@ implement planar half-plane clipping. Expand that vocabulary:
 | `resampleBoundary(boundary, landmarks, tolerance)` | Adaptive samples preserving key points |
 
 A concave clipping result may have multiple components and holes.
-The contour representation accommodates these explicitly.
+The `Profile2` result contains the boundary and any hole contours;
+`clipContour()` returns an array of profiles. The convex fast path
+remains available.
 
 ### Plane cuts through meshes
 
@@ -52,9 +58,10 @@ splitByPlane(geometry, plane, {
 });
 ```
 
-The plane is intersected with edges only once. Both output pieces
-share the computed intersection positions, gain genuine cut faces,
-and expose the new boundary loops. UVs on surviving source faces
+The plane intersects each source edge once. Both output pieces
+reuse the same calculated intersection coordinates and sample
+ordering, gain genuine cut faces, and expose their cut loops.
+All connected components and hole loops are represented. UVs on surviving source faces
 are interpolated; cap UVs use a plane-aligned frame.
 
 A quad intersected by the cut may become new quads and triangles.
@@ -66,8 +73,9 @@ retopology can follow when the cut region warrants clean quad loops.
 `cutBoard()` presently builds mortises and recesses using a custom
 orthogonal grid. Extract the surface editing itself.
 
-An opening starts with a surface region and a closed contour in
-that region's parameter space. The operation introduces matching
+An opening starts with a **connected surface patch and its local
+2D chart**, plus a closed contour. A semantic region name may
+refer to disconnected faces and cannot identify one patch. The operation introduces matching
 edges into the region, cuts or removes the selected patch, and
 constructs rim/wall/floor faces where needed.
 
@@ -79,8 +87,11 @@ cutPatch(geometry, region, outline, {
 });
 ```
 
-A planar patch can use direct contour clipping. A curved patch
-evaluates its local contour back onto the original surface.
+A planar patch uses direct contour clipping in a plane-aligned chart.
+A curved patch needs an explicit mapping between chart coordinates
+and the surface, plus a way to construct its rim/sidewalls.
+The first `cutPatch()` handles planar patches; curved patch
+editing extends it once parameterization is available.
 
 A through-hole joins openings on opposite surfaces or removes an
 intersecting volume. The resulting rim is a named boundary, usable
@@ -94,10 +105,15 @@ and a damaged recess.
 `manifold-3d` is already a repository dependency. It is an available
 kernel for union, intersection, and difference of closed solids.
 
+The installed `manifold-3d` package can supply solid booleans, but
+it does not automatically preserve authored quads, UVs, or surface
+regions. The wrapper defines face classification, UV projection,
+and whether the result has separate components.
+
 Boolean results are represented by their **actual generated faces**.
-A triangulated result contains authored triangles. A separate
-retopology/patch-reconstruction operation produces cleaner quad
-layouts where that has a defined construction solution.
+A triangulated result contains authored triangles. A separate patch-reconstruction operation can produce useful quads
+on a suitable surface chart. Otherwise the boolean result remains
+a genuine triangulated solid.
 
 The simpler contour/patch/plane operations preserve a greater amount
 of existing topology and therefore remain the preferred geometric
@@ -161,8 +177,10 @@ These become the common tools for local refinement:
 - Bridge boundaries whose edge counts differ.
 - Reconstruct a local patch explicitly after complex cutting.
 
-No hidden T-junctions: a split of a shared edge is reflected on
-both incident faces or is handled by a real transition patch.
+No hidden T-junctions: a split of a shared edge affects both incident
+faces, or a real transition patch bridges the differing resolutions.
+Edge shaping operates on explicitly selected loops, not just the
+name of their surrounding material region.
 
 ## Result
 

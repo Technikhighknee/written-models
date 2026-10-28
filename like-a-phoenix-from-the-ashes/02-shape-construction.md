@@ -35,8 +35,9 @@ type SectionField = (t: number) => Profile2;
 type ScalarField = (t: number) => number;
 ```
 
-These are conceptual public contracts. The implementation can reuse
-Three.js curves and vector types as appropriate.
+These definitions follow [the shared API](09-api-contracts.md): `Section3`
+contains positioned 3D contours, while `SectionField` produces 2D
+profiles that a sweep places in transported path frames.
 
 Contour cleanup, winding, resampling, uniform and adaptive station
 selection, and local frames belong to shared utilities. They are
@@ -53,6 +54,12 @@ inner contours. Sweeps take a 2D profile and place it in transported
 3D frames along the path.
 An annular section produces separate outer and inner wall strips and
 an end cap spanning the two contours.
+
+Correspondence is established per loop (outer contour and each hole),
+including its winding, seam station, and landmarks. The number and
+identity of loops remain constant across a loft interval. A hole
+appearing or disappearing requires a separately authored transition
+patch.
 
 For matching contours, each interval creates genuine quad side faces.
 When boundaries have different subdivisions, `stitchPolylines`
@@ -104,8 +111,11 @@ useful techniques for independently sampled sides and resolution
 transitions.
 
 Use one section-loft engine to connect corresponding contours.
-Cap construction is selected separately so a planar four-corner cap
-can remain a quad, and a complex polygon can use proper triangulation.
+The current `loftRings()` already triangulates concave flat ends using
+`THREE.ShapeUtils.triangulateShape()`, while four-corner `loftSections()`
+keeps authored quad caps. The unified engine retains both choices.
+A four-corner cap stays a quad when it is coplanar and simple;
+concave or holed caps use explicit triangulation or patch faces.
 
 Sections can translate, rotate, change scale, and change shape along
 the loft. Callers control the stations and section correspondence.
@@ -134,7 +144,8 @@ transport avoids sudden flips. Sampling is shared with adaptive
 section geometry.
 
 A rectangular timber, bent pipe, dagger handle, and branch can
-all use this mechanism.
+all use this mechanism. Closed paths require the transported final
+frame to meet the initial frame without an unwanted seam twist.
 
 ### Revolution
 
@@ -156,10 +167,10 @@ construct their offset contours, connect their rims, and control
 thickness along the shape.
 
 For a revolved cup, an inner and outer meridian is enough. For a bent
-tube, an annular cross-section can be swept. For a general surface,
-offsetting requires normals and fold/self-intersection handling.
-These share thickness and boundary tools while using appropriate
-construction methods for their topology.
+tube, an annular cross-section can be swept. For a general surface, offsetting needs authored normals and
+fold/self-intersection checks. Profile-based shells come first;
+a fully general arbitrary-surface offset is a separate algorithm
+with its own geometry-validity requirements.
 
 ### Direct surface construction
 

@@ -53,6 +53,29 @@ Texturing can feed the material layer independently.
 Build and edit operations may use kernel-level topology queries;
 the query layer may not import object-specific model construction.
 
+## Specific changes that make the migration work
+
+Some of the current special cases are hiding genuinely reusable machinery.
+These are the extraction boundaries that the new modules implement.
+
+| Current behavior | Target operation / data |
+| --- | --- |
+| `AuthoredMeshBuilder` welds any coincident points at 1e-9 resolution | Explicit vertex sharing and optional spatial welding; independent coincident parts retain distinct topology |
+| `profiledBoard` stores stations in a WeakMap keyed by `MeshData` | Section sampler returns station parameters alongside its shapes; a shared panel computes the common station union before constructing parts |
+| `seamedPlankExtrusion` returns `BufferGeometry` and keeps longitudinal stations in another WeakMap | Return authored geometry with named regions/boundaries; produce the stations from a general sampler instead of render metadata |
+| `boardPanel` and `circularPlankPanel` independently assemble board-specific pieces | One contour partition returns shared cut boundaries; model recipes choose plank count, gaps, crown and wear |
+| `loftSections` and `loftRings` duplicate side stitching but differ on caps | Shared loft strips; separate cap generation preserves valid four-corner quads and triangulates arbitrary planar outlines |
+| `loftBoard` stitches visible/hidden edges of unequal resolution | General boundary bridge with real transition triangles, reusable by shells, surface patches and organic geometry |
+| `fitBoundaryToSurface` infers a boundary from all vertices in a surface region | Ordered `BoundaryRef` extracted from authored edges; ray projection and falloff retain the correct selection |
+| `supportFacePlane` picks only planar quads by direction | Surface query selects a nearby face/patch and checks the finite support footprint before member fitting |
+| `fitBetweenSupports` imports `TimberContactNormals` | Return independent contact normals, patches and fitted sections; wood materials remain in model composition |
+| `assignMaterialsByNormal` and `classifyExtrudedSurfaces` edit GPU index groups | Classify authored faces first; compile material groups once in `toBufferGeometry` |
+| `warpGeometry` mutates GPU data and its stored control mesh | Deform authored vertices and derive a new render snapshot |
+| `revolveShell` generates `BufferGeometry` through `latheMeridian` | Generate authored revolved geometry; render once at the caller boundary |
+
+These are concrete algorithm and data-flow changes. A file can be removed
+when its call sites use the corresponding shared operation.
+
 ## Geometry kernel and output
 
 | Current file | Destination / behavior |
@@ -66,7 +89,9 @@ the query layer may not import object-specific model construction.
 | `geometry/topology/stitchPolylines.ts` | Keep; use for unequal-resolution boundary bridges |
 
 Add shared topology indexing, ordered boundary loops, face/edge
-selection, region queries, and explicit operation results.
+selection, region queries, and explicit operation results. Return
+`BoundaryRef[]` per named boundary, since a region can have multiple
+loops and internal holes.
 Functions currently duplicating adjacency and region selection
 will call the shared system.
 
@@ -90,7 +115,8 @@ will call the shared system.
 
 Cap generation, contour correspondence, and sample station selection
 are shared across extrusion, loft, sweep, and revolve. These
-operations consistently return `MeshData` and useful boundaries.
+operations consistently return `GeometryResult` containing authored
+`MeshData` and useful boundaries.
 
 ## Partition, cut and surface detail
 
@@ -110,8 +136,9 @@ operations consistently return `MeshData` and useful boundaries.
 | `shapes/operations/clipConvexPolygon.ts` | General contour clipping and shared-boundary partitioning; retain fast convex implementation |
 | `geometry/deformation/warpGeometry.ts` | Authored-geometry deformation; renderer derived afterward |
 
-The specific geometry algorithms used by wooden boards remain
-available to metal, stone, ceramic, and organic models.
+The generic operations extracted from wooden boards remain usable
+for metal, stone, ceramic, and organic models. Board-specific
+assembly choices stay with table, barrel and seating recipes.
 
 ## Geometric definitions
 
@@ -158,7 +185,9 @@ operations.
 | `spatial/layout/weightedCuts.ts` | Keep weighted partition positions |
 
 Three.js scene parenting belongs in spatial assembly, downstream
-of geometry creation and fitting.
+of geometry creation and fitting. All geometric queries use
+`SurfaceTarget { geometry, localToWorld }`; render-backed queries
+may accelerate their implementation internally.
 
 ## Surface data, texturing and runtime
 
@@ -198,9 +227,10 @@ compilation/export boundary. Their behavior is covered by
 | `models/components/oakSeating.ts` | Model-owned wood palette/UV choices, assembled from geometric operations |
 | `models/components/trestleSupport.ts` | Model-owned support arrangement, shared contact/fitting geometry |
 
-The visible forms and proportions remain model decisions. Models
-are migrated by replacing their geometric dependencies, keeping
-working assemblies recognizable and exportable.
+The visible forms and proportions remain model decisions. Each
+model migration replaces its geometric dependencies, keeps the
+existing assembly recognizable and exportable, and proves the
+same operation can serve a geometrically different consumer.
 
 ## Removal criterion
 

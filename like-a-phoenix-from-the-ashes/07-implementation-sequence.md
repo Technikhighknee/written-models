@@ -1,213 +1,241 @@
 # 07 — Implementation Sequence
 
-The implementation follows the dependency chain from authored data
-to construction, editing, fitting, and model migration. Each phase
-delivers working capabilities and leaves the existing models usable.
+The order follows the dependency chain between actual geometric
+capabilities. Every checkbox describes a change that can be built,
+integrated and demonstrated. Record the implementing commit beside
+each completed item.
 
-Check `[x]` after the corresponding result exists and works.
-Append the commit beside the item. Subtasks can gain further entries
-as the implementation becomes more concrete.
+The existing models provide real constructions against which we can
+see whether a new operation is useful.
 
-## Phase 1 — Shared authored geometry
+## 1. Geometry that can travel through the whole toolbox
 
-**Output:** One coherent set of authored geometry, topology, boundary,
-and region utilities available to every toolbox operation.
+**Result:** Construction data passes from one operation to the next,
+and the viewer shows the faces that were actually authored.
 
-- [ ] `MeshData`, authored builder, face regions, UVs and smoothing are
-      the common geometry input/output for geometric operations.
-- [ ] A topology index exposes face adjacency, oriented edges,
-      boundary loops, region boundaries and manifold-edge checks.
-- [ ] Construction operations can return explicit named boundary
-      and region references through `GeometryResult`.
-- [ ] Transforming and cloning authored geometry preserves the
-      corresponding face-corner and boundary information.
-- [ ] Deformation operates on authored vertices and produces new
-      construction geometry.
-- [ ] `toBufferGeometry` and Quad View continue to use the genuine
-      authored topology.
+- [ ] **1.1** Keep `MeshData` as the shared geometry representation;
+      formalize face references, surface regions and per-corner UVs.
+- [ ] **1.2** Give `AuthoredMeshBuilder` explicit vertex-sharing and
+      welding options, including independent coincident vertices.
+- [ ] **1.3** Build one topology index for directed edges, face
+      adjacency, region boundaries, open loops and non-manifold edges.
+- [ ] **1.4** Add `GeometryResult` with precise named boundary loops
+      and face selections; indices remain local to each result.
+- [ ] **1.5** Implement authored geometry clone/transform operations,
+      with reflection winding and normal/frame handling.
+- [ ] **1.6** Implement non-mutating authored vertex deformation.
+- [ ] **1.7** Keep Quad View and render compilation correctly mapped
+      to each new authored snapshot.
+- [ ] **1.8** Exercise a box and loft through construction → topology
+      query → deformation → render → Quad View.
 
-**Demonstration:** A box and a loft can be queried for boundaries,
-deformed, rendered and displayed in Quad View from the same representation.
+**Working proof:** The query index recognizes real shared edges and
+ordered boundaries, including disconnected pieces; repeated render
+conversion does not mutate original geometry.
 
-## Phase 2 — Profiles, contours and construction
+## 2. One vocabulary for constructing shapes
 
-**Output:** Compatible geometric definitions feed a shared family of
-mesh-building operations.
+**Result:** Contours, profiles, sections and paths can feed multiple
+constructors, each yielding the same kind of geometry result.
 
-- [ ] Contour/section normalization, winding, sampling and frame
-      construction share one set of definitions.
-- [ ] `loftSections` and `loftRings` use a common arbitrary-section
-      loft mechanism with genuine quad side faces.
-- [ ] Cap construction supports both authored quad caps and
-      triangulated non-quad caps.
-- [ ] `stitchPolylines` and adaptive station selection support
-      boundaries with differing resolution.
-- [ ] Extrusion consumes contours with optional holes and produces
-      authored walls, caps and named boundaries.
-- [ ] Sweeping supports an evolving cross-section along an arbitrary
-      path using transported frames.
-- [ ] Revolution supports solids, shells, explicit rims and actual
-      pole/side topology.
-- [ ] Primitive constructors (`boxMesh`, `cylinderMesh`) produce
-      the same kind of authored result.
-- [ ] The shared constructors have stable UV and surface-region
-      behavior across different profiles.
+- [ ] **2.1** Introduce the common `Contour2`, `Profile2`,
+      `Contour3`, `Section3` and `Path3` contracts.
+- [ ] **2.2** Consolidate contour cleanup, winding, correspondence,
+      landmarks and physically measured sampling.
+- [ ] **2.3** Keep `adaptiveStations` as the common sampler and
+      `stitchPolylines` as the mixed-density bridge.
+- [ ] **2.4** Merge the repeated side-loft logic of `loftSections`
+      and `loftRings` into a section-loft engine.
+- [ ] **2.5** Make cap creation independent: planar quads when
+      legitimate, polygon triangulation for concave/holed caps,
+      proper tips and open ends.
+- [ ] **2.6** Extract `loftBoard`'s differing-resolution boundary
+      bridge into a general surface connection.
+- [ ] **2.7** Generalize path sweeping to a changing section field,
+      transported frames, and matching start/end boundaries.
+- [ ] **2.8** Consolidate `latheMeridian` and `revolveShell`
+      into authored revolution and profile-defined shells.
+- [ ] **2.9** Convert extrusion into an authored operation with
+      holes, bevel layers, cap/wall surfaces and named boundaries.
+- [ ] **2.10** Express `boxMesh`, `cylinderMesh`,
+      `loftAxialProfile` and related primitives as compositions
+      of shared shape-building code.
+- [ ] **2.11** Build different profile-driven forms (solid bar,
+      curved hollow tube, tapered grip) with the same machinery.
 
-**Demonstration:** The same section-loft and sweep pipeline constructs
-a rectangular bar, a bent pipe and a changing organic profile.
-The plank, sandingpaper and dagger models use these capabilities.
+**Working proof:** All three forms retain real control faces,
+correct end/rim construction and useful UVs.
 
-## Phase 3 — Shared partitioning and surface editing
+## 3. Split, partition and reshape geometry
 
-**Output:** Geometric cuts and surface edits work on constructed shapes
-without referring to boards, panels or other object categories.
+**Result:** A panel is one use of the same geometric partitioning
+that can make an iron plate, a stone surface or separate solid parts.
 
-- [ ] Contour clipping supports the required split regions,
-      including multiple components and holes.
-- [ ] Partitioned contours share exact cut boundaries and stations.
-- [ ] Authored meshes can be split by a plane with explicit
-      generated cut regions and usable resulting topology.
-- [ ] Surface-patch cuts produce openings, walls, floors and rim
-      boundaries for recesses and holes.
-- [ ] Selected edge loops support reusable bevel, roundover,
-      inset and groove operations.
-- [ ] Generic shape variation and geometric deformation work
-      with stable results and deliberate regional falloff.
-- [ ] Local refinement and transition stitching preserve
-      neighboring boundary correspondence.
-- [ ] Closed-solid boolean operations have a clearly represented
-      triangulated topology output and surface-region behavior.
+- [ ] **3.1** Represent a common seam as one sampled boundary with
+      its station parameters and geometric points.
+- [ ] **3.2** Partition convex planar contours while preserving
+      shared edge stations, holes and deliberate clearance offsets.
+- [ ] **3.3** Extend contour clipping to concave regions and multiple
+      components, returning actual planar loops.
+- [ ] **3.4** Implement plane-splitting of supported authored solids,
+      sharing intersection points and creating named cut faces.
+- [ ] **3.5** Implement planar surface-patch cutting for recesses,
+      openings and through-holes with real walls and rim loops.
+- [ ] **3.6** Add parameterized curved-patch cutting based on explicit
+      surface charts and mapped cut boundaries.
+- [ ] **3.7** Turn edge recess, chamfer, bevel, roundover and groove
+      geometry into reusable selected-edge/patch operations.
+- [ ] **3.8** Combine seeded/coherent variation with authored
+      geometry fields and region-weighted deformation.
+- [ ] **3.9** Implement local edge/face subdivision with consistent
+      neighboring stations and genuine transition triangles.
+- [ ] **3.10** Wrap `manifold-3d` for closed-solid boolean results
+      with real triangulated output, surface assignment and UV mapping.
+- [ ] **3.11** Apply these tools to a wooden panel, circular barrel
+      head and metal plate, using shared cuts and source boundaries.
 
-**Demonstration:** A rectangular plank, a circular panel and a metal
-plate all receive precise partitions, grooves or openings through
-the shared editing operations.
+**Working proof:** Adjacent parts use precisely matching boundaries.
+A hole produces actual wall/rim faces; the quad view reports real
+triangles where a cut needs them.
 
-## Phase 4 — Surface fitting and spatial assembly
+## 4. Fit shapes to actual geometry
 
-**Output:** Geometry can find real contacts, fit to its targets and
-participate in scene assemblies through shared transformations.
+**Result:** Member ends and attached boundaries meet selected
+support surfaces without object-specific fitting code.
 
-- [ ] Surface query targets combine authored geometry with an
-      explicit local-to-world transform.
-- [ ] Ray hit, planar face/patch, closest-point and boundary
-      queries use one consistent result format.
-- [ ] Fitted endpoints between planes handle arbitrary compatible
-      cross-sections.
-- [ ] Fitted boundaries conform to curved surfaces using
-      exact boundary-loop references.
-- [ ] Fit results expose selected surfaces, contact frames and
-      actual projected sections/boundary stations.
-- [ ] Frame-based attachments and named anchors share a single
-      transformation and cycle-checking implementation.
+- [ ] **4.1** Unify authored surface targets and explicit
+      local-to-world transforms for geometric queries.
+- [ ] **4.2** Query rays, nearest points, face regions, planar
+      patches, intersections and boundary loops.
+- [ ] **4.3** Select relevant support patches using joint proximity
+      and direction, including genuine triangle faces.
+- [ ] **4.4** Fit arbitrary compatible cross-sections between
+      selected planar support patches; check the contact footprint.
+- [ ] **4.5** Fit ordered boundaries against curved surfaces,
+      with max travel, clearance, falloff and preserved topology.
+- [ ] **4.6** Refine sampled fitting boundaries where curvature
+      demands more geometry and keep the neighboring patch valid.
+- [ ] **4.7** Unify attachment math for frames and named anchors,
+      including parenting-cycle protection.
+- [ ] **4.8** Demonstrate reuse in a wooden chair rail, metal brace,
+      and curved mug-handle connection.
 
-**Demonstration:** A chair rail, metal brace and swept mug handle
-use the same query/fitting primitives in different combinations.
+**Working proof:** Fitted ends are geometrically located on the
+selected real support patches. Rays missing a target or inverted
+contact faces yield a clear geometric failure.
 
-## Phase 5 — Surface semantics and runtime compilation
+## 5. Preserve appearance and runtime behavior
 
-**Output:** Every geometric operation can feed the renderer/exporter
-without losing surface identities, topology or runtime state.
+**Result:** Finished authored geometry feeds the same viewer/export
+pipeline across construction and editing operations.
 
-- [ ] Surface-region classification occurs on authored faces;
-      material mapping is centralized at render compilation.
-- [ ] Physical UV mapping and UV offsets work through the
-      construction/editing pipeline.
-- [ ] Quad View reflects authored faces even after deformation,
-      cutting and reconstruction.
-- [ ] Three.js conversion preserves material groups and valid
-      smooth/flat shading.
-- [ ] GLB export preserves compatible static geometry, physical
-      material behavior and texture atlases.
-- [ ] Existing instanced, skinned and morph-target content
-      keeps its runtime behavior through export.
-- [ ] Cavity section/volume computations are reusable geometric
-      operations; the beer mug's fill controller stays functional.
+- [ ] **5.1** Classify authored faces/regions by orientation,
+      adjacency and geometric selection.
+- [ ] **5.2** Map those regions to model-defined materials through
+      `surfaceMesh` and one `toBufferGeometry` compiler.
+- [ ] **5.3** Preserve physical UVs across construction, splits,
+      local subdivisions and deformation.
+- [ ] **5.4** Keep authored quad/triangle counts and control edges
+      correct after every topology-changing operation.
+- [ ] **5.5** Preserve the existing compatible static batching,
+      texture atlas and PBR material export behavior.
+- [ ] **5.6** Preserve skinning, instances, morph targets and
+      weights in the exporter paths that already support them.
+- [ ] **5.7** Extract geometric section/volume queries from cavity
+      and fill behavior; keep the beer mug's 0..1 fill usable.
+- [ ] **5.8** Verify exported edited geometry and the mug's
+      active fill level in GLB/Godot.
 
-**Demonstration:** The beer mug's fill level still works in Godot.
-A modified mesh retains its intended surface materials and control
-topology in the viewer.
+**Working proof:** A mesh with a new cut surface renders with its
+correct material and UVs. Dynamic fill retains its morph shapes
+and weights through export.
 
-## Phase 6 — Migrate model construction
+## 6. Migrate the complete asset collection
 
-**Output:** Existing assets compose the new operations and model-owned
-recipes contain only construction decisions.
+**Result:** The current models use shared geometric operations.
+Their authored design stays under `src/models/`.
 
-- [ ] `plank.ts` uses the shared loft/profile path.
-- [ ] `sandingpaper.ts` uses common primitive and render adapters.
-- [ ] `dagger.ts` uses shared profile/loft and surface composition.
-- [ ] `table.ts` uses shared partitioning and fitted members.
-- [ ] `barrel.ts` uses radial layout, shared geometry strips,
-      coherent head partitions and profile-following hoops.
-- [ ] `beerMug.ts` uses shared body/handle geometry, boundary
-      fitting and cavity computation.
-- [ ] `tavernBench.ts` uses shared seat partitions and supports.
-- [ ] `tavernChair.ts` uses shared fitted contacts, seat partitions
-      and patch cutting.
-- [ ] `models/components/oakSeating.ts` and
-      `trestleSupport.ts` compose the geometric operations
-      while retaining their model construction choices.
+- [ ] **6.1** Migrate `plank.ts` to shared section lofting.
+- [ ] **6.2** Migrate `sandingpaper.ts` to shared primitive/render
+      geometry.
+- [ ] **6.3** Migrate `dagger.ts` to shared profile construction
+      and material/surface mapping.
+- [ ] **6.4** Migrate `table.ts` to shared partitioning,
+      edge shaping and contact-based members.
+- [ ] **6.5** Migrate `barrel.ts` to radial profiles, shared
+      boundaries, body lofts, heads and hoops.
+- [ ] **6.6** Migrate `beerMug.ts` to shared body/handle/fitting
+      and cavity/volume operations.
+- [ ] **6.7** Migrate `tavernBench.ts` to shared partitioning
+      and support geometry.
+- [ ] **6.8** Migrate `tavernChair.ts` to shared surface fitting,
+      surface cuts and board composition.
+- [ ] **6.9** Keep `models/components/oakSeating.ts` and
+      `trestleSupport.ts` as model-level assembly/material
+      recipes built from general operations.
 
-**Demonstration:** Every model remains visually recognizable with
-its current functional features, material character and scale.
+**Working proof:** All eight models retain their intended scale,
+shape, visual character, material behavior and relevant controls.
 
-## Phase 7 — Complete the toolbox
+## 7. Finish the toolbox
 
-**Output:** One discoverable set of geometric operations and one
-source of truth for their behavior.
+**Result:** The codebase exposes geometric capabilities directly,
+with no duplicate special-case algorithm families.
 
-- [ ] Remove superseded board, stave, timber and vessel-specific
-      geometric algorithms from the toolbox.
-- [ ] Remove duplicate attachment, material-classification,
-      cap/loft and topology-query implementations.
-- [ ] Establish a clean module dependency direction matching
-      the target source layout.
-- [ ] Update the permanent `src/toolbox/README.md` to describe
-      the resulting concrete capabilities and composition examples.
-- [ ] Ensure Quad View and GLB export work for all eight existing
-      models.
-- [ ] Demonstrate the same operations on an additional geometry
-      combination unlike the current wooden models.
-- [ ] Remove unused compatibility layers and stale exports.
+- [ ] **7.1** Remove superseded board, stave, timber and vessel
+      geometry algorithms after all consumers have migrated.
+- [ ] **7.2** Remove duplicated topology, caps, frame-attachment,
+      geometry-edit and material-classification implementations.
+- [ ] **7.3** Make module imports follow the dependency direction
+      in [06](06-migration-map.md).
+- [ ] **7.4** Replace the permanent `src/toolbox/README.md`
+      capability examples with the actual resulting API.
+- [ ] **7.5** Verify the eight models in Quad View and export.
+- [ ] **7.6** Build a new cross-category model or geometry assembly
+      using the shared operations without bespoke geometry hacks.
+- [ ] **7.7** Remove stale compatibility files, exports and tests
+      whose original invariants no longer exist.
 
-## Quality checks worth preserving
+## The checks we keep
 
-The tests protect persistent geometric rules, not model-specific
-art choices or current triangle counts.
-
-| Check | What it proves |
+| Invariant | Demonstration |
 | --- | --- |
-| Real faces | Quads are genuinely authored, triangles genuinely needed |
-| Edge continuity | Shared boundaries agree; no unintentional T-junctions |
-| Contacts | Fitted edges/ends meet the supplied surface within geometric tolerance |
-| Topology integrity | Valid indices, face winding, appropriate closed/open edge incidence |
-| Composition | A constructed shape can be edited, fitted, rendered and exported |
-| Export state | Morph targets/weights, instances, skinning and material information survive |
-| Determinism | Identical geometric input, sampling and seeds yield identical geometry |
+| Genuine authored topology | Quads remain quads; necessary triangles are never disguised |
+| Boundary correspondence | Shared stations prevent accidental T-junctions |
+| Sound solid construction | Faces and edges have valid winding/incidence for their intended closed/open geometry |
+| Correct contacts | Contact points lie on selected finite patches within geometric tolerance |
+| Valid composition | Build → edit → fit → render uses the same authored data |
+| Reliable export | Materials, UVs, morphs, instances and skins survive their supported export paths |
+| Deterministic geometry | Same input and seed yield the same shape and sample stations |
 
-Inspect the final visual character of the assets directly. The
-models are allowed to evolve artistically as long as the required
-functional geometry and export behavior remain intact.
+The visual quality of the model is checked directly; the tests focus
+on reusable geometric behavior.
 
-## Execution order and integration
+## Dependency order
 
 ```text
-Phase 1 ──► Phase 2 ──► Phase 3 ──► Phase 4
-   │            │           │          │
-   └────────────┴───────────┴──────────┴──► Phase 5
-                                               │
-                   early model conversions ◄───┘
-                                               │
-                                               ▼
-                                          Phase 6
-                                               │
-                                               ▼
-                                          Phase 7
+authored kernel (1)
+       │
+       ▼
+construction (2)
+       │
+       ├────────► editing (3)
+       │               │
+       └───────────────┼──────► contacts (4)
+                       │             │
+                       └─────────────┼──────► rendering/export (5)
+                                     │                 │
+                                     └─────────────────┤
+                                                       ▼
+                                                model migration (6)
+                                                       │
+                                                       ▼
+                                                   cleanup (7)
 ```
 
-Some existing models can consume each phase's new geometry before
-the whole family of operations is complete. Phase 6 records the
-finished migration of each model.
+Some individual model conversions can happen as soon as their
+required shared operations work. Phase 6 records completion of
+the entire collection.
 
-The repository ends with the intended operations, clean consumer
-imports, a short permanent toolbox guide, and the existing collection
-of functioning models.
+The last step is removing this temporary directory after its
+decisions have become working, documented code.

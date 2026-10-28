@@ -9,8 +9,9 @@ Each authored face has a surface region ID. Regions can represent
 `outer`, `inner`, `end`, `cut`, `rim`, or any other surface
 meaning defined by the model.
 
-The material palette is assigned by the model. The geometry
-operation supplies the region boundaries and faces.
+The material palette is assigned by the model. A surface name can
+identify many disconnected patches, so editing uses precise face
+or boundary selections.
 
 ```ts
 surfaceMesh({
@@ -52,13 +53,15 @@ regions for applying those materials.
 
 ## Quad View
 
-`getControlOutline()` currently accesses the authored geometry
-through `getControlMesh()` on BufferGeometry.
+`getControlOutline()` currently accesses authored geometry
+through `getControlMesh()` on BufferGeometry. The mapping is a
+WeakMap owned by `toBufferGeometry()`. It remains useful for Quad
+View, while geometric operations carry `MeshData` explicitly.
 `ModelViewer` renders the resulting control edges.
 
-Keep this display path. The source authored geometry stays
-available through compilation, allowing Quad View to display
-exactly the constructed faces.
+Keep this display path. A compiled render mesh is associated with
+the corresponding authored snapshot. Geometry edits create a
+new authored/render pair, avoiding stale control positions.
 
 Genuine quads and triangles remain distinct. Texture and normal
 seams do not add false construction edges. Triangle counts
@@ -83,8 +86,11 @@ they have finished the geometric construction of each piece.
 ## Runtime and GLB/Godot
 
 `prepareRuntimeModel()` compiles export-ready clones,
-consolidates compatible static geometry and packs compatible PBR
-textures into atlas pages. `exportGlb()` uses GLTFExporter.
+consolidates **eligible static** geometry and packs compatible PBR
+textures into atlas pages. The current optimizer excludes morph
+meshes, instances, skinned meshes and unsupported materials from
+static batching. When any skinned mesh is present, the exporter
+clones the rigged hierarchy instead of running normal batching. `exportGlb()` uses GLTFExporter.
 
 Retain the runtime features already present:
 
@@ -95,6 +101,10 @@ Retain the runtime features already present:
 - Skinned meshes preserve skinning.
 - Morph targets preserve their shapes and current weights.
 - GLB carries triangles; Quad View keeps authored construction faces.
+- Atlased and merged export meshes may have different object counts,
+  UVs and triangle indices from the authored scene.
+- TypeScript model methods are absent from GLB. The beer mug exports
+  morph targets and their weights; the Godot controller drives them.
 
 ### Dynamic geometry
 

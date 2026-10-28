@@ -1,39 +1,57 @@
-# 09 — Shared API Contracts
+# 09 — API Contracts
 
-These are the intended public-facing shapes of the geometry API.
-The existing TypeScript types provide the starting point. Function
-names can change during implementation when two responsibilities
-are genuinely the same.
+The toolbox has one construction representation and a small vocabulary
+for selecting parts of that geometry. Every geometric operation can
+feed another operation.
 
-## Authored mesh and operation results
+These are the target TypeScript contracts for this redesign. Their
+implementations replace the existing functions in the order described
+in [07](07-implementation-sequence.md).
+
+## Authored geometry
+
+Keep the existing `MeshData` representation: shared 3D construction
+vertices, authored quads and triangles, per-face-corner UVs, surface
+names, and optional smoothing groups.
 
 ```ts
 type FaceRef =
   | { kind: "quad"; index: number }
   | { kind: "triangle"; index: number };
 
+type EdgeRef = {
+  from: number;
+  to: number;
+};
+
 interface BoundaryRef {
-  /** Index into the returned geometry's construction vertices. */
+  /** Ordered oriented construction vertex IDs, with one edge per pair. */
   vertices: readonly number[];
   closed: boolean;
 }
 
 interface GeometryResult {
   geometry: MeshData;
-  boundaries: Readonly<Record<string, BoundaryRef>>;
+  boundaries: Readonly<Record<string, readonly BoundaryRef[]>>;
   regions: Readonly<Record<string, readonly FaceRef[]>>;
 }
 ```
 
-The `MeshData` itself retains the existing structure of shared
-construction vertices, authored quad/triangle faces, per-corner UVs,
-surface-region strings, and smoothing groups.
+A boundary name resolves to **a list** of loops or chains. A single
+surface region can have several disconnected edges, including hole rims.
+`BoundaryRef` refers to one particular chain.
 
-`GeometryResult` expresses names for the parts of a result that
-the caller will need later. The names are local to that result.
-Each topology-changing operation creates updated references.
+A `FaceRef` or `BoundaryRef` is valid for its owning result. After
+a topology-changing operation, use the returned references. Old
+numeric indices are never assumed to survive reindexing.
 
-## Geometric definitions
+A `MeshData` is accepted directly by core operations that need no
+named selections. Operations involving named cuts, fits, or surfaces
+use `GeometryResult` when they need to retain those selections.
+Geometry edits return fresh arrays and vertices; source geometry
+is unchanged.
+
+## Geometry definitions
 
 ```ts
 interface Contour2 {
@@ -62,25 +80,61 @@ interface Path3 {
 }
 
 type SectionField = (t: number) => Profile2;
+type ScalarField = (t: number) => number;
+
+interface GeometricFrame {
+  localToWorld: THREE.Matrix4;
+}
 ```
 
-A closed section can include internal contours. An annular section
-has one outer loop and one hole; sweeping it creates outer and inner
-walls. Construction of the end surface can connect the two loops
-with authored caps.
+Planar profiles have 2D coordinates in their own oriented frame.
+3D sections contain actual points in their construction space.
+`SectionField` is evaluated in frames along a path; `loftSections`
+accepts already-positioned 3D sections.
 
-Matching contours have corresponding stations. All rings involved
-in one section construction use explicit winding and alignment.
-`adaptiveStations` generates the path parameters, while contour
-resampling defines corresponding boundary points.
+Profiles with holes generate inner walls. Contour correspondence
+must be explicit: adjacent sections agree on the count, order,
+winding and identity of every matched loop.
 
-## Building
+Topology transitions (holes appearing, merging, or disappearing)
+use separate transitions or explicit patch operations. Continuous
+lofting does not invent a mapping between unrelated contours.
+
+## Sampling and boundary sharing
+
+```ts
+interface SampledBoundary {
+  parameters: readonly number[];
+  points: readonly THREE.Vector3Like[];
+  closed: boolean;
+}
+
+interface PartitionInterface {
+  first: BoundaryRef;
+  second: BoundaryRef;
+  source: SampledBoundary;
+}
+
+interface PartitionResult {
+  parts: readonly GeometryResult[];
+  interfaces: readonly PartitionInterface[];
+}
+```
+
+A shared seam is sampled once. Two adjacent pieces reference the same
+sample locations, with deliberate geometric offsets for gaps or relief.
+Coordinates alone are not a substitute for consistent subdivisions.
+
+`adaptiveStations(sample, { maxDeviation, knots })` remains the
+standard shared sampler. All connected surfaces use the union of
+required stations before their faces are built.
+
+## Construction
 
 ```ts
 extrudeContour(
   profile: Profile2,
-  pathOrDepth: number | ExtrusionPath,
-  options?: ExtrudeOptions
+  options: ExtrudeOptions
 ): GeometryResult;
 
 loftSections(
@@ -88,84 +142,105 @@ loftSections(
   options?: LoftOptions
 ): GeometryResult;
 
-sweepSection(
-  options: {
-    path: Path3;
-    sectionAt: SectionField;
-    frame: THREE.Matrix4;
-    stations: readonly number[];
-    ends?: "open" | "flat";
-  }
-): GeometryResult;
+sweepSection(options: {
+  path: Path3;
+  sectionAt: SectionField;
+  startingFrame: THREE.Matrix4;
+  stations: readonly number[];
+  ends?: "open" | "cap";
+}): GeometryResult;
 
 revolveProfile(
-  profile: Profile2,
+  meridian: Contour2,
   options: RevolveOptions
 ): GeometryResult;
 
 bridgeBoundaries(
-  source: Contour3,
-  target: Contour3,
+  from: Contour3,
+  to: Contour3,
   options?: BridgeOptions
+): GeometryResult;
+
+capBoundary(
+  geometry: GeometryResult,
+  boundary: BoundaryRef,
+  options: CapOptions
 ): GeometryResult;
 ```
 
-Construction returns named start/end/rim/side regions and boundaries
-as applicable. Caps are explicit parts of the result and follow
-the actual planar geometry of the section.
+`ExtrudeOptions` contains depth/direction, oriented frame, layer
+sampling, and optional bevel profile. `LoftOptions` contains caps,
+correspondence, per-surface mapping, and UV settings. `RevolveOptions`
+contains axis, angle, sampling, and end/pole policy.
 
-`ExtrusionPath`, `ExtrudeOptions`, `LoftOptions`,
-`RevolveOptions`, and `BridgeOptions` carry mathematical controls:
-sampling, frames, orientation, caps, and UV projection.
-They contain no wood-, barrel-, or object-category parameters.
+The normal case for `loftSections` is equal sample counts across
+corresponding contours, producing quad side strips. A separate
+`bridgeBoundaries` can introduce genuine triangles between differing
+densities. Caps follow their own topology rules: planar four-corner
+caps can be quads, nonconvex or holed caps need triangulation or
+explicit authored patches.
+
+A path sweep produces 3D sections using parallel transport before
+calling the same loft machinery.
 
 ## Editing
 
 ```ts
 clipContour(
-  contour: Contour2,
-  plane: HalfPlane
-): ContourPartition;
+  profile: Profile2,
+  halfPlane: HalfPlane2
+): readonly Profile2[];
 
 partitionContour(
   profile: Profile2,
-  cuts: readonly SharedBoundary[]
+  cuts: readonly PlanarCut2[]
 ): ContourPartition;
 
 splitByPlane(
-  geometry: MeshData,
+  source: MeshData,
   plane: Plane3,
   options: SplitOptions
-): SplitResult;
+): PartitionResult;
 
 cutPatch(
-  geometry: MeshData,
-  region: SurfaceSelection,
-  contour: Contour2,
+  source: GeometryResult,
+  patch: SurfacePatchRef,
+  outline: Contour2,
   options: PatchCutOptions
 ): GeometryResult;
 
 deformVertices(
-  geometry: MeshData,
-  displacement: DeformationField
+  source: MeshData,
+  field: DeformationField
 ): GeometryResult;
 
 bevelEdges(
-  geometry: MeshData,
-  edges: EdgeSelection,
+  source: GeometryResult,
+  edges: readonly EdgeRef[],
   width: ScalarField
 ): GeometryResult;
 ```
 
-`SplitResult` contains both parts, the shared intersection geometry,
-and the created cap regions. `ContourPartition` contains pieces
-and their exact interfaces.
+`PlanarCut2` identifies an oriented line/curve in the profile's
+plane. `ContourPartition` returns planar pieces and shared sampled
+interfaces; extrusion can consume these directly.
 
-Selections use authored face/edge data. A boundary generated by
-one operation can be passed to the next, even if the caller no
-longer knows the numeric vertex IDs.
+`SurfacePatchRef` identifies a connected patch plus a defined
+2D parameterization. The first patch-cut implementation handles
+planar patches; a later extension handles curved patches with
+usable parameterization. Arbitrary non-manifold surfaces have
+no implicit 2D chart.
 
-## Queries and fitting
+A 3D split produces cut loops for each result. General solid
+booleans use a distinct `booleanSolids` operation and may return
+triangulated results. They make no promise of automatic clean
+quad retopology.
+
+`DeformationField` takes position, vertex ID, and optional region
+weights, and returns displacement. It acts on construction
+vertices exactly once.
+
+## Surface queries and fitting
 
 ```ts
 interface SurfaceTarget {
@@ -177,17 +252,26 @@ interface SurfaceHit {
   point: THREE.Vector3;
   normal: THREE.Vector3;
   face: FaceRef;
-  surface: string;
+  region: string;
   distance: number;
 }
 
-raycastSurface(target: SurfaceTarget, ray: Ray3): SurfaceHit | null;
+raycastSurface(
+  target: SurfaceTarget,
+  ray: Ray3
+): SurfaceHit | null;
+
+findFacingPatch(
+  target: SurfaceTarget,
+  point: THREE.Vector3Like,
+  direction: THREE.Vector3Like
+): SurfacePatchHit;
 
 fitBetweenSurfaces(options: {
   start: SurfaceAttachment;
   end: SurfaceAttachment;
   section: Profile2;
-  frame?: THREE.Matrix4;
+  startingFrame: THREE.Matrix4;
 }): FittedSections;
 
 fitBoundary(
@@ -198,51 +282,70 @@ fitBoundary(
 ): GeometryResult;
 ```
 
-A surface attachment contains its target and the intended nearby
-joint point. `FittedSections` includes the resulting start/end
-sections, actual contact patches, points and frames.
+`SurfaceAttachment` contains a target and a near-contact point in
+world coordinates. `SurfacePatchHit` identifies actual faces,
+surface points, normal, and local frame. `FittedSections` returns
+placed 3D start/end sections, along with its contact patches.
 
-`fitBoundary` returns updated construction geometry. It also
-updates the boundary reference to the moved or refined vertices.
+Plane-fitting intersects the member's individual section corners
+along its axis and checks that their actual contact lies inside the
+chosen support patch. If an end exceeds a face's footprint, the
+fitting operation uses an appropriate larger connected patch or
+returns an explicit failure.
 
-## Assembly and output
+Curved-boundary fitting accepts an ordered boundary loop, records
+hits for every station, and returns newly displaced geometry.
+It can request refinement before projection. It does not weld
+independent solids together.
+
+Queries operate on authored geometry plus a transform. A triangle
+acceleration structure or render-backed ray implementation may be
+used internally, without making the caller own a `THREE.Mesh`.
+
+## Rendering and scene attachment
 
 ```ts
-attachAtFrames(
-  parent: THREE.Object3D,
-  child: THREE.Object3D,
-  parentFrame: THREE.Matrix4,
-  childFrame: THREE.Matrix4,
-  options?: { mate?: boolean }
-): THREE.Object3D;
-
 surfaceMesh(options: {
   name: string;
   geometry: MeshData;
   materials: THREE.Material | Record<string, THREE.Material>;
 }): THREE.Mesh;
+
+attachAtFrames(options: {
+  parent: THREE.Object3D;
+  child: THREE.Object3D;
+  parentFrame: THREE.Matrix4;
+  childFrame: THREE.Matrix4;
+  matingTransform?: THREE.Matrix4;
+}): THREE.Object3D;
 ```
 
-Assemblies and rendering use authored geometry and transforms;
-geometric operations can be composed without creating a scene
-object between every step.
+A named anchor resolves to a frame. The shared attachment algorithm
+calculates the child transform and prevents scene-parenting cycles.
+Geometry fitting happens independently of scene attachment.
 
-## Behavioral conventions
+`surfaceMesh` calls the one authored-to-render compiler.
+`toBufferGeometry` handles triangulation, render vertex splits,
+material groups, and mapping back to authored faces for Quad View.
 
-- Geometry-building/editing operations return new authored
-  geometry and leave their input unchanged.
-- All dimensions and geometric tolerances are measured in meters.
-- Curve/path parameters use the normalized interval `0..1`.
-- Winding and coordinate frames are explicit.
-- A region names authored faces; a boundary names an ordered edge
-  chain. One surface region can have multiple disconnected borders.
-- UVs and surface names are carried into the result and
-  transformed where new faces are constructed.
-- Mutable scene hierarchy changes are confined to the spatial
-  attachment/runtime layer.
-- The renderer handles triangulation and material grouping;
-  authored data continues to represent its actual faces.
+## Conventions
 
-The examples in [08](08-composition-examples.md) use this
-vocabulary. The migration map in [06](06-migration-map.md)
-defines how current consumers reach these contracts.
+- All length values and geometric tolerances use meters.
+- Path parameters and normalized profile fields use `0..1`.
+- A coordinate space is specified at every boundary between an
+  authored model, a transformed target, and world-space queries.
+- Normals transform with the inverse-transpose of the spatial
+  transform; reflections also correct winding.
+- Source inputs remain unchanged across geometric operations.
+- Quads are genuine authored quads; necessary triangles are
+  represented as triangles.
+- Surface regions and UVs travel with the geometry. A topology edit
+  defines UVs and region assignments for each new face.
+- Numeric IDs are local to a result; named selections are returned
+  by the operation that creates them.
+- Renderer and runtime compiler may be highly optimized; they do
+  not define construction topology.
+
+The target examples in [08](08-composition-examples.md) use this
+vocabulary. Each completed phase of [07](07-implementation-sequence.md)
+turns more of these contracts into working code.

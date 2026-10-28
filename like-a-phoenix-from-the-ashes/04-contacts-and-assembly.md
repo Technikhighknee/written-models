@@ -26,15 +26,24 @@ geometry before creating Three.js objects.
 | `closestSurfacePoint(target, point)` | Closest point, normal, region, distance |
 | `boundaryOfRegion(target, region)` | Ordered region-border loops |
 
-`MeshSurfaceQuery` already raycasts triangles in world space.
+`MeshSurfaceQuery` currently builds a temporary double-sided
+Three.js mesh from BufferGeometry and raycasts its triangles in
+world space. The authored query can retain that acceleration
+technique internally while returning authored face IDs and regions.
 `supportFacePlane` already queries authored quads and recovers
 a face plane. Both become implementations of this common query API.
 Planar-face queries also support genuine triangles and connected
 coplanar patches.
 
-Contact selection uses the intended joint's location and direction.
-It returns the actual chosen face/patch so later operations can use
-that geometric reference.
+Contact selection scores nearby faces by orientation and proximity
+to the desired joint. The current `supportFacePlane()` only checks
+quads and chooses a matching normal above 0.9. The shared query
+also supports triangles and connected coplanar patches.
+
+The resulting *plane* is not necessarily a valid contact. A fitted
+section corner must lie inside the actual support footprint.
+Otherwise the operation selects an explicitly suitable larger patch
+or reports an invalid fit.
 
 ## Fit a member between surfaces
 
@@ -64,8 +73,9 @@ const member = loftSections(fitted.sections);
 Each section corner intersects the support plane *along the member
 axis*, producing a properly slanted end across the whole profile.
 
-The return value identifies the selected surfaces, contact normals,
-endpoint frames and actual section loops. This replaces the
+The return value identifies selected surfaces, contact normals,
+endpoint frames and actual section loops. A hollow member fits the
+outer and inner contours while retaining their correspondence. This replaces the
 wood-specific `TimberContactNormals` dependency currently imported
 by `fitBetweenSupports()`.
 
@@ -74,9 +84,9 @@ by `fitBetweenSupports()`.
 `fitBoundaryToSurface()` already projects boundary vertices onto
 actual triangles and uses falloff into adjacent topology rings.
 
-Its target interface accepts an **ordered boundary reference**,
-a geometric target, a projection direction or closest-point policy,
-and a falloff definition.
+Its interface accepts an **ordered boundary reference**, a geometric
+target, a ray or closest-point policy, maximum travel, clearance
+or embedding depth, falloff, and the source transform.
 
 ```ts
 fitBoundary(
@@ -87,7 +97,9 @@ fitBoundary(
 );
 ```
 
-Each hit is returned with its target face and position. The
+Each hit is returned with its target face and position. All boundary
+stations need valid hits. Projected movement must not invert the
+incident faces; local refinement is available before projection. The
 operation preserves the source's face topology when it only moves
 vertices. Boundary refinement can add stations before fitting to
 capture curved contacts accurately.
@@ -127,6 +139,10 @@ with opposite normals.
 ```ts
 attachAtFrames(parent, child, parentFrame, childFrame, { mate: true });
 ```
+
+Frames have explicit local/parent coordinate conventions. Normals
+under non-uniform scale use an inverse-transpose transform, and a
+reflection changes winding.
 
 Named anchors are frames owned by an object. Their resolution
 converges on the same operation. Cycle and invertibility checks
