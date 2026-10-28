@@ -20,6 +20,8 @@ type FaceRef =
   | { kind: "triangle"; index: number };
 
 type EdgeRef = {
+  /** The GeometryResult whose edge topology this reference selects. */
+  owner: symbol;
   from: number;
   to: number;
 };
@@ -47,10 +49,11 @@ A boundary name resolves to **a list** of loops or chains. A single
 surface region can have several disconnected edges, including hole rims.
 `BoundaryRef` refers to one particular chain.
 
-A `BoundaryRef` or `SurfacePatchRef` is tied to a result by its
-opaque `owner` token. Operations reject a selection whose owner is
-different from the supplied result's `id`. A `FaceRef` is a compact
-face index interpreted only alongside its source geometry/result.
+A `BoundaryRef`, `EdgeRef` or `SurfacePatchRef` is tied to a
+result by its opaque `owner` token. Operations reject selections
+whose owner differs from the supplied result's `id`. A `FaceRef` is
+a compact face index interpreted only alongside its source
+geometry/result.
 After any geometry-producing operation, consumers use the returned
 selections and IDs. The tokens do not enter GLB.
 
@@ -245,7 +248,7 @@ adaptiveStations(
   options: AdaptiveStationsOptions
 ): StationSamplingResult;
 
-/** Resamples a planar outline and holes, retaining every authored corner. */
+/** Resamples at exactly these stations; rejects stations omitting an authored corner. */
 sampleProfile(
   profile: Profile2,
   stations: {
@@ -261,6 +264,11 @@ geometryResult(source: MeshData): GeometryResult;
 
 The `SampledProfile2` used for a filled patch contains exact
 ordered boundary stations, including each hole loop independently.
+The supplied station sequences must include every original contour
+corner and keep its cyclic order. `sampleProfile` rejects a sequence
+that omits a corner; it never inserts a new station silently. A
+caller merges required stations and corner landmarks first, then
+passes the same resolved sampling to adjoining constructions.
 Shared boundaries are sampled before patch construction. The fill
 operation can refine the interior but does not silently add vertices
 to an interface already consumed by a neighboring part.
@@ -288,10 +296,13 @@ The geometric controls are explicit. All dimensions below are meters.
 
 ```ts
 interface ExtrudeOptions extends PrecisionOptions {
-  frame: THREE.Matrix4; // local 2D profile → construction space
-  depth: number;
+  frame: THREE.Matrix4; // local XY → construction space; depth along local +Z
+  depth: number; // meters, positive
   caps?: boolean;
-  layers?: readonly { position: number; contourOffset: number }[];
+  layers?: readonly {
+    position: number; // fraction of depth in [0, 1], endpoints included
+    contourOffset: number; // signed meters in the local profile plane
+  }[];
 }
 
 interface LoftFaceContext {
@@ -314,6 +325,7 @@ interface LoftOptions extends PrecisionOptions {
 interface RevolveOptions extends PrecisionOptions {
   axisOrigin: THREE.Vector3Like;
   axisDirection: THREE.Vector3Like;
+  radialDirection: THREE.Vector3Like; // perpendicular; angular zero and seam
   angle: number; // radians, 2π for a complete revolution
   segments: number;
   caps?: boolean;
@@ -440,10 +452,17 @@ capBoundary(
 ): GeometryResult;
 ```
 
-`ExtrudeOptions` contains depth/direction, oriented frame, layer
-sampling, and optional bevel profile. `LoftOptions` contains caps,
-correspondence, per-surface mapping, and UV settings. `RevolveOptions`
-contains axis, angle, sampling, and end/pole policy.
+`ExtrudeOptions` extrudes along the frame's local positive Z axis.
+Layer positions are normalized depths; their signed contour offsets
+are measured in local meters. Offsets must preserve the profile's
+valid topology. `LoftOptions` controls caps and per-face material and
+smoothing metadata; section correspondence is already resolved in
+its input. A revolution interprets each meridian point as
+`(radius, axialDistance)` in meters, relative to `axisOrigin`.
+`radialDirection`, perpendicular to `axisDirection`, fixes angular
+zero, the seam, and the orientation of partial revolutions. Positive
+angles follow the right-hand rule around `axisDirection`. Poles use
+true triangles; `caps` controls exposed angular/end boundaries.
 
 The normal case for `loftSections` is equal sample counts across
 corresponding contours, producing quad side strips. Its outer and
@@ -462,8 +481,9 @@ An interval boundary must coincide with an authored station.
 
 `tipBoundary` creates genuine triangles connecting an existing ring
 to an explicit apex. `correspondContours` matches landmark features
-of differing top/bottom contours, creates shared stations and
-returns both resampled 3D outlines. Their vertices correspond by
+of differing top/bottom contours, creates shared *semantic* stations
+between matched landmarks (not independent normalized arc lengths),
+and returns both resampled 3D outlines. Their vertices correspond by
 index so the general loft can connect them.
 `fillSurfacePatch` creates an authored surface from a 2D footprint,
 including crowned interiors and a boundary that matches the side
@@ -589,7 +609,7 @@ partitionContour(
 ): ContourPartition;
 
 splitByPlane(
-  source: MeshData,
+  source: MeshData | GeometryResult,
   plane: Plane3,
   options: SplitOptions
 ): PartitionResult;
@@ -667,9 +687,14 @@ the deepest displacement; `"sum"` permits intentionally
 combined deformations. Both are deterministic. New shoulder,
 groove and floor regions become authored faces. The underlying
 mating surfaces remain intact when the feature depth fits
-the available thickness. A patch whose chart is no longer valid
-must be respecified from the returned geometry before another
-parameterized edit.
+the available thickness. Relief on a shared outer rim must have
+zero displacement at that rim and may be clipped to the interior
+side of the boundary. A groove along a seam is thus an inward,
+one-sided feature unless the caller rebuilds the wall and adjoining
+parts using a new shared boundary. No patch edit may silently
+move or resample a welded interface. A patch whose chart is no
+longer valid must be respecified from the returned geometry before
+another parameterized edit.
 
 An `openPatch` removes faces and leaves an open rim. A
 `recessPatch` inserts walls and a floor. `cutThrough` connects
@@ -686,9 +711,9 @@ kernel does not magically recover authored faces or their
 original UV seams. General automatic quad retopology is outside
 this operation.
 
-`DeformationField` takes position, vertex ID, and optional region
-weights, and returns displacement. It acts on construction
-vertices exactly once.
+`DeformationField` takes position and vertex ID, and returns a
+displacement. Region-aware weights may be composed into that field
+by its caller. It acts on construction vertices exactly once.
 
 ## Surface queries and fitting
 
@@ -715,15 +740,25 @@ interface SurfacePatchHit {
   frame: THREE.Matrix4;
 }
 
-interface SurfaceAttachment {
-  target: SurfaceTarget;
-  near: THREE.Vector3Like; // world coordinates
+interface AuthoredPlanarSupport {
+  /** Maps a local XY footprint into world space; local +Z is its normal. */
+  frame: THREE.Matrix4;
+  footprint: Profile2; // finite, with optional holes, in frame-local meters
 }
+
+type SurfaceAttachment =
+  | { target: SurfaceTarget; near: THREE.Vector3Like; authoredPlane?: never }
+  | { authoredPlane: AuthoredPlanarSupport; near: THREE.Vector3Like; target?: never };
+
+type FittedContact =
+  | { kind: "surface"; patch: SurfacePatchHit }
+  | { kind: "authored-plane"; support: AuthoredPlanarSupport;
+      point: THREE.Vector3; normal: THREE.Vector3 };
 
 interface FittedSections {
   sections: readonly [Section3, Section3]; // world coordinates
-  startPatch: SurfacePatchHit;
-  endPatch: SurfacePatchHit;
+  startContact: FittedContact;
+  endContact: FittedContact;
 }
 
 interface BoundaryFitOptions extends PrecisionOptions {
@@ -764,10 +799,14 @@ fitBoundary(
 ): GeometryResult;
 ```
 
-`SurfaceAttachment` contains a target and a near-contact point in
-world coordinates. `SurfacePatchHit` identifies the actual support
-faces, closest chosen contact, and local frame. `FittedSections`
-returns two placed 3D sections and their selected support patches.
+A `SurfaceAttachment` selects either actual authored target faces
+or an explicitly authored **finite** planar support, and supplies
+a near-contact point in world coordinates. `SurfacePatchHit`
+identifies actual support faces, contact and frame. A planar
+support's frame and footprint define a real bounded region with
+holes, not an infinite plane. `FittedSections` returns two placed
+3D sections and a `FittedContact` for each end. Both contact kinds
+go through the same finite-footprint and section-fitting algorithm.
 
 The member axis runs between the intended joint locations.
 `referenceDirection` is projected perpendicular to that axis to
@@ -784,8 +823,9 @@ The caller can explicitly select a different support patch.
 
 Curved-boundary fitting accepts an ordered boundary loop, records
 hits for every station, and returns newly displaced geometry.
-It can request refinement before projection. It leaves independent
-solids topologically independent. Clearance is a signed offset
+It does not invent new stations: any required boundary refinement
+must be completed, including shared-interface propagation, before
+fitting. It leaves independent solids topologically independent. Clearance is a signed offset
 along the target hit normal, measured in world meters.
 
 Queries operate on authored geometry plus a transform. A triangle
@@ -903,10 +943,10 @@ trigger silent vertex welding or arbitrary retopology.
 | `loftSections`, `bridgeBoundaries`, `joinGeometry` | One shared construction-local 3D frame | Same construction-local frame |
 | `fillSurfacePatch`, patch editing | Chart-local 2D outline + chart evaluating into construction-local 3D | Construction-local 3D |
 | `sweepSection` | Profile-local 2D + path and frame in construction-local 3D | Construction-local 3D |
-| `revolveProfile` | Meridian and axis in one construction-local 3D frame | Same construction-local frame |
+| `revolveProfile` | 2D (radius, height) meridian and construction-local axis/origin/radial direction | Construction-local 3D |
 | `splitByPlane`, `booleanSolids` | Plane/operands in the same construction-local 3D frame | Same construction-local 3D frame |
 | `transformGeometry` | Construction-local 3D + explicit mapping | Destination-local 3D |
-| Surface queries, clearance and fitting | `SurfaceTarget` carries local→world; ray/near/directions are world-space | World-space hits and fitting sections |
+| Surface queries, clearance and fitting | `SurfaceTarget` carries local→world; authored planar supports and ray/near/directions are world-space | World-space hits and fitting sections |
 | `attachAtFrames` | Parent and child frames in their respective object-local spaces | Child transform in parent space |
 
 For `booleanSolids`, `regionAt` and `uvAt` receive point and normal
