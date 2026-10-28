@@ -112,20 +112,24 @@ be retained when their semantics already match.
 
 ### Extrusion
 
-`shapes/operations/extrude.ts` already handles polygonal contours
-with holes, true side quads, cap triangles, and repaired collinear
-cap boundaries.
+`extrudeContour(profile, { frame, depth, caps, layers })` constructs
+authored geometry from either a raw `Profile2` or a previously
+sampled `SampledProfile2`. The frame is rigid and measures local
+XY coordinates and positive Z depth in meters. A layer gives its
+normalized depth and signed, planar contour offset. Corresponding
+layers preserve the input contour stations, including inner loops,
+and share `loftSectionWalls` topology.
 
-Split its geometric concerns into composable pieces:
+`capSectionEnd` joins the open walls into planar, annular or
+convex-quad ends using the exact construction vertices. With
+`caps: false`, the selected end loops remain available.
+The planar `triangulateProfile` helper preserves collinear authored
+boundary stations instead of creating hidden T-junctions.
+`shapes/operations/extrude` uses that same triangulator.
 
-1. Sanitize and orient contour loops.
-2. Triangulate planar caps using the boundary's exact vertices.
-3. Generate side strips between section layers.
-4. Apply an optional offset/bevel profile between layers.
-5. Emit named faces and boundaries in authored geometry.
-
-A hole is an inner contour and produces an interior wall. Bevel
-sections share the same boundary stations as their connected caps.
+Mitered offsets are local contour operations. A general polygon
+offset with guaranteed global intersection resolution is a
+separate editing problem, not an implicit promise of extrusion.
 
 ### Lofting
 
@@ -189,22 +193,24 @@ but no new construction vertices. Periodic sweeps have no end caps.
 
 ### Revolution
 
-`latheMeridian()` already represents radial meridian stations and
-generates authored faces. `revolveShell()` currently builds a closed
-thickness profile and immediately converts it to `BufferGeometry`.
+`revolveProfile(meridian, options)` revolves an authored
+radius/height contour around an explicit axis and radial-zero
+direction. `revolveMeridianMesh` is the common topology engine used
+by that operation and the Y-axis `latheMeridian` convenience
+constructor. Existing vessel and shell generators keep their
+per-interval material/smoothing regions and radial wave controls.
 
-Separate the meridian construction, thickness profile, and render
-conversion. Model-defined meridians generate solids, shells, partial
-revolutions, and rims with one rotational operation. Assign surface
-regions and smoothing groups per meridian/angular interval, preserving
-the lathe's distinct outer, inner, lip and floor regions. A cap request
-closes only valid planar exposed boundaries.
+Full revolutions share their angular-seam vertex IDs. Partial
+revolutions retain distinct angular boundaries or triangulate planar
+angular closures when `caps` is selected. Positive-radius open
+meridians can leave their circular rims exposed or acquire radial
+end caps. Cyclic meridians create actual shell wall thickness without
+inventing geometry along the rotation axis.
 
-Poles use genuine triangles. Regular rotational strips use quads.
-The angular seam remains explicit and UV-continuous where intended.
-Per-meridian and per-angular-interval metadata preserve separate
-outer, inner, lip, floor and smoothing regions. Optional caps only
-close geometrically valid planar exposed boundaries.
+Axis poles use genuine triangle fans; regular strips use authored
+quads. Material and smoothing callbacks receive original meridian
+and angular interval indices, not indices of synthetic cap rows.
+Surface/UV compilation remains separate from authored topology.
 
 ### Shells and thickness
 

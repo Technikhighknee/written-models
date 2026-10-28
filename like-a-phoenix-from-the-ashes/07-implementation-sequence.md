@@ -79,10 +79,14 @@ section, path and face-construction operations.
       Authored transported sections, open-end caps and hollow profiles,
       twist-corrected periodic faces with shared seam vertices:
       `48039d9` and CI refinement.
-- [ ] **2.7** Consolidate authored extrusion, revolution and
+- [x] **2.7** Consolidate authored extrusion, revolution and
       profile-defined shells, preserving per-meridian face regions,
       smoothing groups, axis poles and partial-revolution seams;
       keep primitives composed from these.
+      Shared cap triangulation and old constructor adapters:
+      `6d0870c`. Authored profile extrusion: `70f8bfa`.
+      Meridians with open rims or radial/partial caps: `c926a05`.
+      Full general surface offsets are outside this phase.
 - [ ] **2.8** Extract the general polar strip sampler with detailed
       outer and sparse inner section rows.
 - [ ] **2.9** Implement `correspondContours` and `sampleProfile`

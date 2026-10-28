@@ -358,11 +358,19 @@ export function revolveProfile(
             angularInterval
         }) ?? "side";
     };
-    const smoothingGroupAt = (context: RevolveFaceContext) =>
-        options.smoothingGroupAt?.({
+    const smoothingGroupAt = (context: RevolveFaceContext) => {
+        if (
+            (extendStart && context.meridianInterval === 0) ||
+            (extendEnd && context.meridianInterval === initialInterval + outgoing)
+        ) {
+            return undefined;
+        }
+
+        return options.smoothingGroupAt?.({
             ...context,
             meridianInterval: context.meridianInterval - initialInterval
         });
+    };
 
     let mesh: MeshData;
 

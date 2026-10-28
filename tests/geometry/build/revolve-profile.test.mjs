@@ -166,7 +166,11 @@ test("meridian end caps close a positive-radius profile without fake rim vertice
             caps: true,
             capRegionAt: end => `surface-${end}`,
             surfaceAt: ({ meridianInterval }) =>
-                meridianInterval === 0 ? "lower-wall" : "upper-wall"
+                meridianInterval === 0 ? "lower-wall" : "upper-wall",
+            smoothingGroupAt: ({ meridianInterval }) => {
+                assert.ok(meridianInterval === 0 || meridianInterval === 1);
+                return "continuous-wall";
+            }
         }));
 
         assert.equal(topologyOf(result).openBoundaries().length, 0);
