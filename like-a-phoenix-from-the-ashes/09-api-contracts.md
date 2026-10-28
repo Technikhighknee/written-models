@@ -748,7 +748,9 @@ shapeSurfaceRelief(
 `PlanarCut2` identifies a named line or sampled curve in the profile's
 plane. `ContourPartition` returns planar pieces and their sampled
 interfaces, including the two piece indices. Extrusion can consume
-each profile directly. Cuts may produce more than one component.
+each profile directly. The initial noncrossing-cut domain produces
+one simple piece per partition region (which may be concave);
+disconnected/multi-component results belong to the Phase 6 extension.
 
 `SurfacePatchRef` selects a connected patch of actual authored
 faces and supplies an explicit two-way 2D chart. For a planar
@@ -787,6 +789,12 @@ and UVs come from explicit caller-provided functions: the boolean
 kernel does not magically recover authored faces or their
 original UV seams. General automatic quad retopology is outside
 this operation.
+
+`bevelEdges` accepts one or more ordered nonbranching manifold edge
+chains owned by the source result. A `ScalarField` is evaluated at
+normalized arc length `t` along each chain (separately for each
+chain). Invalid ordering, branching, nonmanifold edges, excessive
+widths, and ambiguous corner intersections fail explicitly.
 
 `DeformationField` takes position and vertex ID, and returns a
 displacement. Region-aware weights may be composed into that field
