@@ -57,8 +57,17 @@ holes in the input, nonconvex source outlines and ambiguous topology.
 A concave **output** is valid and can be independently extruded through
 `extrudeContour`. Exact source interface coordinates are shared,
 without hidden resampling or vertex welding between independent parts.
-Converting these contours to coordinated `SampledProfile2` inputs is
-the next step (3.2); curved shared surface construction follows in 3.3.
+`samplePartition(partition, extraStations)` refines every named
+interface from one canonical, arc-length-sampled source. Its requested
+stations are merged with *all* authored cut corners; the additional
+points are inserted into the two current owners' ordered boundaries
+using those same coordinates. The resulting parts are `SampledProfile2`
+with explicit perimeter parameters, ready for `extrudeContour` and
+subsequent patch operations. The outer contour is oriented clockwise
+for the existing sampled-extrusion contract. The independent
+`sampleProfile` operation also supports sampled outer contours and holes.
+Arbitrary hole-bearing **partition inputs** still belong to 6.1.
+Curved shared surface construction follows in 3.3.
 
 A concave clipping result may have multiple components and holes.
 The `Profile2` result contains the boundary and any hole contours;

@@ -127,9 +127,14 @@ independent pieces with precise adjoining geometry.
       canonical cut coordinates and stations, and transfers interface
       ownership after subsequent cuts. Commit: `c37c824`.
       Verified against a circular-head outline and extruded pieces.
-- [ ] **3.2** Return `SampledProfile2` with exact outer/hole
+- [x] **3.2** Return `SampledProfile2` with exact outer/hole
       boundary stations; all consumers of an interface use the same
       samples.
+      `sampleProfile` preserves authored outer/hole corners (`9a51881`).
+      `samplePartition` merges additional interface stations once,
+      inserts their exact coordinates into both owners, and produces
+      clockwise sampled profiles directly usable by extrusion
+      (`077cc39`, `3c8a43a`).
 - [ ] **3.3** Implement `fillSurfacePatch` from exact sampled
       boundaries and a chart, refining the interior without changing
       shared boundary stations.
