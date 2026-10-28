@@ -74,6 +74,10 @@ interface TopologyIndex {
 }
 ```
 
+Selected edge references carry the same result ownership token as
+selected loops and patches. Their vertex indices are valid only for
+that exact authored result; edits must issue fresh selections.
+
 A directed face edge runs from its current corner to the next one.
 The undirected edge key is the sorted pair of IDs.
 
