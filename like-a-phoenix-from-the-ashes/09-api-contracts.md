@@ -1010,8 +1010,11 @@ It leaves geometry connectivity, vertex positions and corner UVs
 unchanged, emits a fresh owned result, rebuilds named regions
 from its final face labels, and remaps surviving boundaries and
 patches. A chart remains valid because its geometry and face
-membership did not change. Face normals/centroids are evaluated
-in construction coordinates and any degenerate input is rejected.
+membership did not change. Face normals/centroids are evaluated in construction coordinates.
+A nonplanar authored quad gets its representative face normal from
+the area-weighted, winding-consistent sum of its two shared render
+triangles; queries still return the particular hit triangle's normal.
+Degenerate or folded faces with an undefined normal are rejected.
 This is the common replacement for GPU-index-group classification
 and enables end-grain, long-grain, cut-face and material-boundary
 selection without a renderer dependency.
