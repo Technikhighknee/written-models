@@ -187,6 +187,11 @@ intended. Regions and local UV projections for the new floors and
 shoulders are returned with the edited geometry. The mating side
 and floor thickness are checked for unintended break-through.
 
+A relief running beside an interface must preserve the exact shared
+rim and extend inward from it, or explicitly trigger reconstruction
+of neighboring walls and interface consumers. A nominally shallow
+groove still invalidates a join if it displaces the welded edge.
+
 An edit assigns a new result token. A caller uses the returned
 patch selection if the updated chart is valid. Otherwise that
 selection is absent and a new chart must be explicitly supplied. This prevents stale
@@ -220,8 +225,9 @@ intersections, and the renderer owns GPU attributes.
 
 ## 8. A fitted plane has a finite footprint
 
-The contact finder first selects a relevant planar face or connected
-coplanar patch near the intended joint.
+The contact finder selects either a planar authored-face patch near
+the intended joint or an explicitly provided finite planar footprint.
+Both are bounded geometries with an actual outline and optional holes.
 
 The member's end-section vertices are intersected along its own
 axis with the chosen plane. The resulting points must lie within
