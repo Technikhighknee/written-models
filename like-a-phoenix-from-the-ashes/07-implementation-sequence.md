@@ -16,9 +16,10 @@ queries, the viewer and export with the correct authored identity.
 - [ ] **1.1** Preserve a baseline of the eight models' visual forms,
       Quad View topology, material appearance and supported GLB
       behavior, including the mug's active morph fill.
-- [ ] **1.2** Retain `MeshData` and its existing authored faces.
+- [x] **1.2** Retain `MeshData` and its existing authored faces.
       Give each new `GeometryResult` an opaque identity and enforce
       selection ownership on `BoundaryRef` and `SurfacePatchRef`.
+      Commit: `f80c8ae`.
 - [x] **1.3** Establish deep-copy snapshot semantics (including
       mutable THREE vectors), document immutable-by-contract output,
       and define explicit builder welding policies. Coincident
@@ -28,12 +29,14 @@ queries, the viewer and export with the correct authored identity.
       adjacency, region boundaries and connected components. Owner-
       check selected edges as well as patches and boundary loops.
       Commit: `f80c8ae`.
-- [ ] **1.5** Make one authored-face triangulation supply both
+- [x] **1.5** Make one authored-face triangulation supply both
       render and geometric-query triangles, with face/corner mapping.
+      Commit: `fe996b5`.
 - [ ] **1.6** Keep Quad View tied to the exact authored snapshot,
       preserving real triangles/quads independently of material order.
-- [ ] **1.7** Implement non-mutating authored transform, UV offset
+- [x] **1.7** Implement non-mutating authored transform, UV offset
       and vertex deformation with updated selection references.
+      Commit: `c57a71a`.
 - [ ] **1.8** Apply the documented precision and typed failure rules
       to core operations; return sampling saturation information.
 - [ ] **1.9** Use a real box and five-section plank through
