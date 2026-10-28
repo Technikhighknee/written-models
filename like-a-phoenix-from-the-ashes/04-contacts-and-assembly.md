@@ -13,9 +13,10 @@ interface SurfaceTarget {
 }
 ```
 
-World-space queries return world-space data. Construction can request
-results in any chosen local frame. A model can query its own authored
-geometry before creating Three.js objects.
+World-space queries return world-space hit points and normals.
+Their face references identify the **authored** face on the target.
+The target's transform is explicit, so a model can query authored
+geometry before creating a Three.js scene object.
 
 | Query | Returns |
 | --- | --- |
@@ -28,8 +29,11 @@ geometry before creating Three.js objects.
 
 `MeshSurfaceQuery` currently builds a temporary double-sided
 Three.js mesh from BufferGeometry and raycasts its triangles in
-world space. The authored query can retain that acceleration
-technique internally while returning authored face IDs and regions.
+world space. The shared query can retain that acceleration technique internally.
+The triangulation used for intersection queries records the source
+`FaceRef` for each generated triangle. A ray hit is therefore mapped
+back to its authored face and surface region. The chosen quad
+diagonal matches the renderer's triangulation.
 `supportFacePlane` already queries authored quads and recovers
 a face plane. Both become implementations of this common query API.
 Planar-face queries also support genuine triangles and connected
@@ -62,16 +66,24 @@ and precise contact information:
 ```ts
 const fitted = fitBetweenSurfaces({
   start: { target: firstSupport, near: firstJoint },
-  end:   { target: secondSupport, near: secondJoint },
-  section,
-  startingFrame
+  end: { target: secondSupport, near: secondJoint },
+  section: memberProfile,
+  referenceDirection: worldUp
 });
 
-const member = loftSections(fitted.sections);
+const member = loftSections(fitted.sections, { ends: "cap" });
 ```
+
+The axis passes through the intended contact points. The reference
+direction controls section roll around that axis. The operation
+rejects a parallel/zero reference direction and returns positioned
+3D sections in **world coordinates**.
 
 Each section corner intersects the support plane *along the member
 axis*, producing a properly slanted end across the whole profile.
+Every resulting point is checked against the finite support patch,
+including its holes. The model can transform the fitted result into
+its assembly-local coordinates before rendering.
 
 The return value identifies selected surfaces, contact normals,
 endpoint frames and actual section loops. A hollow member fits the outer and inner contours while retaining
@@ -102,12 +114,16 @@ fitBoundary(
 );
 ```
 
-Each hit is returned with its target face and position. All boundary
-stations need valid hits. Projected movement must not invert the
-incident faces; local refinement is available before projection. The
-operation preserves the source's face topology when it only moves
-vertices. Boundary refinement can add stations before fitting to
-capture curved contacts accurately.
+Each hit includes its authored target face and world position.
+Every boundary station needs a valid hit inside the requested travel
+range. Clearance is a signed world-meter offset along the geometric
+target normal. Source vertices are displaced back in authored-local
+coordinates through `sourceLocalToWorld`.
+
+Projected movement must preserve valid incident face orientation.
+Refinement introduces additional stations before projection when
+needed. A vertex-only fit retains face indices; a refined fit returns
+updated boundary references.
 
 A fitted handle, pipe connection, curved support, or organic branch
 can share this process.
@@ -132,7 +148,9 @@ normal and in-plane tangent. Both `attachByAnchors()` and
 `attachByFrames()` compute related attachment transforms and
 protect against object hierarchy cycles.
 
-Unify the transform:
+The attachment frames are specified in their respective local
+spaces: `parentFrame` in parent-local coordinates and `childFrame`
+in child-local coordinates. The transformation is:
 
 ```text
 childInParent = parentFrame × matingTransform × inverse(childFrame)
@@ -158,6 +176,8 @@ exist in one place.
 
 Fitting a shape is independent from choosing the parent object.
 The geometry can be prepared before the scene hierarchy exists.
+The complete projection, split, and query conventions are specified
+in [10](10-geometry-semantics.md).
 
 ## Existing consumers
 

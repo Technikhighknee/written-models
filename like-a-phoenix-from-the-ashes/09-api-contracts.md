@@ -110,7 +110,9 @@ interface SampledBoundary {
 }
 
 interface PartitionInterface {
+  firstPart: number;
   first: BoundaryRef;
+  secondPart: number;
   second: BoundaryRef;
   source: SampledBoundary;
 }
@@ -150,13 +152,14 @@ interface SurfaceChart {
 
 interface SurfacePatchRef {
   faces: readonly FaceRef[];
-  chart: SurfaceChart;
+  chart: SurfaceChart; // coordinates valid within this patch
 }
 ```
 
-A shared seam is sampled once. Two adjacent pieces reference the same
-sample locations, with deliberate geometric offsets for gaps or relief.
-Coordinates alone are not a substitute for consistent subdivisions.
+A shared seam is sampled once. Each interface identifies the owner
+of both boundary references with part indices. The two pieces reuse
+the source stations; gaps or relief are deliberate offsets from that
+common seam. The references are local to their owning parts.
 
 `adaptiveStations(sample, { maxDeviation, knots })` remains the
 standard shared sampler. All connected surfaces use the union of
@@ -266,9 +269,17 @@ interface SplitOptions {
   cutRegion: string;
 }
 
-type PatchCutOptions =
-  | { kind: "recess"; depth: number; wallRegion: string; floorRegion: string }
-  | { kind: "opening"; wallRegion: string };
+interface RecessOptions {
+  depth: number; // positive depth into the selected surface
+  wallRegion: string;
+  floorRegion: string;
+}
+
+interface ThroughCutOptions {
+  wallRegion: string;
+  entry: { patch: SurfacePatchRef; contour: Contour2 };
+  exit: { patch: SurfacePatchRef; contour: Contour2 };
+}
 
 type DeformationField = (
   position: THREE.Vector3Like,
@@ -299,11 +310,22 @@ splitByPlane(
   options: SplitOptions
 ): PartitionResult;
 
-cutPatch(
+openPatch(
+  source: GeometryResult,
+  patch: SurfacePatchRef,
+  outline: Contour2
+): GeometryResult;
+
+recessPatch(
   source: GeometryResult,
   patch: SurfacePatchRef,
   outline: Contour2,
-  options: PatchCutOptions
+  options: RecessOptions
+): GeometryResult;
+
+cutThrough(
+  source: GeometryResult,
+  options: ThroughCutOptions
 ): GeometryResult;
 
 deformVertices(
@@ -329,10 +351,16 @@ patch, this is a plane-oriented projection. A curved patch needs
 its own well-defined chart, with consistent mapping and normals.
 An arbitrary collection of faces has no implicit 2D chart.
 
-A 3D split produces cut loops for each result. General solid
-booleans use a distinct `booleanSolids` operation and may return
-triangulated results. They make no promise of automatic clean
-quad retopology.
+An `openPatch` removes faces and leaves an open rim. A
+`recessPatch` inserts walls and a floor. `cutThrough` connects
+two compatible openings across an existing solid with actual
+interior walls; its two patches must admit a consistent correspondence.
+Other through-cuts use an explicit solid boolean.
+
+A 3D split produces cut loops for each result. Solid booleans use
+a separate `booleanSolids` operation that returns actual generated
+triangles and explicit surface/UV assignments. General automatic
+quad retopology is outside that operation.
 
 `DeformationField` takes position, vertex ID, and optional region
 weights, and returns displacement. It acts on construction
@@ -366,7 +394,7 @@ interface SurfaceAttachment {
 }
 
 interface FittedSections {
-  sections: readonly [Section3, Section3];
+  sections: readonly [Section3, Section3]; // world coordinates
   startPatch: SurfacePatchHit;
   endPatch: SurfacePatchHit;
 }
@@ -395,7 +423,7 @@ fitBetweenSurfaces(options: {
   start: SurfaceAttachment;
   end: SurfaceAttachment;
   section: Profile2;
-  startingFrame: THREE.Matrix4;
+  referenceDirection: THREE.Vector3Like; // fixes rotation around member axis
 }): FittedSections;
 
 fitBoundary(
@@ -411,11 +439,18 @@ world coordinates. `SurfacePatchHit` identifies the actual support
 faces, closest chosen contact, and local frame. `FittedSections`
 returns two placed 3D sections and their selected support patches.
 
-Plane-fitting intersects the member's individual section corners
-along its axis and checks that their actual contact lies inside the
-chosen support patch. If an end exceeds a face's footprint, the
-fitting operation uses an appropriate larger connected patch or
-returns an explicit failure.
+The member axis runs between the intended joint locations.
+`referenceDirection` is projected perpendicular to that axis to
+orient the cross-section; a parallel hint is invalid. The fitted
+sections are returned in world coordinates, ready to be converted
+to the model's assembly space with a geometry transform.
+
+Plane-fitting intersects every point of the section's outer and
+inner loops along the member axis. Each contact must lie inside
+the finite selected support patch, excluding holes. The caller
+can explicitly select a larger connected patch when necessary.
+An end extending beyond that patch fails instead of intersecting
+an infinite plane extension.
 
 Curved-boundary fitting accepts an ordered boundary loop, records
 hits for every station, and returns newly displaced geometry.
@@ -445,9 +480,14 @@ attachAtFrames(options: {
 }): THREE.Object3D;
 ```
 
-A named anchor resolves to a frame. The shared attachment algorithm
-calculates the child transform and prevents scene-parenting cycles.
-Geometry fitting happens independently of scene attachment.
+`parentFrame` is expressed in the parent's local coordinates;
+`childFrame` is expressed in the child's local coordinates.
+The child-in-parent transform is
+`parentFrame * matingTransform * inverse(childFrame)`.
+Mating rotation is explicit. The attachment operation applies the
+result to the scene object and checks for hierarchy cycles.
+
+Geometry fitting remains independent of scene parenting.
 
 `surfaceMesh` calls the one authored-to-render compiler.
 `toBufferGeometry` handles triangulation, render vertex splits,

@@ -66,9 +66,16 @@ When boundaries have different subdivisions, `stitchPolylines`
 provides genuine transition triangles. Shared landmarks are kept at
 the same stations on both sides.
 
-`adaptiveStations()` already chooses subdivisions from actual geometric
-deviation using multiple intermediate samples and explicit knots.
-Use that same station sequence across surfaces which must join.
+`adaptiveStations()` already chooses subdivisions using actual
+geometric deviation and fixed knots. The chosen stations are returned
+as construction data and reused by every surface that must join.
+
+`bridgeBoundaries` receives correspondence parameters for each
+boundary. When the sample density differs, the bridge advances
+through the ordered stations and produces real triangles.
+The existing `stitchPolylines()` provides the basic monotone
+stitching technique; the target implementation respects actual
+sampling parameters rather than assuming equal spacing by index.
 
 ## Core construction operations
 
@@ -79,7 +86,7 @@ Use that same station sequence across surfaces which must join.
 | `sweepSection` | Path, profile/section field, orientation field | Lofted geometry and end boundaries |
 | `revolveProfile` | Meridian in a plane, rotation axis, angular sampling | Rotational mesh with explicit poles and seam |
 | `bridgeBoundaries` | Two oriented boundary loops, correspondence | Surface strip using quads and necessary triangles |
-| `makeShell` | Profile or surface and thickness definition | Inner/outer surfaces and rim boundaries |
+| `revolveProfile` / `sweepSection` | Paired wall contours or annular profile | Hollow shell with actual wall and rim topology |
 | `capBoundary` | Closed planar loop, triangulation policy | End surface and referenced cap region |
 
 Names above describe intended responsibilities. Existing names can
@@ -144,8 +151,11 @@ transport avoids sudden flips. Sampling is shared with adaptive
 section geometry.
 
 A rectangular timber, bent pipe, dagger handle, and branch can
-all use this mechanism. Closed paths require the transported final
-frame to meet the initial frame without an unwanted seam twist.
+all use this mechanism. For a periodic path (`closedPath: true`),
+frame transport must account for residual twist around the loop
+and distribute that correction over the samples. The first and
+last sections then share the exact same construction vertices,
+forming a coherent seam.
 
 ### Revolution
 
@@ -162,12 +172,14 @@ The angular seam remains explicit and UV-continuous where intended.
 
 ### Shells and thickness
 
-A wall follows two related surfaces. The toolbox provides ways to
-construct their offset contours, connect their rims, and control
-thickness along the shape.
+A wall follows two related surface contours. In the initial
+construction system, a hollow section contains an outer loop
+and inner loops. Sweeping or lofting those matched loops
+constructs the actual inner and outer walls; the end treatment
+connects their rim boundaries when a cap is requested.
 
-For a revolved cup, an inner and outer meridian is enough. For a bent
-tube, an annular cross-section can be swept. For a general surface, offsetting needs authored normals and
+For a revolved cup, an inner and outer meridian defines the wall.
+For a bent tube, an annular cross-section is swept. For a general surface, offsetting needs authored normals and
 fold/self-intersection checks. Profile-based shells come first;
 a fully general arbitrary-surface offset is a separate algorithm
 with its own geometry-validity requirements.
@@ -186,7 +198,9 @@ inventing an object generator.
 Each operation returns authored geometry with meaningful region
 and boundary names. For example, a loft exposes `start`, `end`,
 `side`; a shell exposes `outer`, `inner`, and `rim`.
-The caller can rename regions to suit the model.
+The caller can rename regions to suit the model. Named boundary
+arrays include every resulting outer rim and each opening around an
+inner wall.
 
 Caps, rims, and transitions are real surfaces. Models select their
 materials and choose how individual constructed parts fit together.

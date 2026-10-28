@@ -1,8 +1,10 @@
 # 03 — Geometry Editing
 
-Editing consumes authored geometry and produces authored geometry with
-explicit new surfaces, edges, and boundaries. The resulting shapes can
-be constructed further, fitted, textured, and exported.
+Editing consumes authored geometry and produces new authored
+geometry with explicit faces, boundaries and surface metadata.
+The resulting shapes can be constructed further, fitted and exported.
+The exact behavior of the operations is specified in
+[10 — Geometry operation semantics](10-geometry-semantics.md).
 
 ## Partitioning and shared boundaries
 
@@ -55,11 +57,15 @@ splitByPlane(geometry, plane, {
 });
 ```
 
-The plane intersects each source edge once. Both output pieces
-reuse the same calculated intersection coordinates and sample
-ordering, gain genuine cut faces, and expose their cut loops.
-All connected components and hole loops are represented. UVs on surviving source faces
-are interpolated; cap UVs use a plane-aligned frame.
+The plane intersects each source edge once. The resulting pieces
+reuse the intersection points and agree on the entire cut contour.
+Each interface records **both owning part indices** and the matching
+boundary loops. Source-face UVs are interpolated; cap UVs use a
+plane-aligned chart.
+
+Multiple connected components and holes remain distinct loops.
+A tangential cut that does not divide the input produces one part
+with no paired cut interface. Capping requires closed cut loops.
 
 A quad intersected by the cut may become new quads and triangles.
 The output records what was actually constructed. Deliberate
@@ -70,48 +76,57 @@ retopology can follow when the cut region warrants clean quad loops.
 `cutBoard()` presently builds mortises and recesses using a custom
 orthogonal grid. Extract the surface editing itself.
 
-An opening starts with a **connected surface patch and its local
-2D chart**, plus a closed contour. A semantic region name may
-refer to disconnected faces and cannot identify one patch. The operation introduces matching
-edges into the region, cuts or removes the selected patch, and
-constructs rim/wall/floor faces where needed.
+The surface is selected as a **connected patch with a valid 2D
+chart**. The patch, the new opening outline and the affected faces
+are mapped into the same coordinates. A face region name alone
+cannot identify a particular connected patch.
+
+Three operations have distinct geometric results:
+
+| Operation | Geometry result |
+| --- | --- |
+| `openPatch(source, patch, outline)` | Removes surface faces and leaves a named open rim |
+| `recessPatch(source, patch, outline, options)` | Builds a pocket with sidewalls and a floor |
+| `cutThrough(source, { entry, exit, wallRegion })` | Joins two compatible openings through a solid with actual interior walls |
 
 ```ts
-cutPatch(geometry, patch, outline, {
-  kind: "recess",
-  depth,
+const mortise = recessPatch(board, boardTopPatch, outline, {
+  depth: recessDepth,
   wallRegion: "cut-wall",
   floorRegion: "cut-floor"
 });
 ```
 
+Each operation returns selected rims and new surface regions. A
+through-cut requires matching entry/exit contours or an explicit
+solid-volume difference.
+
 A planar patch uses direct contour clipping in a plane-aligned chart.
 A curved patch needs an explicit mapping between chart coordinates
 and the surface, plus a way to construct its rim/sidewalls.
-The first `cutPatch()` handles planar patches; curved patch
-editing extends it once parameterization is available.
+The initial patch operations work on planar connected faces.
+Curved patches use an explicit chart with a valid domain and
+predictable inverse mapping. A folded or self-overlapping surface
+is split into appropriate patches first.
 
-A through-hole joins openings on opposite surfaces or removes an
-intersecting volume. The resulting rim is a named boundary, usable
-for beveling, fittings, or later construction.
-
-The same operations make a wooden housing, metal slot, rivet seat,
-and a damaged recess.
+An opening rim remains available for beveling, lining, or fitting
+another part. The same patch operations make a wooden housing,
+a metal slot, a rivet seat and surface damage.
 
 ## Solid booleans
 
 `manifold-3d` is already a repository dependency. It is an available
 kernel for union, intersection, and difference of closed solids.
 
-The installed `manifold-3d` package can supply solid booleans, but
-it does not automatically preserve authored quads, UVs, or surface
-regions. The wrapper defines face classification, UV projection,
-and whether the result has separate components.
+The wrapper explicitly assigns surface classifications, UVs and
+connected components to the result. The boolean kernel cannot
+recover authored quads or original semantic regions automatically.
 
 Boolean results are represented by their **actual generated faces**.
-A triangulated result contains authored triangles. A separate patch-reconstruction operation can produce useful quads
-on a suitable surface chart. Otherwise the boolean result remains
-a genuine triangulated solid.
+A triangulated result contains authored triangles. A separate
+patch-reconstruction operation can produce quads on a selected
+surface with a suitable parameterization. Other boolean surfaces
+remain genuine triangles.
 
 The simpler contour/patch/plane operations preserve a greater amount
 of existing topology and therefore remain the preferred geometric
@@ -175,8 +190,8 @@ These become the common tools for local refinement:
 - Bridge boundaries whose edge counts differ.
 - Reconstruct a local patch explicitly after complex cutting.
 
-No hidden T-junctions: a split of a shared edge affects both incident
-faces, or a real transition patch bridges the differing resolutions.
+Splitting a shared edge updates every incident face, or a real
+transition patch bridges the differing resolutions.
 Edge shaping operates on explicitly selected loops, not just the
 name of their surrounding material region.
 

@@ -43,6 +43,7 @@ const pipe = sweepSection({
   sectionAt: () => annularPipeProfile,
   startingFrame: pipeStartFrame,
   stations: pipeStations,
+  closedPath: false,
   ends: "open"
 });
 
@@ -108,7 +109,7 @@ const railFit = fitBetweenSurfaces({
   start: { target: chairPostA, near: chairJointA },
   end: { target: chairPostB, near: chairJointB },
   section: railProfile,
-  startingFrame: chairFrame
+  referenceDirection: chairUp
 });
 
 const rail = loftSections(railFit.sections);
@@ -117,14 +118,17 @@ const braceFit = fitBetweenSurfaces({
   start: { target: metalSupportA, near: bracketJointA },
   end: { target: metalSupportB, near: bracketJointB },
   section: braceProfile,
-  startingFrame: braceFrame
+  referenceDirection: bracketUp
 });
 
 const brace = loftSections(braceFit.sections);
 ```
 
-The `railProfile` and `braceProfile` are `Profile2` values.
-They could be rectangular, polygonal, asymmetrical, or hollow.
+The `railProfile` and `braceProfile` are `Profile2` values:
+rectangular, polygonal, asymmetric or hollow. The reference
+direction fixes roll around the member axis; the fitted sections
+are returned in world coordinates. The model can transform
+the completed member into its parent-local space.
 
 For a planar contact the fitting algorithm intersects every
 section vertex with the chosen support plane and checks that
@@ -189,7 +193,7 @@ const hoop = sweepSection({
   sectionAt: () => hoopProfile,
   startingFrame: hoopStartFrame,
   stations: hoopStations,
-  ends: "open"
+  closedPath: true
 });
 ```
 
@@ -198,7 +202,8 @@ radial boundary curves and sampled station values. The same
 geometric curves determine adjacent stave edges.
 
 The head's partitions come from the same planar tool as the
-tabletop. The hoop uses the same sweep family as the metal pipe.
+tabletop. The hoop uses the same sweep family as the metal pipe,
+with a periodic path whose last frame and geometry meet the first.
 
 **Proof:** Real stave side faces, coherent head seams and a hoop
 following the barrel's chosen profile.
@@ -208,24 +213,28 @@ following the barrel's chosen profile.
 A geometrically selected planar patch receives a contour-based cut.
 
 ```ts
-const recessedWood = cutPatch(
+const recessedWood = recessPatch(
   board,
   boardTopPatch,
   mortiseOutline,
-  mortiseOptions
+  { depth: mortiseDepth, wallRegion: "mortise-wall", floorRegion: "floor" }
 );
 
-const slottedIron = cutPatch(
+const slottedIron = openPatch(
   ironPlate,
   ironTopPatch,
-  slotOutline,
-  slotOptions
+  slotOutline
 );
 ```
 
-Both create boundary loops, wall faces and optional floors.
-The cuts reuse the same local plane chart and face construction.
-Models choose depth, orientation and material assignments.
+The recessed wood receives wall faces, a floor and a selected
+rim. Opening the metal patch leaves a boundary on the surface.
+A full slot through a solid uses `cutThrough` between compatible
+entry/exit patches or an explicit volume difference.
+
+Both operations reuse planar chart, contour intersection and face
+construction capabilities. Models control the appearance and
+surface material assignments.
 
 A later curved-patch operation uses explicit surface parameterization.
 A general closed-solid boolean is a separate operation, with
@@ -264,6 +273,6 @@ actual face structure explicit.
 | Partition | Tabletop + barrel head + iron plate | Shared seams and compatible sampling |
 | Planar fitting | Chair rail + iron brace | End geometry meets finite target patches |
 | Curved fitting | Mug handle + pipe-to-vessel junction | Matched real surface contours |
-| Local patch cut | Wood mortise + metal slot | Openings and wall regions |
+| Planar patch editing | Wood mortise + metal slot | A real recess and a correctly open or through-cut surface |
 | Deformation | Worn board + organic limb | Controlled detail and valid topology |
 | Rendering | Timber + dagger blade | Material regions and real Quad View faces |
