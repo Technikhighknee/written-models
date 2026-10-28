@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Path3, Profile2, Section3 } from "../definitions/geometry";
-import type { MeshData, QuadFace } from "../mesh/MeshData";
+import type { QuadFace } from "../mesh/MeshData";
 import {
     geometryResult,
     GeometryOperationError,
