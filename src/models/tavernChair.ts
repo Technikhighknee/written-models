@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import {oakPlank, oakPlankPanel, oakTimberShop} from "./components/oakSeating";
+
+import {oakPlankPanel, oakTimberShop} from "./components/oakSeating";
 import {profiledBoard} from "../toolbox/geometry/construction/profiledBoard";
 import {toBufferGeometry} from "../toolbox/geometry/mesh/toBufferGeometry";
 import {tintVertices} from "../toolbox/geometry/materials/tintVertices";
@@ -11,225 +12,292 @@ export default {
     create,
     slug: "tavern-chair",
     title: "Oak Tavern Chair",
-    description: "A sturdy oak chair with raked back posts, pegged stretchers and a framed, three-plank back."
+    description: "A pegged oak frame chair with a boarded seat and a raked, panelled back."
 };
+
+const SEAT_HEIGHT = cm(46);
+const SEAT_THICKNESS = cm(3.8);
+const SEAT_UNDERSIDE = SEAT_HEIGHT - SEAT_THICKNESS;
+const APRON_Y = SEAT_UNDERSIDE - cm(8.3) / 2;
+const SEAT_WIDTH = cm(46);
+const SEAT_DEPTH = cm(41.6);
+const SEAT_CENTER_Z = mm(5);
+
+const FRONT_X = cm(18.5);
+const FRONT_Z = cm(16.0);
+const REAR_X = cm(19.8);
+const REAR_FOOT_Z = -cm(20.3);
+const REAR_TOP_Z = -cm(27.5);
+const REAR_HEIGHT = cm(96);
+const FRONT_POST_SIZE = cm(6.2);
+const BACK_POST_SIZE = cm(6.6);
+
+function rearZ(height: number): number {
+    return REAR_FOOT_Z +
+        (REAR_TOP_Z - REAR_FOOT_Z) * height / REAR_HEIGHT;
+}
+
+function rearFront(height: number): number {
+    return rearZ(height) + BACK_POST_SIZE / 2;
+}
 
 function create(): THREE.Group {
     const chair = new THREE.Group();
     chair.name = "TavernChair";
-    const shop = oakTimberShop(5);
+    const oak = oakTimberShop(5);
 
-    const seatHeight = cm(46.5);
-    const seatThickness = cm(4.1);
-    const seatCenterY = seatHeight - seatThickness / 2;
-    const legTop = seatHeight - seatThickness;
-
-    // The full-width seat has three boards. The rear plank has cut-outs
-    // around both continuous back posts, rather than ending between them.
-    const seatLength = cm(48.4);
-    const frontSeat = oakPlankPanel({
-        name: "FrontSeatBoards",
-        length: seatLength,
-        depth: cm(27.2),
-        thickness: seatThickness,
-        planks: 2,
+    // Three equal-length, hand-planed boards; the rear stiles are behind
+    // the seat at this height, not cut through it.
+    const seat = oakPlankPanel({
+        name: "BoardedSeat",
+        length: SEAT_WIDTH,
+        depth: SEAT_DEPTH,
+        thickness: SEAT_THICKNESS,
+        planks: 3,
+        widthWeights: [1.04, 0.96, 1.00],
+        gap: mm(1.8),
         seed: 412,
-        widthWeights: [1.07, 0.93],
-        gap: mm(2.2),
         wear: 0.55,
-        crown: mm(0.65)
+        crown: mm(0.7)
     });
-    frontSeat.position.set(0, seatCenterY, cm(6.4));
-    chair.add(frontSeat);
+    seat.position.set(0, SEAT_HEIGHT - SEAT_THICKNESS / 2, SEAT_CENTER_Z);
+    chair.add(seat);
 
-    // Rear posts pass through corner cut-outs. The middle of the plank
-    // extends behind them; its outboard ends clear their front faces.
-    // profiledBoard constructs the stepped outline as real geometry.
-    const edgeAt = (t: number) => {
-        const x = Math.abs((t - 0.5) * seatLength);
-        const notch = THREE.MathUtils.smoothstep(x, cm(16.8), cm(18.0));
-        const handPlaned = mm(0.55) * Math.sin(Math.PI * 2 * t + 0.7);
-        return -cm(25.1) + cm(5.45) * notch + handPlaned;
-    };
-    const controlXs = [
-        -seatLength / 2, -cm(19.0), -cm(18.5), -cm(18.2),
-        -cm(17.9), -cm(17.6), -cm(17.4), -cm(16.8),
-        0, cm(16.8), cm(17.4), cm(17.6), cm(17.9),
-        cm(18.2), cm(18.5), cm(19.0), seatLength / 2
-    ];
-    const rearPlank = profiledBoard({
-        length: seatLength,
-        thickness: seatThickness,
-        chamfer: mm(2.4),
-        crown: mm(0.65),
-        leftEdge: edgeAt,
-        rightEdge: t => -cm(7.55) + mm(0.45) *
-            Math.sin(2 * Math.PI * t + 1.2),
-        longitudinalStations: controlXs.map(x => x / seatLength + 0.5),
-        start: {cornerWear: [mm(1.2), mm(1.0)]},
-        end: {cornerWear: [mm(1.0), mm(1.4)]}
-    });
-    const backSeat = oakPlank(
-        "RearNotchedSeatPlank",
-        rearPlank, 6, 0.978,
-        {u: cm(4.5), v: cm(14.0)}
-    );
-    backSeat.position.y = seatCenterY;
-    chair.add(backSeat);
+    addPosts(chair, oak);
+    addSeatFrame(chair, oak);
+    addBack(chair, oak);
+    addDrawPegs(chair, oak);
+    return chair;
+}
 
-    // The rear legs continue into the backrest as single raked timbers.
-    // All four feet are cut against the floor plane, not simply squared
-    // off perpendicular to their angled centerlines.
-    const frontLegX = cm(18.7);
-    const backLegX = cm(21.5);
-    const frontLegZ = cm(16.3);
-    const rearFootZ = -cm(20.4);
-    const rearTopZ = -cm(27.0);
-    const rearTop = cm(94);
-    const post = cm(6.6);
+type Workshop = ReturnType<typeof oakTimberShop>;
 
-    for (const side of [-1, 1] as const) {
-        const frontName = side < 0 ? "Left" : "Right";
-        const frontX = side * frontLegX;
-        const rearX = side * backLegX;
+function addPosts(chair: THREE.Group, oak: Workshop): void {
+    for (const sign of [-1, 1] as const) {
+        const side = sign < 0 ? "Left" : "Right";
 
-        chair.add(shop.timber(
-            `${frontName}FrontLeg`,
-            new THREE.Vector3(frontX * 1.035, 0, cm(18.3)),
-            new THREE.Vector3(frontX, legTop, frontLegZ),
-            post, post, {
+        // Front legs stop against the underside of the seat; the seat
+        // remains a complete, uninterrupted wooden panel.
+        chair.add(oak.timber(
+            `${side}FrontLeg`,
+            new THREE.Vector3(sign * (FRONT_X + mm(3)), 0, FRONT_Z + mm(9)),
+            new THREE.Vector3(sign * FRONT_X, SEAT_UNDERSIDE, FRONT_Z),
+            FRONT_POST_SIZE, FRONT_POST_SIZE,
+            {
                 startNormal: new THREE.Vector3(0, 1, 0),
                 endNormal: new THREE.Vector3(0, -1, 0)
             }
         ));
 
-        chair.add(shop.timber(
-            `${frontName}BackPost`,
-            new THREE.Vector3(rearX * 1.015, 0, rearFootZ),
-            new THREE.Vector3(rearX, rearTop, rearTopZ),
-            post, post, {
+        // Each rear leg and back upright is a SINGLE continuous timber.
+        // Its rake also moves the back clear of the rear seat edge.
+        chair.add(oak.timber(
+            `${side}BackStile`,
+            new THREE.Vector3(sign * REAR_X, 0, REAR_FOOT_Z),
+            new THREE.Vector3(sign * REAR_X, REAR_HEIGHT, REAR_TOP_Z),
+            BACK_POST_SIZE, BACK_POST_SIZE,
+            {
                 startNormal: new THREE.Vector3(0, 1, 0),
                 endNormal: new THREE.Vector3(0, -1, 0)
             }
         ));
+    }
+}
 
-        const frontInsideZ = cm(12.9);
-        const rearInsideZ = -cm(20.5);
-        const sideXFront = side * frontLegX;
-        const sideXRear = side * backLegX;
+function addSeatFrame(chair: THREE.Group, oak: Workshop): void {
+    const innerFront = FRONT_X - FRONT_POST_SIZE / 2;
+    const innerRear = REAR_X - BACK_POST_SIZE / 2;
 
-        for (const [name, y, thickness] of [
-            ["UpperSideApron", cm(38.5), cm(6.7)],
-            ["LowerSideStretcher", cm(18.0), cm(4.5)]
-        ] as const) {
-            chair.add(shop.timber(
-                `${frontName}${name}`,
-                new THREE.Vector3(sideXFront, y, frontInsideZ),
-                new THREE.Vector3(sideXRear, y, rearInsideZ),
-                cm(4.6), thickness, {
+    // Four rails form the rigid, mortise-and-tenon-style seat box.
+    // Cross-grain sizes follow the actual beam axes: across-X beams
+    // take their vertical height from the local width dimension.
+    chair.add(oak.timber(
+        "FrontSeatRail",
+        new THREE.Vector3(-innerFront, APRON_Y, FRONT_Z),
+        new THREE.Vector3(innerFront, APRON_Y, FRONT_Z),
+        cm(8.3), cm(4.2),
+        {
+            startNormal: new THREE.Vector3(1, 0, 0),
+            endNormal: new THREE.Vector3(-1, 0, 0)
+        }
+    ));
+
+    const rearRailY = APRON_Y;
+    chair.add(oak.timber(
+        "RearSeatRail",
+        new THREE.Vector3(-innerRear, rearRailY, rearZ(rearRailY)),
+        new THREE.Vector3(innerRear, rearRailY, rearZ(rearRailY)),
+        cm(8.3), cm(4.2),
+        {
+            startNormal: new THREE.Vector3(1, 0, 0),
+            endNormal: new THREE.Vector3(-1, 0, 0)
+        }
+    ));
+
+    for (const sign of [-1, 1] as const) {
+        const side = sign < 0 ? "Left" : "Right";
+
+        function sideRail(name: string, height: number, depth: number): void {
+            const frontContact = new THREE.Vector3(
+                sign * FRONT_X, height, FRONT_Z - FRONT_POST_SIZE / 2
+            );
+            const backContact = new THREE.Vector3(
+                sign * REAR_X, height, rearFront(height)
+            );
+            chair.add(oak.timber(
+                `${side}${name}`,
+                frontContact,
+                backContact,
+                cm(4.4),
+                depth,
+                {
                     startNormal: new THREE.Vector3(0, 0, -1),
                     endNormal: new THREE.Vector3(0, 0, 1)
                 }
             ));
         }
 
-        // Pins sit on the visible front and outer side faces of the posts.
-        chair.add(shop.peg(
-            `${frontName}FrontJointPin`,
-            new THREE.Vector3(frontX, cm(38.5), frontLegZ + post / 2),
-            new THREE.Vector3(0, 0, 1),
-            mm(5.7)
-        ));
-        chair.add(shop.peg(
-            `${frontName}BackJointPin`,
-            new THREE.Vector3(
-                rearX + side * post / 2, cm(39), -cm(23.2)
-            ),
-            new THREE.Vector3(side, 0, 0),
-            mm(5.7)
+        sideRail("SeatApron", APRON_Y, cm(8.3));
+        sideRail("LowerStretcher", cm(18), cm(4.5));
+    }
+
+    // Two concealed oak bearers meet the apron faces and support every
+    // seat plank at the underside. No part of the seat is suspended in air.
+    for (const sign of [-1, 1] as const) {
+        const frontInsideZ = FRONT_Z - cm(4.2) / 2;
+        const backInsideZ = rearZ(APRON_Y) + cm(4.2) / 2;
+        chair.add(oak.timber(
+            sign < 0 ? "LeftUnderSeatBearer" : "RightUnderSeatBearer",
+            new THREE.Vector3(sign * cm(11.5), SEAT_UNDERSIDE - cm(2.3), frontInsideZ),
+            new THREE.Vector3(sign * cm(11.5), SEAT_UNDERSIDE - cm(2.3), backInsideZ),
+            cm(4.0), cm(4.6),
+            {
+                startNormal: new THREE.Vector3(0, 0, -1),
+                endNormal: new THREE.Vector3(0, 0, 1)
+            }
         ));
     }
 
-    // The aprons carry the seat on four sides and tie the posts together.
-    const frontInsideX = frontLegX - post / 2;
-    const backInsideX = backLegX - post / 2;
-    chair.add(shop.timber(
-        "FrontSeatApron",
-        new THREE.Vector3(-frontInsideX, cm(38.2), frontLegZ),
-        new THREE.Vector3(frontInsideX, cm(38.2), frontLegZ),
-        cm(7.0), cm(5.2)
-    ));
-    chair.add(shop.timber(
-        "RearSeatApron",
-        new THREE.Vector3(-backInsideX, cm(38.2), -cm(23.0)),
-        new THREE.Vector3(backInsideX, cm(38.2), -cm(23.0)),
-        cm(7), cm(4.7)
-    ));
-    chair.add(shop.timber(
+    // A third low stretcher prevents the legs spreading across the width.
+    chair.add(oak.timber(
         "FrontLowStretcher",
-        new THREE.Vector3(-frontInsideX, cm(18), cm(17.3)),
-        new THREE.Vector3(frontInsideX, cm(18), cm(17.3)),
-        cm(4.3), cm(4.5)
+        new THREE.Vector3(-innerFront, cm(18), FRONT_Z),
+        new THREE.Vector3(innerFront, cm(18), FRONT_Z),
+        cm(4.4), cm(4.2),
+        {
+            startNormal: new THREE.Vector3(1, 0, 0),
+            endNormal: new THREE.Vector3(-1, 0, 0)
+        }
     ));
+}
 
-    const back = oakPlankPanel({
-        name: "VerticalBackPlanks",
-        length: cm(23.8),
-        depth: cm(36.2),
-        thickness: cm(2.65),
+function addBack(chair: THREE.Group, oak: Workshop): void {
+    const inner = REAR_X - BACK_POST_SIZE / 2;
+    const rake = (REAR_TOP_Z - REAR_FOOT_Z) / REAR_HEIGHT;
+    const upright = new THREE.Vector3(0, 1, rake).normalize();
+    const forward = new THREE.Vector3(0, -rake, 1).normalize();
+    const across = new THREE.Vector3(1, 0, 0);
+
+    // The central boards fit INSIDE the two long stiles, between real
+    // bearing rails. The broad faces follow the rake of the back.
+    const backBoards = oakPlankPanel({
+        name: "BackInfill",
+        length: cm(24.6),
+        depth: inner * 2 - mm(5),
+        thickness: cm(2.5),
         planks: 3,
         widthWeights: [0.96, 1.08, 0.96],
-        gap: mm(1.6),
+        gap: mm(1.7),
         seed: 625,
-        wear: 0.68,
-        crown: mm(0.35)
+        wear: 0.55,
+        crown: mm(0.5)
     });
+    backBoards.quaternion.setFromRotationMatrix(
+        new THREE.Matrix4().makeBasis(upright, forward, across)
+    );
+    const backCenterY = cm(76.1);
+    backBoards.position.set(
+        0, backCenterY,
+        rearZ(backCenterY) + cm(1.35)
+    );
+    chair.add(backBoards);
 
-    // Local plank X follows the raked back; Z follows the seat width.
-    const slope = (rearTopZ - rearFootZ) / rearTop;
-    const vertical = new THREE.Vector3(0, 1, slope).normalize();
-    const facing = new THREE.Vector3(0, -slope, 1).normalize();
-    back.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
-        vertical, facing, new THREE.Vector3(1, 0, 0)
+    // Lower bearer and raised crest trap the panel within the posts.
+    const lowerY = cm(62.7);
+    chair.add(oak.timber(
+        "LowerBackRail",
+        new THREE.Vector3(-inner, lowerY, rearZ(lowerY) + cm(1.3)),
+        new THREE.Vector3(inner, lowerY, rearZ(lowerY) + cm(1.3)),
+        cm(5.2), cm(4.1),
+        {
+            startNormal: new THREE.Vector3(1, 0, 0),
+            endNormal: new THREE.Vector3(-1, 0, 0)
+        }
     ));
-    back.position.set(0, cm(75.6), -cm(25.8));
-    chair.add(back);
 
-    // A shaped, raised crest and a separate lower bearer frame the back
-    // boards. The crest's silhouette is authored, not a decorative texture.
-    const crest = profiledBoard({
-        length: cm(42.5),
-        thickness: cm(3.0),
-        chamfer: mm(2),
-        crown: mm(0.45),
-        leftEdge: t => -cm(3.6) - cm(0.3) * Math.sin(Math.PI * t) ** 2,
-        rightEdge: t => cm(3.5) + cm(1.25) * Math.sin(Math.PI * t) ** 2,
-        start: {cornerWear: [mm(1.3), mm(1.8)]},
-        end: {cornerWear: [mm(1.5), mm(1.4)]}
+    const crown = profiledBoard({
+        length: inner * 2 - mm(2),
+        thickness: cm(3),
+        chamfer: mm(2.4),
+        crown: mm(0.6),
+        leftEdge: t => -cm(4.7) + mm(0.45) * Math.sin(Math.PI * t),
+        rightEdge: t => cm(4.8) + cm(0.85) * Math.sin(Math.PI * t) ** 2,
+        start: {cornerWear: [mm(1.1), mm(1.4)]},
+        end: {cornerWear: [mm(1.6), mm(1.2)]}
     });
-    offsetMeshUvs(crest, cm(3), cm(12));
-    const crestOak = oakVariant(4);
-    const crestGeometry = tintVertices(
-        toBufferGeometry(crest, {
+    offsetMeshUvs(crown, cm(2), cm(12));
+    const material = oakVariant(4);
+    const geometry = tintVertices(
+        toBufferGeometry(crown, {
             outer: 0, inner: 0, "edge-left": 0, "edge-right": 0,
             "cap-start": 1, "cap-end": 1
         }),
-        new THREE.Color(0.966, 0.966, 0.966)
+        new THREE.Color(0.965, 0.965, 0.965)
     );
-    const crestMesh = new THREE.Mesh(crestGeometry, [
-        oakBoardFace(4), crestOak.tinted.endGrain
+    const crest = new THREE.Mesh(geometry, [
+        oakBoardFace(4), material.tinted.endGrain
     ]);
-    crestMesh.name = "CurvedCrestRail";
-    crestMesh.rotation.x = -Math.PI / 2;
-    crestMesh.position.set(0, cm(88.3), -cm(26.8));
-    chair.add(crestMesh);
+    crest.name = "ShapedCrestRail";
+    // Local +Z across the board becomes world +Y.
+    crest.rotation.x = -Math.PI / 2 + Math.atan(rake);
+    const crownY = cm(89.0);
+    crest.position.set(0, crownY, rearZ(crownY) + cm(1.35));
+    chair.add(crest);
+}
 
-    chair.add(shop.timber(
-        "LowerBackBearer",
-        new THREE.Vector3(-backInsideX, cm(63.2), -cm(24.9)),
-        new THREE.Vector3(backInsideX, cm(63.2), -cm(24.9)),
-        cm(4.4), cm(4.4)
-    ));
+function addDrawPegs(chair: THREE.Group, oak: Workshop): void {
+    for (const sign of [-1, 1] as const) {
+        const side = sign < 0 ? "Left" : "Right";
 
-    return chair;
+        for (const [name, y, z] of [
+            ["Seat", APRON_Y, FRONT_Z],
+            ["Stretcher", cm(18), FRONT_Z]
+        ] as const) {
+            chair.add(oak.peg(
+                `${side}Front${name}Drawpeg`,
+                new THREE.Vector3(
+                    sign * (FRONT_X + FRONT_POST_SIZE / 2), y, z
+                ),
+                new THREE.Vector3(sign, 0, 0),
+                mm(5)
+            ));
+        }
+
+        for (const [name, y] of [
+            ["Seat", APRON_Y],
+            ["Stretcher", cm(18)],
+            ["LowerBack", cm(62.7)],
+            ["Crest", cm(89.0)]
+        ] as const) {
+            chair.add(oak.peg(
+                `${side}Back${name}Drawpeg`,
+                new THREE.Vector3(
+                    sign * (REAR_X + BACK_POST_SIZE / 2),
+                    y, rearZ(y)
+                ),
+                new THREE.Vector3(sign, 0, 0),
+                mm(5.5)
+            ));
+        }
+    }
 }
