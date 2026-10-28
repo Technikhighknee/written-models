@@ -278,10 +278,10 @@ const match = correspondContours(
   housingLandmarks
 );
 
-// The model supplies two Section3 outlines sampled at match.stations.
+// The two resampled contours have corresponding vertex indices.
 const walls = loftSections([
-  bottomSectionAt(match),
-  topSectionAt(match)
+  { outer: match.first },
+  { outer: match.second }
 ], { ends: "open" });
 
 const bottom = fillSurfacePatch({
@@ -317,7 +317,7 @@ incidence is valid.
 
 ## 10. Rebuild a barrel head with a detailed outer face
 
-The head is partitioned into boards using shared cut curves.
+The head is partitioned into boards using common cut curves.
 Each part has one richly shaped outward face and a simpler
 inward-facing patch.
 
@@ -325,46 +325,71 @@ inward-facing patch.
 const pieces = partitionContour(diskProfile, weightedSeamCuts);
 
 const headBoards = pieces.parts.map((footprint, index) => {
+  const chart = headCrownChart(index); // model-authored shape
+  const boundaryStations = headSeamStations(index);
   const outer = fillSurfacePatch({
     profile: footprint,
-    chart: headCrownChart(index),
+    chart,
     region: "outer",
-    boundaryStations: headSeamStations(index)
+    boundaryStations
   });
 
-  const detailed = grooveAlongSurface(
-    outer,
-    headSurfacePatch(outer),
-    pieces.interfaces[index]?.source ?? outerSeam(index),
-    headGrooveOptions(index)
+  // Each seam is a 2D partition interface projected through the
+  // authored surface chart, with the exact partition stations.
+  const pieceSeams = pieces.interfaces.filter(
+    seam => seam.firstPart === index || seam.secondPart === index
   );
+  let detailed = outer;
+  for (const seam of pieceSeams) {
+    detailed = grooveAlongSurface(
+      detailed,
+      { faces: detailed.regions.outer, chart },
+      {
+        points: seam.points.map(point => chart.at(point)),
+        parameters: seam.stations,
+        closed: false
+      },
+      headGrooveOptions(index)
+    );
+  }
 
   const inner = fillSurfacePatch({
     profile: footprint,
     chart: headUndersideChart(index),
     region: "inner",
-    boundaryStations: headSeamStations(index)
+    boundaryStations
   });
 
-  const sides = buildHeadSidewalls(detailed, inner);
+  const outerRim = detailed.boundaries.rim[0]!;
+  const innerRim = inner.boundaries.rim[0]!;
+  const sides = bridgeBoundaries(
+    boundaryContour(detailed, outerRim),
+    boundaryContour(inner, innerRim),
+    { fromStations: outlineStations(index), toStations: outlineStations(index) }
+  );
+
   return joinGeometry([detailed, inner, sides], {
-    weld: matchedHeadRims(detailed, inner, sides)
+    weld: [
+      { firstPart: 0, first: outerRim,
+        secondPart: 2, second: sides.boundaries.start[0]! },
+      { firstPart: 1, first: innerRim,
+        secondPart: 2, second: sides.boundaries.end[0]! }
+    ]
   });
 });
 ```
 
-The helper names `headCrownChart`, `headSurfacePatch`,
-`buildHeadSidewalls` and `matchedHeadRims` denote the
-**model's composition** of the shared chart, bridge and
-boundary operations; they are not additional toolbox APIs.
+`headCrownChart`, `headUndersideChart`, the groove profile
+and cut/outline stations are authored by the model. The actual
+geometry operations are shared toolbox functions.
 
-The groove has its own shoulders and floor topology. It
-changes the outward face while the inner face and actual
-wood-contact interfaces stay closed.
+The groove has real shoulders and a floor. It changes the
+outward patch while preserving the underside and the
+mating surfaces beneath the shallow relief.
 
-**Proof:** Five independently authored boards, exact circular
-outline, no gap through the head and correct Quad View topology
-on both faces.
+**Proof:** Five independent boards with matching circular
+silhouette, no seam opened through the entire head and correct
+Quad View topology on both faces.
 
 ## 11. Extract a drinking cavity from separate staves
 

@@ -295,6 +295,9 @@ interface TipOptions extends PrecisionOptions {
 
 interface ContourCorrespondence {
   stations: readonly number[];
+  /** Resampled oriented outlines with matching vertex correspondence. */
+  first: Contour3;
+  second: Contour3;
   landmarks: readonly {
     id: string;
     first: number;
@@ -362,6 +365,12 @@ correspondContours(
 
 fillSurfacePatch(options: SurfaceFillOptions): GeometryResult;
 
+/** Read an ordered construction contour from an operation boundary. */
+boundaryContour(
+  source: GeometryResult,
+  boundary: BoundaryRef
+): Contour3;
+
 tipBoundary(
   source: GeometryResult,
   boundary: BoundaryRef,
@@ -408,7 +417,9 @@ An interval boundary must coincide with an authored station.
 
 `tipBoundary` creates genuine triangles connecting an existing ring
 to an explicit apex. `correspondContours` matches landmark features
-of differing top/bottom contours and creates shared stations.
+of differing top/bottom contours, creates shared stations and
+returns both resampled 3D outlines. Their vertices correspond by
+index so the general loft can connect them.
 `fillSurfacePatch` creates an authored surface from a 2D footprint,
 including crowned interiors and a boundary that matches the side
 geometry. It uses quads on compatible regular grids and genuine
@@ -416,8 +427,15 @@ triangles at irregular trims and holes.
 
 `joinGeometry` combines separate authored pieces and intentionally
 shares vertices only along specified matching boundary pairs.
-Joining the crowned top, lower patch and profile-layer walls creates
-a single solid without silently welding independent parts.
+For each pair it requires identical ordered sample counts, consistent
+positions within tolerance and opposite boundary winding. Invalid
+pairs fail. The result remaps all face regions and still-meaningful
+boundaries into its new geometry indices.
+
+`boundaryContour` extracts the ordered 3D points of a selected
+authored boundary. Joining crowned top, lower patch and
+profile-layer walls creates a connected solid with explicitly
+shared vertices.
 
 `samplePolarStripSections` returns radial strip cross-sections
 described by the same `Section3` type used by all lofts. Its

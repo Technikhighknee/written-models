@@ -51,8 +51,7 @@ Long-grain sides and end-grain caps have different materials.
 **Proof obligation:** Exact end-corner correspondence, bend preserved,
 genuine side quads and no change in the orientation of end grain.
 
-**No new primitive needed.** This is the first consumer of the
-generalized loft.
+The existing loft capability supplies this entire construction.
 
 ## 2. Sanding paper — `sandingpaper.ts`
 
@@ -115,7 +114,7 @@ policies for wood and metal.
 no lost side-specific steel edge material, and an iron–wood–iron
 grip whose material transitions are at the same geometry stations.
 
-**Gap found:** The original `LoftOptions` only described global
+**Required shared capability:** The original `LoftOptions` only described global
 outer/inner regions. It cannot reproduce `loftAxialProfile()`'s
 `surface(side, interval)` and
 `smoothingGroup(side, interval)` behavior. These become general
@@ -158,7 +157,7 @@ selectable objects; seams follow one geometry source and remain
 visibly worn but not accidentally open; trestles maintain their
 support contact and move correctly with the TableTop parent.
 
-**Gap found:** A general surface/edge detail operation must support
+**Required shared capability:** A general surface/edge detail operation must support
 face-specific crown and wear fields while preserving a separate
 mating edge. Rendering must retain per-piece tint and UV variation.
 
@@ -269,7 +268,7 @@ the cavity is reconstructed from twelve independent parts without
 inventing a circular approximation; changing fill works in the
 viewer and in Godot; full neutral morph geometry is valid.
 
-**Gap found:** A general mesh-plane section and loop-stitching
+**Required shared capability:** A general mesh-plane section and loop-stitching
 operation is needed before `ProfiledCavity` can become reusable.
 One arbitrary solid-mesh cavity extractor cannot be assumed to
 reconstruct a cavity from *disconnected* surface patches.
@@ -299,8 +298,8 @@ exposed oak draw-pins on posts and feet.
 panel algorithm; pegs remain visible with correct orientation;
 the trestle can be reused at different dimensions.
 
-**No new geometry family needed** beyond the common plank,
-member, surface placement and panel operations.
+The common plank, member, surface-placement and panel operations
+supply this construction.
 
 ## 8. Tavern chair — `tavernChair.ts`
 
@@ -346,7 +345,7 @@ silently flattened into a vertical recess; the back rake and
 crest silhouette survive; fitted rails meet real faces; pegs
 are oriented from geometric contacts.
 
-**Gap found:** The original `openPatch` / `recessPatch` alone
+**Required shared capability:** The original `openPatch` / `recessPatch` alone
 cannot express this rear-seat geometry. The toolbox needs
 **corresponding planar contour layers with independently shaped
 surface patches**. This is a general geometric operation rather
@@ -385,7 +384,7 @@ contact planes; both feed the same section-fitting computation.
 The factory's dimensions, timber appearance and parent-relative
 scene assembly remain owned by the model.
 
-## The concrete architecture additions
+## Shared capabilities required by the models
 
 The model walk-through requires these capabilities to be
 present in the target design:
@@ -413,9 +412,8 @@ present in the target design:
 9. **Pure geometry/UV edits with returned results**, replacing
    existing in-place mutation at model call sites.
 
-These items are reflected in the API and execution sequence.
-They are the parts of the redesign most directly justified by
-the current asset collection.
+These capabilities are part of the API contracts and implementation
+sequence, with the exact part-by-part requirements above.
 
 ## Final model migration acceptance
 

@@ -212,10 +212,10 @@ may accelerate their implementation internally.
 compilation/export boundary. Their behavior is covered by
 [05](05-surfaces-and-export.md).
 
-## Cross-model capabilities discovered by rebuilding the assets
+## Cross-model construction dependencies
 
-The current implementations reveal several geometric dependencies that
-the original migration map did not fully represent:
+These model constructions depend on the following shared geometric
+operations and data flows:
 
 | Source / consumer | Shared target operation | Detail retained |
 | --- | --- | --- |
@@ -234,7 +234,7 @@ Model recipes still choose the part counts, sizes, relative transforms,
 wear, materials and construction style. The shared operations retain
 the full geometry responsibilities described above.
 
-**Call-site change that matters:** the existing `offsetMeshUvs()`
+**Required call-site behavior:** the existing `offsetMeshUvs()`
 mutates `MeshData` in place. Migrating it to a pure authored edit
 means every caller must use its return value. In particular,
 `oakPlank()` and the chair's crest currently call it for its
