@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import type { MeshData, TriangleFace } from "../mesh/MeshData";
+import { loftSideQuads } from "../build/loftSideQuads";
 import { stitchPolylines } from "../topology/stitchPolylines";
 
 /**
@@ -42,93 +43,46 @@ export function loftBoard(
     }
 
     const ringSize = outerPoints + innerPoints;
-    const vertices: THREE.Vector3[] = [];
-    const rings: THREE.Vector3[][] = [];
+    const rings = sections.map(section => [
+        ...section.outer,
+        ...[...section.inner].reverse()
+    ].map(point => new THREE.Vector3(point.x, point.y, point.z)));
+    const surface = (side: number): string =>
+        side < outerPoints - 1 ? "outer" :
+        side === outerPoints - 1 ? "edge-right" :
+        side < ringSize - 1 ? "inner" : "edge-left";
 
-    for (const section of sections) {
-        const ring = [
-            ...section.outer,
-            ...[...section.inner].reverse()
-        ].map(point => {
-            if (
-                !Number.isFinite(point.x) ||
-                !Number.isFinite(point.y) ||
-                !Number.isFinite(point.z)
-            ) {
-                throw new RangeError("Invalid board section position");
-            }
+    const { vertices, quads } = loftSideQuads({
+        rings,
+        uvMode: "perimeter",
+        travelMode: "first",
+        surface,
+        smoothingGroup: side => {
+            const region = surface(side);
 
-            return new THREE.Vector3(point.x, point.y, point.z);
-        });
-
-        vertices.push(...ring);
-        rings.push(ring);
-    }
-
-    const lengths = [0];
-    const perimeters: number[][] = [];
-
-    for (let i = 0; i < rings.length; i++) {
-        const ring = rings[i]!;
-        const perimeter = [0];
-
-        for (let j = 1; j <= ringSize; j++) {
-            const a = ring[j - 1]!;
-            const b = ring[j % ringSize]!;
-            const distance = a.distanceTo(b);
-
-            if (!(distance > 0)) {
-                throw new RangeError("Board section has collapsed edges");
-            }
-            perimeter.push(perimeter[j - 1]! + distance);
+            return region === "outer" || region === "inner"
+                ? region : undefined;
         }
-
-        perimeters.push(perimeter);
-
-        if (i > 0) {
-            const travel = ring[0]!.distanceTo(rings[i - 1]![0]!);
-            if (!(travel > 0)) {
-                throw new RangeError("Consecutive board sections must differ");
-            }
-            lengths.push(lengths[i - 1]! + travel);
-        }
-    }
-
-    const quads: QuadFace[] = [];
+    });
     const triangles: TriangleFace[] = [];
 
-    for (let i = 0; i < rings.length - 1; i++) {
-        const lower = i * ringSize;
-        const upper = (i + 1) * ringSize;
-
-        for (let j = 0; j < ringSize; j++) {
-            const next = (j + 1) % ringSize;
-            const surface = j < outerPoints - 1
-                ? "outer"
-                : j === outerPoints - 1
-                    ? "edge-right"
-                    : j < ringSize - 1
-                        ? "inner"
-                        : "edge-left";
-
-            quads.push({
-                corners: [
-                    lower + j, lower + next,
-                    upper + next, upper + j
-                ],
-                surface,
-                ...(surface === "outer" || surface === "inner"
-                    ? { smoothingGroup: surface }
-                    : {}),
-                uvs: [
-                    new THREE.Vector2(perimeters[i]![j]!, lengths[i]!),
-                    new THREE.Vector2(perimeters[i]![j + 1]!, lengths[i]!),
-                    new THREE.Vector2(perimeters[i + 1]![j + 1]!, lengths[i + 1]!),
-                    new THREE.Vector2(perimeters[i + 1]![j]!, lengths[i + 1]!)
-                ]
-            });
+    const perimeters = rings.map(ring => {
+        const distances = [0];
+        for (let side = 0; side < ringSize; side++) {
+            const first = ring[side]!;
+            const second = ring[(side + 1) % ringSize]!;
+            distances.push(
+                distances.at(-1)! +
+                Math.hypot(
+                    first.x - second.x,
+                    first.y - second.y,
+                    first.z - second.z
+                )
+            );
         }
-    }
+
+        return distances;
+    });
 
     for (const [sectionIndex, surface] of [
         [0, "cap-start"],

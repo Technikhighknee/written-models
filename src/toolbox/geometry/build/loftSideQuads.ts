@@ -5,6 +5,8 @@ export interface LoftSideOptions {
     rings: readonly (readonly THREE.Vector3Like[])[];
     /** Each face uses its own edge width, or a continuous contour distance. */
     uvMode: "edge" | "perimeter";
+    /** The longitudinal UV distance follows section centers or the first corner. */
+    travelMode?: "center" | "first";
     surface: (side: number, interval: number) => string;
     smoothingGroup?: (
         side: number,
@@ -28,6 +30,7 @@ export interface LoftSides {
 export function loftSideQuads({
     rings,
     uvMode,
+    travelMode = "center",
     surface,
     smoothingGroup = () => undefined,
     minimumEdgeLength = 0,
@@ -40,6 +43,7 @@ export function loftSideQuads({
         sides < 3 ||
         rings.some(ring => ring.length !== sides) ||
         !["edge", "perimeter"].includes(uvMode) ||
+        !["center", "first"].includes(travelMode) ||
         !Number.isFinite(minimumEdgeLength) ||
         minimumEdgeLength < 0 ||
         !Number.isFinite(minimumTravel) ||
@@ -84,7 +88,11 @@ export function loftSideQuads({
         perimeter.push(cumulative);
 
         if (row > 0) {
-            const distance = center.distanceTo(centers[row - 1]!);
+            const distance = travelMode === "first"
+                ? vertices[row * sides]!.distanceTo(
+                    vertices[(row - 1) * sides]!
+                )
+                : center.distanceTo(centers[row - 1]!);
 
             if (!(distance > minimumTravel)) {
                 throw new RangeError("Consecutive loft centers must differ");

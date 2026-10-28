@@ -14,7 +14,10 @@ import {
     type GeometryPrecision
 } from "../kernel/precision";
 import { loftSideQuads } from "./loftSideQuads";
-import { loftSectionWalls } from "./loftSectionWalls";
+import {
+    loftSectionWalls,
+    type LoftSectionWallsOptions
+} from "./loftSectionWalls";
 import { capSectionEnd } from "./finishBoundaries";
 
 export interface PathSweepOptions {
@@ -26,6 +29,10 @@ export interface PathSweepOptions {
     stations: readonly number[];
     closedPath?: boolean;
     ends?: "open" | "cap";
+    wall?: Pick<
+        LoftSectionWallsOptions,
+        "outerRegion" | "innerRegions" | "surfaceAt" | "smoothingGroupAt"
+    >;
     precision?: GeometryPrecision;
 }
 
@@ -264,7 +271,8 @@ function toSection(
 function periodicWalls(
     sections: readonly Section3[],
     closing: Section3,
-    precision: GeometryPrecision
+    precision: GeometryPrecision,
+    wall: PathSweepOptions["wall"]
 ): GeometryResult {
     const first = sections[0]!;
     const loopCount = 1 + (first.inner?.length ?? 0);
@@ -281,7 +289,13 @@ function periodicWalls(
         const strips = loftSideQuads({
             rings,
             uvMode: "perimeter",
-            surface: () => loop === 0 ? "outer" : `inner-${loop - 1}`,
+            surface: (edge, interval) =>
+                wall?.surfaceAt?.({ loop, edge, interval }) ??
+                (loop === 0
+                    ? wall?.outerRegion ?? "outer"
+                    : wall?.innerRegions?.[loop - 1] ?? `inner-${loop - 1}`),
+            smoothingGroup: (edge, interval) =>
+                wall?.smoothingGroupAt?.({ loop, edge, interval }),
             minimumEdgeLength: precision.absoluteLength,
             minimumTravel: precision.absoluteLength
         });
@@ -320,6 +334,7 @@ export function sweepSection({
     stations,
     closedPath = false,
     ends: suppliedEnds,
+    wall,
     precision
 }: PathSweepOptions): GeometryResult {
     const policy = resolvePrecision(precision);
@@ -381,10 +396,10 @@ export function sweepSection({
             invalid("unsupported-topology", "Section is not periodic at the seam");
         }
 
-        return periodicWalls(sections, closing, policy);
+        return periodicWalls(sections, closing, policy, wall);
     }
 
-    let result = loftSectionWalls(sections, { precision: policy });
+    let result = loftSectionWalls(sections, { ...wall, precision: policy });
 
     if (ends === "cap") {
         for (const end of ["start", "end"] as const) {
