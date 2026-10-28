@@ -87,6 +87,14 @@ at each station along the loft.
 - For a periodic sweep, the final contours reconnect to the
   initial contours with matching frames and vertices.
 
+`loftSections` and an open-path `sweepSection` default to capped
+ends. Nonplanar contours cannot be capped by pretending they are
+planar; they remain explicitly open for separate patch construction.
+A closed-path sweep has no end-cap option. For revolution, meridian
+intervals control surface and smoothing labels; full revolutions
+share their angular seam vertices, and only supported planar
+exposed boundaries can be capped on partial revolutions.
+
 At the beginning and end of a hollow pipe, an `ends: "open"`
 construction exposes the two wall rims. A capped pipe receives
 an annular face between the two contours; it does not get a disk
