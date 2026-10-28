@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {oakPlankPanel, oakTimberShop} from "./components/oakSeating";
+import {oakPlank, oakPlankPanel, oakTimberShop} from "./components/oakSeating";
 import {profiledBoard} from "../toolbox/geometry/construction/profiledBoard";
 import {toBufferGeometry} from "../toolbox/geometry/mesh/toBufferGeometry";
 import {tintVertices} from "../toolbox/geometry/materials/tintVertices";
@@ -24,32 +24,57 @@ function create(): THREE.Group {
     const seatCenterY = seatHeight - seatThickness / 2;
     const legTop = seatHeight - seatThickness;
 
-    // The short rear board fits BETWEEN the tall back posts. The other
-    // two boards extend past the front legs without intersecting the back.
+    // The full-width seat has three boards. The rear plank has cut-outs
+    // around both continuous back posts, rather than ending between them.
+    const seatLength = cm(48.4);
     const frontSeat = oakPlankPanel({
         name: "FrontSeatBoards",
-        length: cm(48.4),
+        length: seatLength,
         depth: cm(27.2),
         thickness: seatThickness,
         planks: 2,
         seed: 412,
         widthWeights: [1.07, 0.93],
         gap: mm(2.2),
-        wear: 0.55
+        wear: 0.55,
+        crown: mm(0.65)
     });
     frontSeat.position.set(0, seatCenterY, cm(6.4));
     chair.add(frontSeat);
 
-    const backSeat = oakPlankPanel({
-        name: "RearNotchedSeatBoard",
-        length: cm(36.6),
-        depth: cm(13.3),
+    // Rear posts pass through corner cut-outs. The middle of the plank
+    // extends behind them; its outboard ends clear their front faces.
+    // profiledBoard constructs the stepped outline as real geometry.
+    const edgeAt = (t: number) => {
+        const x = Math.abs((t - 0.5) * seatLength);
+        const notch = THREE.MathUtils.smoothstep(x, cm(16.8), cm(18.0));
+        const handPlaned = mm(0.55) * Math.sin(Math.PI * 2 * t + 0.7);
+        return -cm(25.1) + cm(5.45) * notch + handPlaned;
+    };
+    const controlXs = [
+        -seatLength / 2, -cm(19.0), -cm(18.5), -cm(18.2),
+        -cm(17.9), -cm(17.6), -cm(17.4), -cm(16.8),
+        0, cm(16.8), cm(17.4), cm(17.6), cm(17.9),
+        cm(18.2), cm(18.5), cm(19.0), seatLength / 2
+    ];
+    const rearPlank = profiledBoard({
+        length: seatLength,
         thickness: seatThickness,
-        planks: 1,
-        seed: 417,
-        wear: 0.45
+        chamfer: mm(2.4),
+        crown: mm(0.65),
+        leftEdge: edgeAt,
+        rightEdge: t => -cm(7.55) + mm(0.45) *
+            Math.sin(2 * Math.PI * t + 1.2),
+        longitudinalStations: controlXs.map(x => x / seatLength + 0.5),
+        start: {cornerWear: [mm(1.2), mm(1.0)]},
+        end: {cornerWear: [mm(1.0), mm(1.4)]}
     });
-    backSeat.position.set(0, seatCenterY, -cm(14.0));
+    const backSeat = oakPlank(
+        "RearNotchedSeatPlank",
+        rearPlank, 6, 0.978,
+        {u: cm(4.5), v: cm(14.0)}
+    );
+    backSeat.position.y = seatCenterY;
     chair.add(backSeat);
 
     // The rear legs continue into the backrest as single raked timbers.

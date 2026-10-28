@@ -28,6 +28,27 @@ const boardSurfaces = {
     "cap-start": 1, "cap-end": 1
 };
 
+/** An authored board with the same wood cuts, UV scale and end grain as a panel. */
+export function oakPlank(
+    name: string,
+    data: MeshData,
+    seed: number,
+    tone = 0.97,
+    uvOffset: {u: number; v: number} = {u: cm(2), v: cm(8)}
+): THREE.Mesh {
+    const oak = oakVariant(seed);
+    offsetMeshUvs(data, uvOffset.u, uvOffset.v);
+    const geometry = tintVertices(
+        toBufferGeometry(data, boardSurfaces),
+        new THREE.Color(tone, tone, tone)
+    );
+    const mesh = new THREE.Mesh(geometry, [
+        oakBoardFace(seed), oak.tinted.endGrain
+    ]);
+    mesh.name = name;
+    return mesh;
+}
+
 /** Planks are independent pieces of oak with stable shared seam profiles. */
 export function oakPlankPanel(spec: OakPanel): THREE.Group {
     const {
@@ -55,18 +76,14 @@ export function oakPlankPanel(spec: OakPanel): THREE.Group {
 
     boards.forEach((data: MeshData, i) => {
         const cut = (seed + i * 3 + 2) % 8;
-        const oak = oakVariant(cut);
-        offsetMeshUvs(data, cm(i * 2 + 1), cm(i * 7 + 2));
         const tone = 0.96 + 0.012 * ((seed + i * 5) % 5);
-        const geometry = tintVertices(
-            toBufferGeometry(data, boardSurfaces),
-            new THREE.Color(tone, tone, tone)
-        );
-        const plank = new THREE.Mesh(geometry, [
-            oakBoardFace(cut), oak.tinted.endGrain
-        ]);
-        plank.name = `${name}Plank${i + 1}`;
-        panel.add(plank);
+        panel.add(oakPlank(
+            `${name}Plank${i + 1}`,
+            data,
+            cut,
+            tone,
+            {u: cm(i * 2 + 1), v: cm(i * 7 + 2)}
+        ));
     });
 
     return panel;
