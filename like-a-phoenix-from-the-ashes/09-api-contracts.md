@@ -990,7 +990,7 @@ interface AuthoredFaceInfo {
   surface: string;
   smoothingGroup?: string;
   centroid: THREE.Vector3; // construction-local meters
-  normal: THREE.Vector3;   // geometric, according to authored winding
+  normal: THREE.Vector3;   // normalized area-weighted authored-triangle normal
 }
 
 interface FaceMetadata {
