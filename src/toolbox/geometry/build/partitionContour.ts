@@ -25,7 +25,7 @@ export interface ContourPartition {
 
 function fail(
     reason: "invalid-input" | "degenerate-geometry" |
-        "unsupported-topology" | "self-intersection",
+        "invalid-topology" | "unsupported-topology" | "self-intersection",
     message: string
 ): never {
     throw new GeometryOperationError("partitionContour", reason, message);
@@ -140,7 +140,7 @@ function convex(
     tolerance: number
 ): void {
     const orientation = Math.sign(signedArea(points));
-    const extent = new THREE.Box2().setFromPoints(points)
+    const extent = new THREE.Box2().setFromPoints([...points])
         .getSize(new THREE.Vector2()).length();
 
     if (!orientation || Math.abs(signedArea(points)) <= tolerance * extent) {
@@ -338,7 +338,8 @@ export function partitionContour(
         fail("unsupported-topology", "Only simple closed, hole-free outlines are supported");
     }
 
-    const source = profile.outer.points.map(point =>
+    const source: THREE.Vector2[] = profile.outer.points.map(
+        (point: THREE.Vector2Like) =>
         new THREE.Vector2(point.x, point.y)
     );
 
@@ -364,7 +365,8 @@ export function partitionContour(
         }
         seen.add(cut.id);
 
-        const points = cut.points.map(point => {
+        const points: THREE.Vector2[] = cut.points.map(
+            (point: THREE.Vector2Like) => {
             if (!point || ![point.x, point.y].every(Number.isFinite)) {
                 fail("invalid-input", "Non-finite cut coordinate");
             }
