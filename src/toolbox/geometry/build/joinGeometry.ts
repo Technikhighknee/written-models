@@ -245,6 +245,8 @@ export function joinGeometry(
         fail("invalid-input", "Join requires distinct authored parts and weld declarations");
     }
 
+    const inputs: readonly GeometryResult[] = parts;
+    const welds: GeometryJoinOptions["weld"] = options.weld;
     const vertexOffsets: number[] = [];
     const quadOffsets: number[] = [];
     const triangleOffsets: number[] = [];
@@ -253,8 +255,8 @@ export function joinGeometry(
     let q = 0;
     let t = 0;
 
-    for (let part = 0; part < parts.length; part++) {
-        const source = parts[part]!;
+    for (let part = 0; part < inputs.length; part++) {
+        const source = inputs[part]!;
         vertexOffsets.push(positions.length);
         quadOffsets.push(q);
         triangleOffsets.push(t);
@@ -276,20 +278,20 @@ export function joinGeometry(
     const consumed = new Map<number, Set<string>>();
     const declared = new Map<string, number>();
 
-    for (const pair of options.weld) {
+    for (const pair of welds) {
         const { firstPart, secondPart, first, second } = pair;
 
         if (
             !Number.isInteger(firstPart) || !Number.isInteger(secondPart) ||
             firstPart < 0 || secondPart < 0 ||
-            firstPart >= parts.length || secondPart >= parts.length ||
+            firstPart >= inputs.length || secondPart >= inputs.length ||
             firstPart === secondPart
         ) {
-            fail("invalid-input", "Weld must identify two different source parts");
+            fail("invalid-input", "Weld must identify two different source inputs");
         }
 
-        const sourceA = parts[firstPart]!;
-        const sourceB = parts[secondPart]!;
+        const sourceA = inputs[firstPart]!;
+        const sourceB = inputs[secondPart]!;
         const edgesA = validateBoundary(sourceA, first);
         const edgesB = validateBoundary(sourceB, second);
 
@@ -400,7 +402,7 @@ export function joinGeometry(
     const vertices: THREE.Vector3[] = [];
     const roots = new Map<number, number>();
 
-    positions.forEach((point, id) => {
+    positions.forEach((_, id) => {
         const root = union.find(id);
         let mapped = roots.get(root);
 
@@ -418,8 +420,8 @@ export function joinGeometry(
     const remap = (part: number, face: QuadFace | TriangleFace) =>
         face.corners.map(id => map[vertexOffsets[part]! + id]!) as number[];
 
-    for (let part = 0; part < parts.length; part++) {
-        const source = parts[part]!.geometry;
+    for (let part = 0; part < inputs.length; part++) {
+        const source = inputs[part]!.geometry;
 
         for (const face of source.quads) {
             quads.push({
@@ -439,7 +441,7 @@ export function joinGeometry(
     const mesh: MeshData = { vertices, quads, triangles };
 
     // Detect duplicated coincident authored triangle surfaces even when
-    // parts deliberately avoided declaring their overlapping rims.
+    // inputs deliberately avoided declaring their overlapping rims.
     const duplicate = new Set<string>();
     const origin = vertices[0] ?? new THREE.Vector3();
     const pointKey = (point: THREE.Vector3): string => [
@@ -475,7 +477,7 @@ export function joinGeometry(
 
     const nameCounts = new Map<string, number>();
 
-    for (const source of parts) {
+    for (const source of inputs) {
         for (const name of Object.keys(source.boundaries)) {
             nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1);
         }
@@ -484,8 +486,8 @@ export function joinGeometry(
     const boundaries: Record<string, BoundaryRef[]> = Object.create(null);
     const patches: Record<string, SurfacePatchRef[]> = Object.create(null);
 
-    for (let part = 0; part < parts.length; part++) {
-        const source = parts[part]!;
+    for (let part = 0; part < inputs.length; part++) {
+        const source = inputs[part]!;
         const used = consumed.get(part) ?? new Set<string>();
         const remapId = (id: number) => map[vertexOffsets[part]! + id]!;
 
