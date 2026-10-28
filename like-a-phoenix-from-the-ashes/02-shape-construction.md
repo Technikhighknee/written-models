@@ -73,12 +73,20 @@ was reached. Hard tolerance requests fail explicitly if an interval
 remains over tolerance. Every neighboring surface uses the same
 returned station array.
 
-`bridgeBoundaries` receives correspondence parameters for each
-boundary. When the sample density differs, the bridge advances
-through the ordered stations and produces real triangles.
-The existing `stitchPolylines()` provides the basic monotone
-stitching technique; the target implementation respects actual
-sampling parameters rather than assuming equal spacing by index.
+`bridgeBoundaries` consumes already sampled 3D contours and
+explicitly corresponding station parameters, without splitting or
+resampling their source edges. Matching station intervals become
+authored quads when their geometry is valid; unequal transitions
+remain authored triangles. Closed contours use stations in
+`[0, 1)`, with a shared, physically unwrapped UV seam. Open
+contours include stations `0` and `1`. Both retain named,
+owned source-boundary chains for later explicit joining.
+
+`stitchPolylines()` supplies the same monotone advance order for
+open or periodic contours. Both rings are separate construction
+inputs: the operation builds only the bridge strip, not a hidden
+weld into existing source geometry. Contacting or collapsed input
+contours require an explicit topology transition and are rejected.
 
 ## Core construction operations
 
