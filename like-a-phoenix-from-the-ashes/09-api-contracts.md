@@ -585,9 +585,11 @@ triangles at irregular trims and holes.
 `joinGeometry` combines separate authored pieces and intentionally
 shares vertices only along specified matching boundary pairs.
 For each pair it requires identical ordered sample counts, consistent
-positions within tolerance and opposite boundary winding. Invalid
-pairs fail. The result remaps all face regions and still-meaningful
-boundaries into its new geometry indices.
+positions within tolerance and opposite boundary winding. Each
+input boundary edge can be paired at most once. Repeated or overlapping
+welds, globally inconsistent vertex matches, duplicate coincident
+faces and nonmanifold vertex fans are rejected. The result remaps all
+face regions and still-meaningful boundaries into its new indices.
 
 `boundaryContour` extracts the ordered 3D points of a selected
 authored boundary. The produced construction results have
