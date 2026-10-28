@@ -129,6 +129,12 @@ Multiple disconnected components on one side are separate parts.
 A cut loop on either half-space has the opposite orientation to
 its mate in the other half-space for outward-facing solids.
 
+Coplanar input faces are not blindly duplicated into both outputs.
+When a plane contains an existing face, the owning component is
+resolved from the adjacent volume and face orientation; genuinely
+ambiguous contact-only or nonmanifold configurations fail rather
+than producing overlapping cap faces.
+
 A tangent split that produces no actual two-sided division returns
 the unchanged side as one piece with an explicit empty interface set.
 A cap request is valid only for closed intersection loops.
