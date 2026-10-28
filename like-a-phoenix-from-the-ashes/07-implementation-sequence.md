@@ -38,10 +38,9 @@ queries, the viewer and export with the correct authored identity.
 - [x] **1.7** Implement non-mutating authored transform, UV offset
       and vertex deformation with updated selection references.
       Commit: `c57a71a`.
-- [ ] **1.8** Apply the documented precision and typed failure rules
+- [x] **1.8** Apply the documented precision and typed failure rules
       to core operations; return sampling saturation information.
-      Sampling reports and typed saturation failures: `75af415`.
-      Shared precision rules across core operations remain.
+      Commits: `75af415`, `6afdaa6`, `dd24254`.
 - [x] **1.9** Use a real box and five-section plank through
       construction → edit → topology query → render → Quad View → GLB.
       Commits: `2f4a9cf`, `fff7593`.
@@ -54,12 +53,15 @@ triangulation agree throughout that complete path.
 **Result:** Current model shapes are built from common contour,
 section, path and face-construction operations.
 
-- [ ] **2.1** Define `Contour2`, `Profile2`, `Contour3`,
+- [x] **2.1** Define `Contour2`, `Profile2`, `Contour3`,
       `Section3`, `Path3`, sampled contours and explicit
       correspondence at matching landmarks.
+      Commit: `0847f81`.
 - [ ] **2.2** Consolidate winding, contour cleanup, `adaptiveStations`
       and `stitchPolylines`. Respect sample limitations and return
       stations for all interfaces.
+      Explicit-station stitching: `0847f81`. Winding and shared
+      contour cleanup remain.
 - [ ] **2.3** Unify `loftSections` and `loftRings` side construction,
       with real quads, inner loops, precise surface regions and
       smoothing callbacks by contour edge and interval.
