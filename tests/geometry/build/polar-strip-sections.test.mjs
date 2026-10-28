@@ -111,6 +111,31 @@ test("unequal polar row densities build exact closed section loops", () => {
     );
 });
 
+test("zero-gap neighboring strips share the same seam coordinates", () => {
+    const strips = samplePolarStripSections(options({ gap: 0 }));
+
+    for (let row = 0; row < meridian.length; row++) {
+        const first = strips[0][row].outer.points;
+        const second = strips[1][row].outer.points;
+
+        const lastOuter = new THREE.Vector3(
+            first[4].x, first[4].y, first[4].z
+        );
+        const nextOuter = new THREE.Vector3(
+            second[0].x, second[0].y, second[0].z
+        );
+
+        assert.ok(lastOuter.distanceTo(nextOuter) < 1e-12);
+    }
+
+    // Each stave still owns independent geometry; a shared position
+    // is not permission to weld together separate pieces.
+    assert.notEqual(
+        strips[0][0].outer.points[4],
+        strips[1][0].outer.points[0]
+    );
+});
+
 test("existing stave layout uses exactly the new sampler's coordinates", () => {
     const settings = options();
     const newSections = samplePolarStripSections(settings);

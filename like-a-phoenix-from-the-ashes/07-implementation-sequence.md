@@ -87,8 +87,12 @@ section, path and face-construction operations.
       `6d0870c`. Authored profile extrusion: `70f8bfa`.
       Meridians with open rims or radial/partial caps: `c926a05`.
       Full general surface offsets are outside this phase.
-- [ ] **2.8** Extract the general polar strip sampler with detailed
+- [x] **2.8** Extract the general polar strip sampler with detailed
       outer and sparse inner section rows.
+      `samplePolarStripSections` produces closed Section3 loops with
+      independent outer/inner stations. The existing stave layout is
+      a thin adapter. Tested through loft, end caps and Quad View:
+      `2cc72f5` and follow-up verification.
 - [ ] **2.9** Implement `correspondContours` and `sampleProfile`
       with exact ordered outline/landmark stations. Verify that
       mapped top/bottom coordinates, not just normalized station

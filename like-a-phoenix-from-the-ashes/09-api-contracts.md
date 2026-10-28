@@ -235,7 +235,8 @@ interface PolarStripOptions extends PrecisionOptions {
   meridian: readonly THREE.Vector2Like[];
   count: number;
   angleOffset?: number;
-  gap?: number; // meters along each circumferential cut
+  gap?: number; // meters at each reference meridian radius
+  // Both sequences include 0 and 1, and may have different densities.
   outerStations: readonly number[];
   innerStations: readonly number[];
   outerRadiusAt(radius: number, height: number, station: number): number;

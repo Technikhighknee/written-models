@@ -212,6 +212,28 @@ quads. Material and smoothing callbacks receive original meridian
 and angular interval indices, not indices of synthetic cap rows.
 Surface/UV compilation remains separate from authored topology.
 
+### Polar strip sampling
+
+`samplePolarStripSections` divides a radius/height meridian into
+separately authored circumferential strips. The visible outer row
+and hidden inner row each have their own ordered normalized stations;
+they are not artificially resampled to match. Each height returns
+one positioned `Section3` with its outer arc followed by the
+reversed inner arc, joined at both thickness edges.
+
+The sampled sections are construction inputs for the shared loft
+and cap operations, rather than meshes or material-specific staves.
+The old `radialStripLayout` is an adapter that exposes the same
+sections as independent `BoardSection.outer` and `.inner` rows
+for existing models.
+
+`gap` is measured along the reference meridian's circumference
+at each height; its angular opening changes as the profile radius
+changes. With zero gap, adjacent pieces share seam coordinates
+but retain independent vertices and part ownership. The sampler
+rejects collapsed radii, thicknesses and self-crossing section
+contours rather than producing invalid wall strips.
+
 ### Shells and thickness
 
 A wall follows two related surface contours. In the initial
