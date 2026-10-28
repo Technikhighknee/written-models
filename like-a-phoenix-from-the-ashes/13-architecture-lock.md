@@ -127,6 +127,14 @@ results remain Phase 6 work. Construction-time chamfers are available
 in Phase 3; general post-hoc selected-edge beveling waits for the
 Phase 6 local topology-refinement mechanism.
 
+## Cavity frames and clearance
+
+Cavity extraction converts separate stave surfaces to one explicit
+rigid section-local frame. Its resulting rings remain independent
+of world placement. Surface-clearance queries distinguish the minimum
+requested gap from actual triangle contact/crossing; they do not
+claim to classify solid containment.
+
 ## Execution has two dependency paths
 
 **The existing-model migration is the first integrated proof.**
