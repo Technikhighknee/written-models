@@ -1,15 +1,30 @@
 import * as THREE from "three";
-import type { MeshData, QuadFace, TriangleFace } from "./MeshData";
+import type { MeshData } from "./MeshData";
+import {
+    triangulateAuthoredFaces,
+    type AuthoredTriangle
+} from "../kernel/triangulation";
 
-type Face = QuadFace | TriangleFace;
+type Face = MeshData["quads"][number] | NonNullable<MeshData["triangles"]>[number];
 
-const QUAD_TRIANGLES = [
-    [0, 1, 2],
-    [0, 2, 3]
-] as const;
+function authoredFace(mesh: MeshData, triangle: AuthoredTriangle): Face {
+    return triangle.face.kind === "quad"
+        ? mesh.quads[triangle.face.index]!
+        : mesh.triangles![triangle.face.index]!;
+}
 
 const controlMeshes = new WeakMap<THREE.BufferGeometry, MeshData>();
 const controlVertexIds = new WeakMap<THREE.BufferGeometry, readonly number[]>();
+const renderTriangleSources = new WeakMap<
+    THREE.BufferGeometry, readonly AuthoredTriangle[]
+>();
+
+/** Render triangle index (after material grouping) to its authored source. */
+export function getRenderTriangleSources(
+    geometry: THREE.BufferGeometry
+): readonly AuthoredTriangle[] | undefined {
+    return renderTriangleSources.get(geometry);
+}
 
 /** GPU vertex to original construction vertex, including UV/normal splits. */
 export function getControlVertexIds(
@@ -33,7 +48,7 @@ export function toBufferGeometry(
     mesh: MeshData,
     materialBySurface: Readonly<Record<string, number>>
 ): THREE.BufferGeometry {
-    const byMaterial = new Map<number, Face[]>();
+    const byMaterial = new Map<number, AuthoredTriangle[]>();
     const smoothNormals = new Map<string, Map<number, THREE.Vector3>>();
 
     for (const face of [...mesh.quads, ...(mesh.triangles ?? [])]) {
@@ -105,12 +120,18 @@ export function toBufferGeometry(
             }
         }
 
-        let surfaces = byMaterial.get(materialIndex);
-        if (!surfaces) {
-            surfaces = [];
-            byMaterial.set(materialIndex, surfaces);
+    }
+
+    // Material sorting never determines the triangles or their source faces.
+    for (const triangle of triangulateAuthoredFaces(mesh)) {
+        const face = authoredFace(mesh, triangle);
+        const materialIndex = materialBySurface[face.surface]!;
+        let group = byMaterial.get(materialIndex);
+        if (!group) {
+            group = [];
+            byMaterial.set(materialIndex, group);
         }
-        surfaces.push(face);
+        group.push(triangle);
     }
 
     for (const accumulated of smoothNormals.values()) {
@@ -129,53 +150,50 @@ export function toBufferGeometry(
     const indices: number[] = [];
     const vertexCache = new Map<string, number>();
     const geometry = new THREE.BufferGeometry();
+    const triangleSources: AuthoredTriangle[] = [];
 
-    for (const [materialIndex, faces] of byMaterial) {
+    for (const [materialIndex, triangles] of byMaterial) {
         const start = indices.length;
 
-        for (const face of faces) {
-            const tris: readonly (readonly [number, number, number])[] =
-                face.corners.length === 4 ? QUAD_TRIANGLES : [[0, 1, 2]];
+        for (const triangle of triangles) {
+            const face = authoredFace(mesh, triangle);
+            const a = mesh.vertices[triangle.vertices[0]]!;
+            const b = mesh.vertices[triangle.vertices[1]]!;
+            const c = mesh.vertices[triangle.vertices[2]]!;
+            triangleSources.push(triangle);
 
-            for (const triangle of tris) {
-                const [i0, i1, i2] = triangle;
-                const a = mesh.vertices[face.corners[i0]!]!;
-                const b = mesh.vertices[face.corners[i1]!]!;
-                const c = mesh.vertices[face.corners[i2]!]!;
+            const flatNormal = new THREE.Vector3()
+                .subVectors(b, a)
+                .cross(new THREE.Vector3().subVectors(c, a))
+                .normalize();
 
-                const flatNormal = new THREE.Vector3()
-                    .subVectors(b, a)
-                    .cross(new THREE.Vector3().subVectors(c, a))
-                    .normalize();
+            for (const corner of triangle.faceCorners) {
+                const vertexIndex = face.corners[corner]!;
+                const vertex = mesh.vertices[vertexIndex]!;
+                const uv = face.uvs[corner]!;
+                const smoothing = face.smoothingGroup;
+                const normal = smoothing === undefined
+                    ? flatNormal
+                    : smoothNormals.get(smoothing)!.get(vertexIndex)!;
 
-                for (const corner of triangle) {
-                    const vertexIndex = face.corners[corner]!;
-                    const vertex = mesh.vertices[vertexIndex]!;
-                    const uv = face.uvs[corner]!;
-                    const smoothing = face.smoothingGroup;
-                    const normal = smoothing === undefined
-                        ? flatNormal
-                        : smoothNormals.get(smoothing)!.get(vertexIndex)!;
+                // Smooth vertices may be shared only if all authored
+                // vertex identities, materials, groups and UVs agree.
+                const key = smoothing === undefined
+                    ? null
+                    : JSON.stringify([
+                        materialIndex, smoothing, vertexIndex, uv.x, uv.y
+                    ]);
 
-                    // Smooth vertices may be shared only if all authored
-                    // vertex identities, materials, groups and UVs agree.
-                    const key = smoothing === undefined
-                        ? null
-                        : JSON.stringify([
-                            materialIndex, smoothing, vertexIndex, uv.x, uv.y
-                        ]);
-
-                    let index = key === null ? undefined : vertexCache.get(key);
-                    if (index === undefined) {
-                        index = positions.length / 3;
-                        positions.push(vertex.x, vertex.y, vertex.z);
-                        normals.push(normal.x, normal.y, normal.z);
-                        uvs.push(uv.x, uv.y);
-                        sourceVertexIds.push(vertexIndex);
-                        if (key !== null) vertexCache.set(key, index);
-                    }
-                    indices.push(index);
+                let index = key === null ? undefined : vertexCache.get(key);
+                if (index === undefined) {
+                    index = positions.length / 3;
+                    positions.push(vertex.x, vertex.y, vertex.z);
+                    normals.push(normal.x, normal.y, normal.z);
+                    uvs.push(uv.x, uv.y);
+                    sourceVertexIds.push(vertexIndex);
+                    if (key !== null) vertexCache.set(key, index);
                 }
+                indices.push(index);
             }
         }
 
@@ -196,5 +214,6 @@ export function toBufferGeometry(
     geometry.computeBoundingSphere();
     controlMeshes.set(geometry, mesh);
     controlVertexIds.set(geometry, sourceVertexIds);
+    renderTriangleSources.set(geometry, triangleSources);
     return geometry;
 }
