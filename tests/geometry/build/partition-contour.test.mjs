@@ -72,11 +72,10 @@ test("a bent shared seam keeps every sampled point in both pieces", () => {
 
     assert.ok(ownsInterface(result.parts[seam.firstPart], seam.points));
     assert.ok(ownsInterface(result.parts[seam.secondPart], seam.points));
-    assert.equal(
+    assert.ok(Math.abs(
         area(result.parts[0].outer.points) +
-            area(result.parts[1].outer.points),
-        4
-    );
+            area(result.parts[1].outer.points) - 4
+    ) < 1e-12);
     assert.deepEqual(input.outer.points, original);
 
     const first = result.parts[seam.firstPart].outer.points;
