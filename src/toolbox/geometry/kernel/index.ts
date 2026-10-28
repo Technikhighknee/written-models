@@ -4,3 +4,7 @@ export { topologyOf } from "./topology";
 export type { TopologyIndex, EdgeUse } from "./topology";
 export { triangulateAuthoredFaces } from "./triangulation";
 export type { AuthoredTriangle } from "./triangulation";
+export { transformGeometry, deformVertices, offsetMeshUvs } from "../edit/geometryEdits";
+export type { DeformationField } from "../edit/geometryEdits";
+export { raycastSurface } from "../queries/raycastSurface";
+export type { SurfaceTarget, SurfaceHit, Ray3 } from "../queries/raycastSurface";
