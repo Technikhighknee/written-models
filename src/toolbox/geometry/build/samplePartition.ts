@@ -65,7 +65,7 @@ function insertStations(
 
             if (!forward && !backward) continue;
 
-            matched[segment]++;
+            matched[segment] = matched[segment]! + 1;
 
             const intermediates = sampled.filter((_, i) =>
                 stations[i]! > originalStations[segment]! &&
@@ -110,7 +110,7 @@ export function samplePartition(
             invalid("Partition sampling requires closed, hole-free parts");
         }
 
-        return part.outer.points.map(point =>
+        return part.outer.points.map((point: THREE.Vector2Like) =>
             new THREE.Vector2(point.x, point.y)
         );
     });
@@ -134,7 +134,8 @@ export function samplePartition(
         }
 
         seen.add(seam.cutId);
-        const original = seam.points.map(point =>
+        const original: THREE.Vector2[] = seam.points.map(
+            (point: THREE.Vector2Like) =>
             new THREE.Vector2(point.x, point.y)
         );
         const measured = measureContour(
@@ -144,7 +145,7 @@ export function samplePartition(
 
         if (
             seam.stations.length !== measured.stations.length ||
-            seam.stations.some((value, i) =>
+            seam.stations.some((value: number, i: number) =>
                 Math.abs(value - measured.stations[i]!) >
                 tolerance / measured.length
             )
