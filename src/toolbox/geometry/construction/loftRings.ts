@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import { loftSideQuads } from "../build/loftSideQuads";
+import type { MeshData, TriangleFace } from "../mesh/MeshData";
 
 type End = "open" | "flat" | { point: THREE.Vector3Like };
 
@@ -33,75 +34,16 @@ export function loftRings({
     smoothingGroup = () => undefined
 }: LoftRingsOptions): MeshData {
     const sides = rings[0]?.length ?? 0;
-    if (rings.length < 2 || sides < 3 ||
-        rings.some(ring => ring.length !== sides)) {
-        throw new RangeError("Loft needs two or more matching closed rings");
-    }
+    const { vertices, quads, centers } = loftSideQuads({
+        rings,
+        uvMode: "perimeter",
+        surface,
+        smoothingGroup,
+        minimumEdgeLength: 1e-10,
+        minimumTravel: 1e-10
+    });
 
-    const vertices = rings.flatMap(ring => ring.map(point => {
-        if (![point.x, point.y, point.z].every(Number.isFinite)) {
-            throw new RangeError("Loft contains invalid coordinates");
-        }
-        return new THREE.Vector3(point.x, point.y, point.z);
-    }));
-    const quads: QuadFace[] = [];
     const triangles: TriangleFace[] = [];
-
-    const perimeters: number[][] = [];
-    const centers: THREE.Vector3[] = [];
-    const distances: number[] = [0];
-
-    for (let row = 0; row < rings.length; row++) {
-        const offset = row * sides;
-        const lengths = [0];
-        const center = new THREE.Vector3();
-
-        for (let col = 0; col < sides; col++) {
-            const a = vertices[offset + col]!;
-            const b = vertices[offset + (col + 1) % sides]!;
-            const length = a.distanceTo(b);
-            if (!(length > 1e-10)) {
-                throw new RangeError("Loft ring has collapsed contour edges");
-            }
-            lengths.push(lengths[col]! + length);
-            center.add(a);
-        }
-
-        center.multiplyScalar(1 / sides);
-        perimeters.push(lengths);
-        centers.push(center);
-
-        if (row > 0) {
-            const travel = center.distanceTo(centers[row - 1]!);
-            if (!(travel > 1e-10)) {
-                throw new RangeError("Consecutive loft centers must differ");
-            }
-            distances.push(distances[row - 1]! + travel);
-        }
-    }
-
-    for (let row = 0; row < rings.length - 1; row++) {
-        for (let side = 0; side < sides; side++) {
-            const next = (side + 1) % sides;
-            const corners: QuadFace["corners"] = [
-                row * sides + side,
-                row * sides + next,
-                (row + 1) * sides + next,
-                (row + 1) * sides + side
-            ];
-            const uvs: QuadFace["uvs"] = [
-                new THREE.Vector2(perimeters[row]![side]!, distances[row]!),
-                new THREE.Vector2(perimeters[row]![side + 1]!, distances[row]!),
-                new THREE.Vector2(perimeters[row + 1]![side + 1]!, distances[row + 1]!),
-                new THREE.Vector2(perimeters[row + 1]![side]!, distances[row + 1]!)
-            ];
-            const group = smoothingGroup(side, row);
-            quads.push({
-                corners, uvs, surface: surface(side, row),
-                ...(group === undefined ? {} : { smoothingGroup: group })
-            });
-        }
-    }
 
     function finish(row: number, cap: End, reverse: boolean): void {
         if (cap === "open") return;
