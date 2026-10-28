@@ -125,6 +125,48 @@ test("closed bridges reuse seam vertices and unwrapped perimeter UVs", () => {
     assert.ok(seams.some(u => u > 4));
 });
 
+test("matching periodic stations become authored quads instead of fake pairs", () => {
+    const from = ring(4, 0);
+    const to = ring(4, 1);
+    const stations = [0, 0.25, 0.5, 0.75];
+
+    const result = bridgeBoundaries(from, to, {
+        fromStations: stations,
+        toStations: stations,
+        region: "side"
+    });
+
+    assert.equal(result.geometry.quads.length, 4);
+    assert.equal(result.geometry.triangles.length, 0);
+    assert.equal(topologyOf(result).openBoundaries().length, 2);
+    assert.equal(result.regions.side.length, 4);
+
+    const last = result.geometry.quads.at(-1);
+    assert.deepEqual(last.corners, [3, 7, 4, 0]);
+    assert.ok(last.uvs[2].x > 4);
+    assert.ok(last.uvs[3].x > 4);
+});
+
+test("only matching intervals form quads; unequal stations remain triangles", () => {
+    const from = {
+        closed: false,
+        points: [0, 0.2, 0.5, 1].map(x => point(x, 0, 0))
+    };
+    const to = {
+        closed: false,
+        points: [0, 0.2, 0.6, 1].map(x => point(x, 0, 1))
+    };
+
+    const result = bridgeBoundaries(from, to, {
+        fromStations: [0, 0.2, 0.5, 1],
+        toStations: [0, 0.2, 0.6, 1]
+    });
+
+    assert.equal(result.geometry.quads.length, 1);
+    assert.equal(result.geometry.triangles.length, 4);
+    assert.equal(topologyOf(result).openBoundaries().length, 1);
+});
+
 test("reversed winding also reverses the selected open edge directions", () => {
     const { from, to, options } = openRibbon();
     const result = bridgeBoundaries(from, to, {

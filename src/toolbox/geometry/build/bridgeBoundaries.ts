@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Contour3 } from "../definitions/geometry";
-import type { MeshData, TriangleFace } from "../mesh/MeshData";
+import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
 import {
     geometryResult,
     GeometryOperationError,
@@ -10,6 +10,7 @@ import {
 import {
     lengthTolerance,
     resolvePrecision,
+    triangleQuality,
     type GeometryPrecision
 } from "../kernel/precision";
 import { topologyOf } from "../kernel/topology";
@@ -81,8 +82,8 @@ function oriented(
 
 /**
  * Connect two already sampled, corresponding contours without splitting or
- * approximating their edges. Equal-density strips are deliberately triangles
- * too: the general bridge never claims that a transition is an authored quad.
+ * approximating their edges. Aligned station intervals use real quads when
+ * geometrically valid; density changes use real transition triangles.
  *
  * The output contains only the bridge surface. Its selected from/to edges
  * can later be welded to their source parts by an explicit join operation.
@@ -148,40 +149,109 @@ export function bridgeBoundaries(
     const secondDistances = cumulativeDistances(second, closed);
     const separation = first[0]!.distanceTo(second[0]!);
     const region = options.region ?? "bridge";
+    const quads: QuadFace[] = [];
     const triangles: TriangleFace[] = [];
 
-    // The stitcher's ordered advances also provide unwrapped physical UVs.
-    // The first point at the closing seam is reused as a vertex, but gets
-    // its full-perimeter U value in the final faces.
+    const fromStations = closed
+        ? [...options.fromStations, 1] : options.fromStations;
+    const toStations = closed
+        ? [...options.toStations, 1] : options.toStations;
+
+    const uv = (side: "from" | "to", station: number): THREE.Vector2 =>
+        side === "from"
+            ? new THREE.Vector2(firstDistances[station]!, 0)
+            : new THREE.Vector2(secondDistances[station]!, separation);
+
+    function canBeQuad(ids: readonly number[]): boolean {
+        const a = vertices[ids[0]!]!;
+        const b = vertices[ids[1]!]!;
+        const c = vertices[ids[2]!]!;
+        const d = vertices[ids[3]!]!;
+        const firstNormal = new THREE.Vector3().subVectors(b, a)
+            .cross(new THREE.Vector3().subVectors(c, a));
+        const secondNormal = new THREE.Vector3().subVectors(c, a)
+            .cross(new THREE.Vector3().subVectors(d, a));
+
+        return triangleQuality(a, b, c, precision) &&
+            triangleQuality(a, c, d, precision) &&
+            triangleQuality(a, b, d, precision) &&
+            triangleQuality(b, c, d, precision) &&
+            firstNormal.dot(secondNormal) > 0;
+    }
+
+    // The stitcher emits monotonic transitions. Adjacent triangles can
+    // become one authored quad only when both contours span precisely the
+    // same interval and that quad is geometrically valid.
     let a = 0;
     let b = 0;
-    for (const face of connections) {
+
+    for (let i = 0; i < connections.length; i++) {
+        const face = connections[i]!;
         const nextFirst = firstIds[(a + 1) % firstIds.length]!;
+        const nextSecond = secondIds[(b + 1) % secondIds.length]!;
         const advancesFirst = face[2] === nextFirst;
 
-        const references = advancesFirst
-            ? [
-                [firstIds[a % firstIds.length]!, firstDistances[a]!, 0],
-                [secondIds[b % secondIds.length]!, secondDistances[b]!, separation],
-                [nextFirst, firstDistances[a + 1]!, 0]
-            ]
-            : [
-                [firstIds[a % firstIds.length]!, firstDistances[a]!, 0],
-                [secondIds[b % secondIds.length]!, secondDistances[b]!, separation],
-                [secondIds[(b + 1) % secondIds.length]!, secondDistances[b + 1]!, separation]
+        const quadIds = [
+            firstIds[a % firstIds.length]!,
+            secondIds[b % secondIds.length]!,
+            nextSecond,
+            nextFirst
+        ];
+        const nextFace = connections[i + 1];
+        const aligned = fromStations[a] === toStations[b] &&
+            fromStations[a + 1] === toStations[b + 1];
+
+        if (
+            !advancesFirst &&
+            aligned &&
+            nextFace?.[0] === quadIds[0] &&
+            nextFace[1] === nextSecond &&
+            nextFace[2] === nextFirst &&
+            canBeQuad(quadIds)
+        ) {
+            const corners = options.reverseWinding
+                ? [...quadIds].reverse() : quadIds;
+            const coords = [
+                uv("from", a),
+                uv("to", b),
+                uv("to", b + 1),
+                uv("from", a + 1)
             ];
+            if (options.reverseWinding) coords.reverse();
+
+            quads.push({
+                corners: corners as QuadFace["corners"],
+                uvs: coords as QuadFace["uvs"],
+                surface: region
+            });
+            a++;
+            b++;
+            i++;
+            continue;
+        }
+
+        const refs = advancesFirst
+            ? [
+                [firstIds[a % firstIds.length]!, uv("from", a)],
+                [secondIds[b % secondIds.length]!, uv("to", b)],
+                [nextFirst, uv("from", a + 1)]
+            ] as const
+            : [
+                [firstIds[a % firstIds.length]!, uv("from", a)],
+                [secondIds[b % secondIds.length]!, uv("to", b)],
+                [nextSecond, uv("to", b + 1)]
+            ] as const;
+
+        const corners = refs.map(ref => ref[0]);
+        const coords = refs.map(ref => ref[1]);
+        if (options.reverseWinding) {
+            corners.reverse();
+            coords.reverse();
+        }
 
         triangles.push({
-            corners: (
-                options.reverseWinding
-                    ? references.map(p => p[0]).reverse()
-                    : references.map(p => p[0])
-            ) as TriangleFace["corners"],
-            uvs: (
-                options.reverseWinding
-                    ? references.map(p => new THREE.Vector2(p[1], p[2])).reverse()
-                    : references.map(p => new THREE.Vector2(p[1], p[2]))
-            ) as TriangleFace["uvs"],
+            corners: corners as TriangleFace["corners"],
+            uvs: coords as TriangleFace["uvs"],
             surface: region
         });
 
@@ -196,7 +266,7 @@ export function bridgeBoundaries(
         failure("invalid-topology", "Bridge did not consume both contours");
     }
 
-    const mesh: MeshData = { vertices, quads: [], triangles };
+    const mesh: MeshData = { vertices, quads, triangles };
     let result: GeometryResult;
 
     try {
