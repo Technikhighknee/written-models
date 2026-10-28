@@ -45,6 +45,12 @@ to the desired joint. The current `supportFacePlane()` only checks
 quads and chooses a matching normal above 0.9. The shared query
 also supports triangles and connected coplanar patches.
 
+An explicitly authored planar support uses a world-space frame and
+a finite 2D footprint with optional holes. It follows exactly the
+same full-outline containment rules as a queried surface patch.
+The resulting fitting contact is discriminated as an authored plane
+or a source-derived surface patch; only the latter carries face IDs.
+
 The resulting *plane* is not necessarily a valid contact. The entire
 fitted outline, including its segments, must be contained within
 the chosen support footprint and outside its holes. Checking only
@@ -88,7 +94,7 @@ support patch and outside its holes, including the segments between
 corners. The model can transform the fitted result into
 its assembly-local coordinates before rendering.
 
-The return value identifies selected surfaces, contact normals,
+The return value identifies selected contact supports, contact normals,
 endpoint frames and actual section loops. A hollow member fits the outer and inner contours while retaining
 their correspondence. This removes the wood-specific
 `TimberContactNormals` dependency currently imported by
