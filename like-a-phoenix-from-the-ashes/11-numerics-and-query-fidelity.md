@@ -226,6 +226,23 @@ non-self-intersecting and the incident authored faces must
 remain valid. Geometry that would fold or invert returns a
 specific failure instead of a distorted mesh.
 
+## Cavity section topology and coordinate frames
+
+Multi-piece cavity extraction intersects source wall faces with section
+planes in one rigid section-local frame. At coincident horizontal
+source rows, shared edges are collected once. At other heights, a
+deterministic half-open plane-intersection rule avoids duplicate hits
+at existing vertices and edges. Each section produces exactly one
+simple closed loop; successive loops need common winding, equal
+vertex counts and correspondence derived from source longitudinal
+edges. Missing, branching, self-intersecting, ambiguous or changing
+contours fail explicitly.
+
+`CavityRing` positions and heights are local to that frame. Moving or
+rotating the finished vessel cannot change its volume calculation.
+The frame must be rigid and invertible; non-uniform scaling belongs
+to explicit geometry transformation before section extraction.
+
 ## Failure behavior
 
 Geometric operations are deterministic functions of their
