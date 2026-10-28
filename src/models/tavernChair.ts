@@ -123,10 +123,11 @@ function addSeatFrame(chair: THREE.Group, oak: Workshop): void {
     ));
 
     const rearRailY = APRON_Y;
+    const rearRailZ = rearZ(rearRailY) + cm(1.22);
     chair.add(oak.timber(
         "RearSeatRail",
-        new THREE.Vector3(-innerRear, rearRailY, rearZ(rearRailY)),
-        new THREE.Vector3(innerRear, rearRailY, rearZ(rearRailY)),
+        new THREE.Vector3(-innerRear, rearRailY, rearRailZ),
+        new THREE.Vector3(innerRear, rearRailY, rearRailZ),
         cm(8.3), cm(4.2),
         {
             startNormal: new THREE.Vector3(1, 0, 0),
@@ -161,28 +162,21 @@ function addSeatFrame(chair: THREE.Group, oak: Workshop): void {
         sideRail("LowerStretcher", cm(18), cm(4.5));
     }
 
-    // Two concealed oak bearers meet the apron faces and support every
-    // seat plank at the underside. No part of the seat is suspended in air.
-    for (const sign of [-1, 1] as const) {
-        const frontInsideZ = FRONT_Z - cm(4.2) / 2;
-        const backInsideZ = rearZ(APRON_Y) + cm(4.2) / 2;
-        chair.add(oak.timber(
-            sign < 0 ? "LeftUnderSeatBearer" : "RightUnderSeatBearer",
-            new THREE.Vector3(sign * cm(11.5), SEAT_UNDERSIDE - cm(2.3), frontInsideZ),
-            new THREE.Vector3(sign * cm(11.5), SEAT_UNDERSIDE - cm(2.3), backInsideZ),
-            cm(4.0), cm(4.6),
-            {
-                startNormal: new THREE.Vector3(0, 0, -1),
-                endNormal: new THREE.Vector3(0, 0, 1)
-            }
-        ));
-    }
-
-    // A third low stretcher prevents the legs spreading across the width.
+    // The lower rails lock all four legs together below the seat frame.
     chair.add(oak.timber(
         "FrontLowStretcher",
         new THREE.Vector3(-innerFront, cm(18), FRONT_Z),
         new THREE.Vector3(innerFront, cm(18), FRONT_Z),
+        cm(4.4), cm(4.2),
+        {
+            startNormal: new THREE.Vector3(1, 0, 0),
+            endNormal: new THREE.Vector3(-1, 0, 0)
+        }
+    ));
+    chair.add(oak.timber(
+        "RearLowStretcher",
+        new THREE.Vector3(-innerRear, cm(18), rearZ(cm(18))),
+        new THREE.Vector3(innerRear, cm(18), rearZ(cm(18))),
         cm(4.4), cm(4.2),
         {
             startNormal: new THREE.Vector3(1, 0, 0),
@@ -202,7 +196,7 @@ function addBack(chair: THREE.Group, oak: Workshop): void {
     // bearing rails. The broad faces follow the rake of the back.
     const backBoards = oakPlankPanel({
         name: "BackInfill",
-        length: cm(24.6),
+        length: cm(32),
         depth: inner * 2 - mm(5),
         thickness: cm(2.5),
         planks: 3,
@@ -215,7 +209,7 @@ function addBack(chair: THREE.Group, oak: Workshop): void {
     backBoards.quaternion.setFromRotationMatrix(
         new THREE.Matrix4().makeBasis(upright, forward, across)
     );
-    const backCenterY = cm(76.1);
+    const backCenterY = cm(70);
     backBoards.position.set(
         0, backCenterY,
         rearZ(backCenterY) + cm(1.35)
@@ -223,7 +217,7 @@ function addBack(chair: THREE.Group, oak: Workshop): void {
     chair.add(backBoards);
 
     // Lower bearer and raised crest trap the panel within the posts.
-    const lowerY = cm(62.7);
+    const lowerY = cm(54);
     chair.add(oak.timber(
         "LowerBackRail",
         new THREE.Vector3(-inner, lowerY, rearZ(lowerY) + cm(1.3)),
@@ -286,7 +280,7 @@ function addDrawPegs(chair: THREE.Group, oak: Workshop): void {
         for (const [name, y] of [
             ["Seat", APRON_Y],
             ["Stretcher", cm(18)],
-            ["LowerBack", cm(62.7)],
+            ["LowerBack", cm(54)],
             ["Crest", cm(89.0)]
         ] as const) {
             chair.add(oak.peg(
