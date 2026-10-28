@@ -157,8 +157,13 @@ wall and floor faces receive explicit surface regions. The
 opposite mating face remains available for contact.
 
 The edge/corner work in `profiledBoard`,
-`seamedPlankExtrusion`, and `circularPlankPanel` becomes composed
-edge and surface editing.
+`seamedPlankExtrusion`, and `circularPlankPanel` first becomes
+construction-time section shaping plus patch relief. General
+post-hoc `bevelEdges` is implemented only after local edge splitting
+and adjacent-face reconstruction are available. Initially it accepts
+well-formed manifold chains with unambiguous corner joins; branching,
+nonmanifold, intersecting or otherwise unsupported bevel junctions
+fail explicitly instead of silently corrupting the mesh.
 
 ## Deformation and variation
 
