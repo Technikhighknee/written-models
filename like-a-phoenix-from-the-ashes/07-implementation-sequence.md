@@ -32,15 +32,19 @@ queries, the viewer and export with the correct authored identity.
 - [x] **1.5** Make one authored-face triangulation supply both
       render and geometric-query triangles, with face/corner mapping.
       Commit: `fe996b5`.
-- [ ] **1.6** Keep Quad View tied to the exact authored snapshot,
+- [x] **1.6** Keep Quad View tied to the exact authored snapshot,
       preserving real triangles/quads independently of material order.
+      Commit: `2f4a9cf`.
 - [x] **1.7** Implement non-mutating authored transform, UV offset
       and vertex deformation with updated selection references.
       Commit: `c57a71a`.
 - [ ] **1.8** Apply the documented precision and typed failure rules
       to core operations; return sampling saturation information.
-- [ ] **1.9** Use a real box and five-section plank through
+      Sampling reports and typed saturation failures: `75af415`.
+      Shared precision rules across core operations remain.
+- [x] **1.9** Use a real box and five-section plank through
       construction → edit → topology query → render → Quad View → GLB.
+      Commits: `2f4a9cf`, `fff7593`.
 
 **Gate:** Authored vertices, face references, UVs and source-face
 triangulation agree throughout that complete path.
