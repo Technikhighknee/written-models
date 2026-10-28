@@ -85,8 +85,10 @@ owned source-boundary chains for later explicit joining.
 `stitchPolylines()` supplies the same monotone advance order for
 open or periodic contours. Both rings are separate construction
 inputs: the operation builds only the bridge strip, not a hidden
-weld into existing source geometry. Contacting or collapsed input
-contours require an explicit topology transition and are rejected.
+weld into existing source geometry. Collapsed contour edges and
+coincident sampled vertices between both contours are rejected.
+This does not substitute for a general surface/self-intersection
+query on arbitrary crossing 3D strips.
 
 ## Core construction operations
 
