@@ -19,9 +19,10 @@ queries, the viewer and export with the correct authored identity.
 - [ ] **1.2** Retain `MeshData` and its existing authored faces.
       Give each new `GeometryResult` an opaque identity and enforce
       selection ownership on `BoundaryRef` and `SurfacePatchRef`.
-- [ ] **1.3** Establish deep-copy snapshot semantics and explicit
-      builder welding policies. Coincident independent parts remain
-      topologically distinct.
+- [ ] **1.3** Establish deep-copy snapshot semantics (including
+      mutable THREE vectors), document immutable-by-contract output,
+      and define explicit builder welding policies. Coincident
+      independent parts remain topologically distinct.
 - [ ] **1.4** Provide one topology index for directed edges, face
       adjacency, region boundaries and connected components. Owner-
       check selected edges as well as patches and boundary loops.
@@ -80,8 +81,10 @@ unexplained changes to materials/UVs.
 **Result:** The table, barrel heads and chair seat can be made from
 independent pieces with precise adjoining geometry.
 
-- [ ] **3.1** Implement planar convex contour partitioning with
-      shared sampled cuts, station unions and controlled gap offsets.
+- [ ] **3.1** Partition a simple convex source outline with
+      noncrossing boundary-to-boundary polyline cuts and shared stations.
+      Resulting pieces may be concave. Reserve arbitrary concave-input
+      division, holes, crossing cuts and disconnected results for 6.1.
 - [ ] **3.2** Return `SampledProfile2` with exact outer/hole
       boundary stations; all consumers of an interface use the same
       samples.
@@ -95,11 +98,14 @@ independent pieces with precise adjoining geometry.
       a surface in one coherent reconstruction. Preserve boundary
       coordinates required by neighboring walls; edge relief must
       taper to the seam or explicitly rebuild the interface.
-- [ ] **3.6** Provide reusable selected-edge shaping and chamfers
-      for model details without object-specific geometry names.
-- [ ] **3.7** Give authored results valid patch selections after
-      edits, removing chart references that no longer describe
-      the edited surface.
+- [ ] **3.6** Compose construction-time chamfers using section
+      profiles and patch-boundary shaping, without requiring the
+      general post-hoc edge-beveling algorithm from Phase 6.
+- [ ] **3.7** Implement the result/selection lifecycle: preserve
+      face and edge chains with new owners where still valid; consume
+      closed rims; retain patch charts only with valid round-trip
+      mapping. Arbitrary deformation invalidates patch charts by
+      default, while invertible transforms update them.
 - [ ] **3.8** Centralize face-region material mapping, physical
       UV projection and per-piece render tint/variation.
 - [ ] **3.9** Reproduce the tabletop's worn but coherent plank seams,
@@ -132,8 +138,10 @@ dynamic cavity behavior.
 - [ ] **4.6** Query finite surface clearance, including polygon
       chord intersections between path sample points.
 - [ ] **4.7** Extract aligned cavity sections from separate inner
-      stave surfaces; reconstruct a single ordered contour at
-      each height and validate volume interpolation.
+      stave surfaces, deduplicating horizontal row edges and resolving
+      crossings at intermediate heights. Reject ambiguous seams or
+      rings without matching longitudinal provenance and validate
+      volume interpolation.
 - [ ] **4.8** Preserve the existing fixed-topology morph targets,
       controller and serving-volume calibration through GLB/Godot.
 - [ ] **4.9** Demonstrate fitted chair rails, trestle braces, mug
@@ -195,6 +203,9 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       parameterization and explicit cut-boundary correspondence.
 - [ ] **6.6** Implement edge subdivision and local topology
       refinement across adjacent faces without T-junctions.
+      Implement general selected-edge `bevelEdges` on that foundation
+      for explicitly supported manifold edge chains; reject junctions
+      it cannot reconstruct correctly.
 - [ ] **6.7** Implement solid boolean operations using the
       available `manifold-3d` kernel; return actual triangles
       with explicitly assigned surface regions and UVs.
