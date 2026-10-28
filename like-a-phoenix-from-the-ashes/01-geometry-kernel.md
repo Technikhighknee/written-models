@@ -21,9 +21,10 @@ UV coordinates, and optionally `smoothingGroup`.
 This is already implemented in `MeshData.ts` and
 `AuthoredMeshBuilder.ts`.
 
-A construction vertex is a position shared across faces. UV seams,
-hard normals and material changes belong to face corners or surface
-metadata. They do not create extra construction vertices.
+A construction vertex is a topological position shared by the faces
+that intentionally meet there. UV seams, normal creases and materials
+are represented per face or corner, independently from vertex sharing.
+Coincident points belonging to separate parts can keep distinct IDs.
 
 ### Geometry ownership
 
@@ -152,8 +153,10 @@ subdivision to represent high curvature accurately.
 ### Topology-changing edits
 
 A split, cut, bevel, or subdivision creates new vertices and faces.
-It returns updated selections, real cut regions, and explicit boundary
-correspondence between parts when those parts should meet.
+It returns updated selections, real cut regions, and interfaces
+specifying the owning part index on each side. A split computes a
+crossing edge intersection once and reuses its position on both
+resulting pieces. Local face-corner UVs are interpolated separately.
 
 UVs on surviving faces are interpolated at split edges. New cap/wall
 faces receive their own UV projection. Region meaning is transferred
@@ -177,7 +180,9 @@ the invariants needed for their supported inputs. A model can inspect
 topology without involving Three.js materials.
 
 A curved quadrilateral is still a four-corner polygon, but its two
-GPU triangles approximate that surface with a chosen diagonal.
+GPU triangles approximate that surface with a fixed diagonal. The
+query compiler uses exactly the same diagonal and records which
+authored quad generated each hit triangle.
 Construction either keeps such quads within a defined planarity
 tolerance or subdivides them to represent the desired curvature.
 The quad count never conceals a degenerate face.
@@ -194,5 +199,7 @@ The quad count never conceals a degenerate face.
 - `adaptiveStations.ts` and `stitchPolylines.ts` remain the
   foundation for compatible subdivision and boundary bridging.
 
-The output is a kernel every construction and editing function can use
-without depending on object-specific geometry or render meshes.
+Construction operates on fresh authored geometry. Query and render
+compilers can use derived triangles and acceleration structures while
+retaining their source-face mapping. The detailed operation rules
+are in [10](10-geometry-semantics.md).

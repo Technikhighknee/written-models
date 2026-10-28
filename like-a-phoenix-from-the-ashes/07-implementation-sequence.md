@@ -52,7 +52,8 @@ constructors, each yielding the same kind of geometry result.
 - [ ] **2.6** Extract `loftBoard`'s differing-resolution boundary
       bridge into a general surface connection.
 - [ ] **2.7** Generalize path sweeping to a changing section field,
-      transported frames, and matching start/end boundaries.
+      transported frames, and coherent periodic-frame closure for
+      closed paths.
 - [ ] **2.8** Consolidate `latheMeridian` and `revolveShell`
       into authored revolution and profile-defined shells.
 - [ ] **2.9** Convert extrusion into an authored operation with
@@ -77,10 +78,13 @@ that can make an iron plate, a stone surface or separate solid parts.
       shared edge stations, holes and deliberate clearance offsets.
 - [ ] **3.3** Extend contour clipping to concave regions and multiple
       components, returning actual planar loops.
-- [ ] **3.4** Implement plane-splitting of supported authored solids,
-      sharing intersection points and creating named cut faces.
-- [ ] **3.5** Implement planar surface-patch cutting for recesses,
-      openings and through-holes with real walls and rim loops.
+- [ ] **3.4** Implement plane-splitting of authored solids with
+      shared intersection points, named cut faces, and explicit
+      paired interfaces identifying the owning output pieces.
+- [ ] **3.5** Implement `openPatch` and `recessPatch` on connected
+      planar patches, with explicit rims, walls and optional floors.
+- [ ] **3.5a** Implement `cutThrough` for compatible entry/exit
+      patches, creating the connecting inner walls.
 - [ ] **3.6** Add parameterized curved-patch cutting based on explicit
       surface charts and mapped cut boundaries.
 - [ ] **3.7** Turn edge recess, chamfer, bevel, roundover and groove
@@ -89,8 +93,9 @@ that can make an iron plate, a stone surface or separate solid parts.
       geometry fields and region-weighted deformation.
 - [ ] **3.9** Implement local edge/face subdivision with consistent
       neighboring stations and genuine transition triangles.
-- [ ] **3.10** Wrap `manifold-3d` for closed-solid boolean results
-      with real triangulated output, surface assignment and UV mapping.
+- [ ] **3.10** Wrap `manifold-3d` for closed-solid booleans;
+      preserve actual triangulated output, assign surface/UV data,
+      and report disconnected components.
 - [ ] **3.11** Apply these tools to a wooden panel, circular barrel
       head and metal plate, using shared cuts and source boundaries.
 
@@ -107,10 +112,11 @@ support surfaces without object-specific fitting code.
       local-to-world transforms for geometric queries.
 - [ ] **4.2** Query rays, nearest points, face regions, planar
       patches, intersections and boundary loops.
-- [ ] **4.3** Select relevant support patches using joint proximity
-      and direction, including genuine triangle faces.
+- [ ] **4.3** Select relevant support patches using proximity and
+      direction; map query triangles to authored face IDs and regions.
 - [ ] **4.4** Fit arbitrary compatible cross-sections between
-      selected planar support patches; check the contact footprint.
+      finite planar support patches, including holes; fix section
+      roll with a world-space reference direction.
 - [ ] **4.5** Fit ordered boundaries against curved surfaces,
       with max travel, clearance, falloff and preserved topology.
 - [ ] **4.6** Refine sampled fitting boundaries where curvature
@@ -163,7 +169,7 @@ Their authored design stays under `src/models/`.
 - [ ] **6.4** Migrate `table.ts` to shared partitioning,
       edge shaping and contact-based members.
 - [ ] **6.5** Migrate `barrel.ts` to radial profiles, shared
-      boundaries, body lofts, heads and hoops.
+      boundaries, body lofts, heads and periodic closed-path hoops.
 - [ ] **6.6** Migrate `beerMug.ts` to shared body/handle/fitting
       and cavity/volume operations.
 - [ ] **6.7** Migrate `tavernBench.ts` to shared partitioning
@@ -237,5 +243,7 @@ Some individual model conversions can happen as soon as their
 required shared operations work. Phase 6 records completion of
 the entire collection.
 
-The last step is removing this temporary directory after its
-decisions have become working, documented code.
+The output contracts and edge-case semantics are defined in
+[09](09-api-contracts.md) and [10](10-geometry-semantics.md).
+Once those decisions are embodied in the code and documented by
+the permanent toolbox README, this temporary directory can go.

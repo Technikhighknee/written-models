@@ -25,11 +25,12 @@ can use the same geometric vocabulary.
 | 07 | [Implementation sequence](07-implementation-sequence.md) | Ordered deliverables and checkboxes with completion criteria |
 | 08 | [Composition examples](08-composition-examples.md) | Actual geometric combinations the design must enable |
 | 09 | [API contracts](09-api-contracts.md) | Shared TypeScript contracts used throughout the other files |
+| 10 | [Operation semantics](10-geometry-semantics.md) | Exact behavior of seams, cuts, caps, fitting and topology changes |
 
-These documents describe one architecture. **09 defines the proposed
-API vocabulary. 06 defines what happens to existing code. 07 is the
-implementation checklist.** The remaining files explain the geometry
-and show how the operations compose.
+These documents describe one architecture. **09 defines the API,
+10 defines its geometric behavior, 06 maps existing code to the new
+operations, and 07 is the implementation sequence.** The remaining
+files describe the underlying systems and worked compositions.
 
 ## The geometry pipeline
 
@@ -69,8 +70,9 @@ operations and reusable query methods.
   selects faces and may have several disconnected boundaries.
 - **Adjacent pieces share one boundary definition and sample stations.**
   Gaps and wear modify that shared construction deliberately.
-- **Every geometric edit returns its usable result.** New cut faces,
-  region IDs and boundaries are available to subsequent operations.
+- **Every geometric edit returns usable selections.** Cut faces,
+  part ownership, region IDs and boundary loops are available to
+  subsequent operations.
 - **The same construction path accepts different profiles.**
   Rectangular members, hollow sections, tapered grips and curved
   forms are compositions of general operations.
@@ -84,8 +86,8 @@ operations and reusable query methods.
   live in the toolbox, including algorithms currently buried in
   board, stave, timber and vessel constructors.
 - **Complex geometry is represented as it actually exists.**
-  Boolean cuts may be triangulated; obtaining clean quads is a
-  distinct, deliberate geometric operation.
+  Booleans can produce real triangles. Opening a surface, creating
+  a recess and cutting through a solid are distinct operations.
 
 Meters, intentional topological structure, physical UV scale,
 the existing asset quality, Quad View and runtime features remain

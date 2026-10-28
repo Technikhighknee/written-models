@@ -44,6 +44,8 @@ material and UV seams.
 - Lofts derive lengths along sections and paths.
 - Planar cut surfaces use a local construction frame.
 - New subdivisions interpolate original UVs at created corners.
+- Newly constructed cut walls and floors use their explicit local
+  chart and receive new UVs, region names and smoothing policy.
 - `offsetMeshUvs()` remains a general transformation over authored UVs.
 - UV operations can target selected surfaces or faces.
 
@@ -63,8 +65,10 @@ Keep this display path. A compiled render mesh is associated with
 the corresponding authored snapshot. Geometry edits create a
 new authored/render pair, avoiding stale control positions.
 
-Genuine quads and triangles remain distinct. Texture and normal
-seams do not add false construction edges. Triangle counts
+Genuine quads and triangles remain distinct. The triangle mapping
+records its original authored face, allowing render and spatial
+queries to use the same triangulation of each quad. Texture and
+normal seams do not add false construction edges. Triangle counts
 reflect the final GPU triangles, while the control view retains
 the original construction topology.
 
@@ -82,6 +86,8 @@ the original construction topology.
 Geometry builders and editing operations return `MeshData`
 and explicit operation results. Models call the compiler once
 they have finished the geometric construction of each piece.
+A new geometry result yields a new source/compiled pair; prior
+render buffers are never silently updated by modeling operations.
 
 ## Runtime and GLB/Godot
 

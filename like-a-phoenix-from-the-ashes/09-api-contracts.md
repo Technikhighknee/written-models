@@ -104,8 +104,8 @@ lofting does not invent a mapping between unrelated contours.
 
 ```ts
 interface SampledBoundary {
-  parameters: readonly number[];
-  points: readonly THREE.Vector3Like[];
+  parameters: readonly number[]; // ordered stations from 0 to 1
+  points: readonly THREE.Vector3Like[]; // same order and length
   closed: boolean;
 }
 
@@ -179,7 +179,8 @@ interface ExtrudeOptions {
 
 interface LoftOptions {
   ends?: "open" | "cap";
-  sideRegion?: string;
+  outerRegion?: string;
+  innerRegions?: readonly string[];
   startRegion?: string;
   endRegion?: string;
 }
@@ -195,6 +196,8 @@ interface RevolveOptions {
 interface BridgeOptions {
   region?: string;
   reverseWinding?: boolean;
+  fromStations: readonly number[];
+  toStations: readonly number[];
 }
 
 interface CapOptions {
@@ -220,6 +223,7 @@ sweepSection(options: {
   sectionAt: SectionField;
   startingFrame: THREE.Matrix4;
   stations: readonly number[];
+  closedPath?: boolean;
   ends?: "open" | "cap";
 }): GeometryResult;
 
@@ -231,7 +235,7 @@ revolveProfile(
 bridgeBoundaries(
   from: Contour3,
   to: Contour3,
-  options?: BridgeOptions
+  options: BridgeOptions
 ): GeometryResult;
 
 capBoundary(
@@ -247,14 +251,20 @@ correspondence, per-surface mapping, and UV settings. `RevolveOptions`
 contains axis, angle, sampling, and end/pole policy.
 
 The normal case for `loftSections` is equal sample counts across
-corresponding contours, producing quad side strips. A separate
+corresponding contours, producing quad side strips. Its outer and
+inner contours can have distinct surface regions, and every
+contour carries an explicit winding and seam correspondence. A separate
 `bridgeBoundaries` can introduce genuine triangles between differing
-densities. Caps follow their own topology rules: planar four-corner
+densities. It uses actual ordered sample station parameters instead
+of inferring correspondence solely from vertex counts. Caps follow their own topology rules: planar four-corner
 caps can be quads, nonconvex or holed caps need triangulation or
 explicit authored patches.
 
-A path sweep produces 3D sections using parallel transport before
-calling the same loft machinery.
+A sweep produces 3D sections using parallel transport before
+calling the same loft engine. For `closedPath: true`, position
+and tangent are periodic, frame transport closes without a residual
+seam twist, and the first and last rings share construction vertices.
+`ends` applies only to open paths.
 
 ## Editing
 
@@ -329,8 +339,13 @@ cutThrough(
 ): GeometryResult;
 
 deformVertices(
-  source: MeshData,
+  source: MeshData | GeometryResult,
   field: DeformationField
+): GeometryResult;
+
+transformGeometry(
+  source: MeshData | GeometryResult,
+  localToDestination: THREE.Matrix4
 ): GeometryResult;
 
 bevelEdges(
@@ -508,6 +523,11 @@ material groups, and mapping back to authored faces for Quad View.
   defines UVs and region assignments for each new face.
 - Numeric IDs are local to a result; named selections are returned
   by the operation that creates them.
+- Position-based welding is explicit. Independent coincident pieces
+  have distinct topology unless deliberately joined.
+- Linear tolerances are in meters, angular tolerances in radians and
+  area thresholds in square meters; algorithms validate the scales
+  of their own tolerance parameters.
 - Renderer and runtime compiler may be highly optimized; they do
   not define construction topology.
 

@@ -106,7 +106,7 @@ will call the shared system.
 | `construction/loftSections.ts` | Fold four-corner loft behavior into the same section loft engine |
 | `construction/loftBoard.ts` | Extract independently sampled boundaries and mixed-resolution transitions into general loft/bridge |
 | `construction/loftAxialProfile.ts` | Generic section field and axial sampler feeding the loft engine |
-| `construction/sweepSection.ts` | General path sweep with changing section and transported frames |
+| `construction/sweepSection.ts` | General path sweep with changing section, transported frames, and periodic-frame closure for closed paths |
 | `construction/latheMeridian.ts` | Core revolve implementation, including correct pole topology |
 | `shapes/operations/extrude.ts` | Authored contour extrusion with cap/side region outputs |
 | `shapes/operations/revolveShell.ts` | Composition of thickness profile and generic revolution; return authored geometry |
@@ -127,7 +127,7 @@ operations consistently return `GeometryResult` containing authored
 | `construction/boardPanel.ts` | Move panel assembly to model components; shared cuts, boundaries and variation in toolbox |
 | `construction/circularPlankPanel.ts` | Move circular wooden-panel assembly to models; generic contour partition and grooves remain in toolbox |
 | `construction/seamedPlankExtrusion.ts` | Extract local surface construction, seams, cut/corner wear, and adaptive sampling |
-| `construction/cutBoard.ts` | Replace by general surface-patch cuts, recesses, holes and walls |
+| `construction/cutBoard.ts` | Replace with planar `recessPatch`, `openPatch` and supported `cutThrough`; metal and wood use the same surface-patch algorithms |
 | `construction/radialStripLayout.ts` | Pure radial placement/shape sampling returning geometric data, no `BoardSection` coupling |
 | `construction/radialStaves.ts` | Barrel/mug stave assembly moves into model code |
 | `construction/bandAroundProfile.ts` | Extract section-following bands/ribbons and surface offsets, return authored geometry |
@@ -172,7 +172,7 @@ operations.
 | `construction/beams.ts` | Generic member geometry or model composition using section and frame tools |
 | `construction/timber.ts` | Wood face/material and grain policy goes with models/materials; geometric fitting remains shared |
 | `construction/fitBoundaryToSurface.ts` | Fitting layer consuming exact boundary references |
-| `spatial/queries/MeshSurfaceQuery.ts` | Shared geometric ray query; authored geometry + transform target |
+| `spatial/queries/MeshSurfaceQuery.ts` | Query adapter over authored geometry + transform, including generated triangle → authored face mapping |
 | `spatial/queries/bounds.ts` | Keep general bounding queries |
 | `spatial/frames/contactFrame.ts` | Shared frame based on point/normal/tangent |
 | `spatial/frames/frames.ts` | Shared transform frame helpers |
@@ -240,5 +240,6 @@ and its old name contains no remaining independent model behavior.
 
 The final toolbox should be navigable by **geometric capability**:
 section construction, cutting, deformation, contact fitting, and
-surface operations. Its useful primitives have names that describe
+surface operations. The exact edge cases and outputs of these
+algorithms are specified in [10](10-geometry-semantics.md). Its useful primitives have names that describe
 geometry itself.
