@@ -212,7 +212,11 @@ function orientFaces(
         if (uses.length !== 2 ||
             uses[0]![0] !== uses[1]![1] ||
             uses[0]![1] !== uses[1]![0]) {
-            fail(operation, "invalid-topology", "Cap contains an open or overlapping edge");
+            fail(
+                operation,
+                "invalid-topology",
+                `Cap internal edge ${key} has incompatible uses: ${JSON.stringify(uses)}`
+            );
         }
     }
 }
