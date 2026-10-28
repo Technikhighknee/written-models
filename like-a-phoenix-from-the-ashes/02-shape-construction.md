@@ -172,7 +172,10 @@ thickness profile and immediately converts it to `BufferGeometry`.
 
 Separate the meridian construction, thickness profile, and render
 conversion. Model-defined meridians generate solids, shells, partial
-revolutions, and rims with one rotational operation.
+revolutions, and rims with one rotational operation. Assign surface
+regions and smoothing groups per meridian/angular interval, preserving
+the lathe's distinct outer, inner, lip and floor regions. A cap request
+closes only valid planar exposed boundaries.
 
 Poles use genuine triangles. Regular rotational strips use quads.
 The angular seam remains explicit and UV-continuous where intended.
