@@ -29,8 +29,9 @@ export function latheMeridian(
         points.map(point => ({
             radius: point.radius,
             height: point.y,
-            surface: point.surface,
-            smoothingGroup: point.smoothingGroup,
+            ...(point.surface === undefined ? {} : { surface: point.surface }),
+            ...(point.smoothingGroup === undefined
+                ? {} : { smoothingGroup: point.smoothingGroup }),
             ...(point.radialWave === undefined
                 ? {} : { radialWave: point.radialWave })
         })),
