@@ -361,6 +361,8 @@ interface RevolveOptions extends PrecisionOptions {
   caps?: boolean;
   surfaceAt?: (face: RevolveFaceContext) => string;
   smoothingGroupAt?: (face: RevolveFaceContext) => string | undefined;
+  capRegionAt?: (end: "angular-start" | "angular-end" |
+    "meridian-start" | "meridian-end") => string;
 }
 
 interface BridgeOptions extends PrecisionOptions {
@@ -518,6 +520,10 @@ nonrigid scaling is an explicit later geometry transform.
 For revolution, the axis and radial direction must be finite
 and nonzero; the radial direction must be perpendicular to
 the axis within angular precision.
+
+New revolution cap faces use `capRegionAt` when supplied,
+otherwise the default `"cap"` surface label. Cap material regions
+do not depend on the meridian side callback's unrelated face indices.
 
 For `revolveProfile`, an open meridian may start or end on the
 rotation axis, producing real pole triangles. A cyclic positive-
@@ -975,6 +981,40 @@ face-corner offsets. Barycentric coordinates provide interpolation
 of the original face-corner UVs. `normal` follows geometric winding
 and never flips merely to face the ray; `frontFacing` reports which
 side was hit.
+
+## Authored face classification
+
+```ts
+interface AuthoredFaceInfo {
+  face: FaceRef;
+  surface: string;
+  smoothingGroup?: string;
+  centroid: THREE.Vector3; // construction-local meters
+  normal: THREE.Vector3;   // geometric, according to authored winding
+}
+
+interface FaceMetadata {
+  surface: string;
+  smoothingGroup?: string;
+}
+
+classifyAuthoredFaces(
+  source: MeshData | GeometryResult,
+  classify: (face: AuthoredFaceInfo) => FaceMetadata
+): GeometryResult;
+```
+
+The classifier sees authored faces (not sorted render triangles)
+and produces their complete semantic surface/smoothing metadata.
+It leaves geometry connectivity, vertex positions and corner UVs
+unchanged, emits a fresh owned result, rebuilds named regions
+from its final face labels, and remaps surviving boundaries and
+patches. A chart remains valid because its geometry and face
+membership did not change. Face normals/centroids are evaluated
+in construction coordinates and any degenerate input is rejected.
+This is the common replacement for GPU-index-group classification
+and enables end-grain, long-grain, cut-face and material-boundary
+selection without a renderer dependency.
 
 ## Rendering and scene attachment
 
