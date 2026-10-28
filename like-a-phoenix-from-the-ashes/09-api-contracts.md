@@ -346,13 +346,21 @@ interface LoftOptions extends PrecisionOptions {
   smoothingGroupAt?: (face: LoftFaceContext) => string | undefined;
 }
 
+interface RevolveFaceContext {
+  meridianInterval: number; // segment between meridian control points
+  angularInterval: number; // rotational segment
+}
+
 interface RevolveOptions extends PrecisionOptions {
   axisOrigin: THREE.Vector3Like;
   axisDirection: THREE.Vector3Like;
   radialDirection: THREE.Vector3Like; // perpendicular; angular zero and seam
   angle: number; // radians, 2π for a complete revolution
   segments: number;
+  /** Close every exposed planar boundary, or reject if impossible. */
   caps?: boolean;
+  surfaceAt?: (face: RevolveFaceContext) => string;
+  smoothingGroupAt?: (face: RevolveFaceContext) => string | undefined;
 }
 
 interface BridgeOptions extends PrecisionOptions {
@@ -487,6 +495,28 @@ its input. A revolution interprets each meridian point as
 zero, the seam, and the orientation of partial revolutions. Positive
 angles follow the right-hand rule around `axisDirection`. Poles use
 true triangles; `caps` controls exposed angular/end boundaries.
+
+For an open-path `sweepSection` and for `loftSections`,
+omitting `ends` means `"cap"`. Constructors automatically close
+only valid planar section boundaries; if a section cannot be capped,
+the caller must choose an open end or supply a separate surface
+patch. Callers that intend to use `tipBoundary` first construct
+an explicitly open end, then connect that boundary to the apex.
+For a closed-path sweep, `ends` is inapplicable and must be
+omitted. Caps already produced by a constructor are never capped
+a second time.
+
+For `revolveProfile`, an open meridian may start or end on the
+rotation axis, producing real pole triangles. A cyclic positive-
+radius meridian wraps through its closing segment. These two
+cases follow the input contour's `closed` flag and never insert
+duplicate coincident pole or seam vertices. For partial angular
+revolutions, `caps: true` closes all genuinely planar exposed
+boundary loops; unsupported/nonplanar boundaries fail instead of
+being bridged arbitrarily. `caps` defaults to false. The revolved
+surface and smoothing assignments are controlled independently per
+meridian and angular interval, retaining the existing lathe's
+outer, inner, rim and floor segments.
 
 The normal case for `loftSections` is equal sample counts across
 corresponding contours, producing quad side strips. Its outer and
