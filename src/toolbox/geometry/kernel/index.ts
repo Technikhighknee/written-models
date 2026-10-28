@@ -35,3 +35,5 @@ export { correspondContours } from "../build/correspondContours";
 export type { ContourCorrespondence } from "../definitions/geometry";
 export { partitionContour } from "../build/partitionContour";
 export type { PlanarCut2, ContourPartition } from "../build/partitionContour";
+export { samplePartition } from "../build/samplePartition";
+export type { SampledContourPartition } from "../build/samplePartition";
