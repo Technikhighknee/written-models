@@ -16,3 +16,5 @@ export {
 export type { GeometryPrecision } from "./precision";
 export { capBoundary, capSectionEnd, tipBoundary } from "../build/finishBoundaries";
 export type { CapOptions, TipOptions } from "../build/finishBoundaries";
+export { bridgeBoundaries } from "../build/bridgeBoundaries";
+export type { BridgeOptions } from "../build/bridgeBoundaries";

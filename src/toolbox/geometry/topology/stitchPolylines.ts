@@ -4,29 +4,35 @@ export interface StitchStationsOptions {
     firstStations: readonly number[];
     secondStations: readonly number[];
     reverse?: boolean;
+    /** Periodic loops reuse their first vertex at station 1. */
+    closed?: boolean;
 }
 
 function stationsFor(
     points: readonly number[],
-    supplied?: readonly number[]
+    supplied: readonly number[] | undefined,
+    closed: boolean
 ): readonly number[] {
-    if (points.length < 2 || points.some(index =>
-        !Number.isInteger(index) || index < 0
-    )) {
+    if (
+        points.length < (closed ? 3 : 2) ||
+        points.some(index => !Number.isInteger(index) || index < 0)
+    ) {
         throw new RangeError("Stitch needs ordered vertex indices");
     }
 
     if (supplied === undefined) {
-        return points.map((_, index) => index / (points.length - 1));
+        const divisor = closed ? points.length : points.length - 1;
+
+        return points.map((_, index) => index / divisor);
     }
 
     if (
         supplied.length !== points.length ||
         supplied[0] !== 0 ||
-        supplied.at(-1) !== 1 ||
+        (!closed && supplied.at(-1) !== 1) ||
         supplied.some((station, index) =>
             !Number.isFinite(station) ||
-            station < 0 || station > 1 ||
+            station < 0 || station > (closed ? 1 - Number.EPSILON : 1) ||
             (index > 0 && station <= supplied[index - 1]!)
         )
     ) {
@@ -51,23 +57,31 @@ export function stitchPolylines(
     }
 
     const explicit = typeof options === "boolean" ? undefined : options;
-    const firstStations = stationsFor(first, explicit?.firstStations);
-    const secondStations = stationsFor(second, explicit?.secondStations);
+    const closed = explicit?.closed ?? false;
+    const firstStations = stationsFor(first, explicit?.firstStations, closed);
+    const secondStations = stationsFor(second, explicit?.secondStations, closed);
     const reverse = typeof options === "boolean"
         ? options : (options.reverse ?? false);
+
+    // In a periodic bridge the seam closes using existing IDs, not
+    // duplicate construction vertices.
+    const from = closed ? [...first, first[0]!] : first;
+    const to = closed ? [...second, second[0]!] : second;
+    const fromStations = closed ? [...firstStations, 1] : firstStations;
+    const toStations = closed ? [...secondStations, 1] : secondStations;
 
     const triangles: TriangleIndices[] = [];
     let a = 0;
     let b = 0;
 
-    while (a < first.length - 1 || b < second.length - 1) {
-        const advanceA = a < first.length - 1 &&
-            (b === second.length - 1 ||
-                firstStations[a + 1]! < secondStations[b + 1]!);
+    while (a < from.length - 1 || b < to.length - 1) {
+        const advanceA = a < from.length - 1 &&
+            (b === to.length - 1 ||
+                fromStations[a + 1]! < toStations[b + 1]!);
 
         const face: TriangleIndices = advanceA
-            ? [first[a]!, second[b]!, first[a + 1]!]
-            : [first[a]!, second[b]!, second[b + 1]!];
+            ? [from[a]!, to[b]!, from[a + 1]!]
+            : [from[a]!, to[b]!, to[b + 1]!];
 
         triangles.push(reverse
             ? [face[0], face[2], face[1]]
