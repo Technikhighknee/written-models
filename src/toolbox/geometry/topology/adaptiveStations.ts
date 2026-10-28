@@ -1,15 +1,6 @@
-/**
- * Choose shared edge-loop stations from the actual shape of a cross-section.
- *
- * Each sample(t) returns corresponding 3D points for ALL strips that must
- * share the same longitudinal divisions. Compare the actual curve to its
- * linear chord at quarter, half, and three-quarter positions: midpoint alone
- * can miss a symmetric bend. Subdivide only where the maximum deviation
- * exceeds the requested world-space tolerance.
- *
- * The same returned stations must be used by neighboring strips. Independently
- * choosing subdivisions per quad would create T-junctions at their borders.
- */
+import { GeometryOperationError } from "../kernel/GeometryResult";
+
+/** A 3D point sampled from a curve or a corresponding section vertex. */
 export interface Position3 {
     readonly x: number;
     readonly y: number;
@@ -17,45 +8,85 @@ export interface Position3 {
 }
 
 export interface AdaptiveStationsOptions {
-    /** Maximum permitted deviation from a segment's linear chord, in meters. */
     maxDeviation: number;
-    /** Maximum recursion depth (at most 2^maxDepth intervals). */
     maxDepth?: number;
-    /** Mandatory shape landmarks; kept exactly while subdividing each span. */
+    /** Mandatory stations in ascending order, strictly between 0 and 1. */
     knots?: readonly number[];
+    /** Reject when maximum subdivision is insufficient. */
+    requireAccuracy?: boolean;
 }
 
-export function adaptiveStations(
+export interface StationSamplingResult {
+    readonly stations: readonly number[];
+    /** Largest sampled chord deviation among final intervals, in meters. */
+    readonly observedMaxDeviation: number;
+    /** Final intervals that exceed tolerance after reaching maxDepth. */
+    readonly saturated: readonly [from: number, to: number][];
+}
+
+function failure(
+    reason: "invalid-input" | "sampling-limit",
+    message: string
+): never {
+    throw new GeometryOperationError(
+        "sampleAdaptiveStations",
+        reason,
+        message
+    );
+}
+
+/**
+ * Sample shared stations for matching strips, retaining all authored knots.
+ * The reported error is measured at quarter, half and three-quarter probes;
+ * it is not an analytic bound on arbitrary input functions.
+ */
+export function sampleAdaptiveStations(
     sample: (t: number) => readonly Position3[],
-    { maxDeviation, maxDepth = 5, knots = [] }: AdaptiveStationsOptions
-): number[] {
+    {
+        maxDeviation,
+        maxDepth = 5,
+        knots = [],
+        requireAccuracy = false
+    }: AdaptiveStationsOptions
+): StationSamplingResult {
     if (
         !Number.isFinite(maxDeviation) || maxDeviation <= 0 ||
         !Number.isInteger(maxDepth) || maxDepth < 0 || maxDepth > 8 ||
-        knots.some((t, i) => !Number.isFinite(t) || t <= 0 || t >= 1 ||
-            (i > 0 && t <= knots[i - 1]!))
+        knots.some((t, i) =>
+            !Number.isFinite(t) ||
+            t <= 0 ||
+            t >= 1 ||
+            (i > 0 && t <= knots[i - 1]!)
+        )
     ) {
-        throw new RangeError("Invalid adaptive station tolerance or depth");
+        failure("invalid-input", "Invalid adaptive station options");
     }
 
     const first = sample(0);
-    const last = sample(1);
-    if (first.length === 0 || first.length !== last.length) {
-        throw new RangeError("Inconsistent adaptive curve samples");
+    if (!Array.isArray(first) || first.length === 0) {
+        failure("invalid-input", "Curve must return nonempty sections");
     }
 
     function check(points: readonly Position3[]): void {
         if (
+            !Array.isArray(points) ||
             points.length !== first.length ||
-            points.some(p => ![p.x, p.y, p.z].every(Number.isFinite))
+            points.some(point =>
+                !point ||
+                ![point.x, point.y, point.z].every(Number.isFinite)
+            )
         ) {
-            throw new RangeError("Invalid adaptive curve sample");
+            failure("invalid-input", "Inconsistent or invalid curve sample");
         }
     }
+
     check(first);
+    const last = sample(1);
     check(last);
 
-    const result = [0];
+    const stations = [0];
+    const saturated: [number, number][] = [];
+    let observedMaxDeviation = 0;
 
     function visit(
         from: number,
@@ -67,13 +98,14 @@ export function adaptiveStations(
         const quarter = sample(from + (to - from) * 0.25);
         const middle = sample((from + to) * 0.5);
         const threeQuarter = sample(from + (to - from) * 0.75);
+
         check(quarter);
         check(middle);
         check(threeQuarter);
 
         let maximum = 0;
 
-        for (let i = 0; i < first.length; i++) {
+        for (let i = 0; i < start.length; i++) {
             const a = start[i]!;
             const b = end[i]!;
 
@@ -85,29 +117,54 @@ export function adaptiveStations(
                 const dx = point.x - (a.x + (b.x - a.x) * fraction);
                 const dy = point.y - (a.y + (b.y - a.y) * fraction);
                 const dz = point.z - (a.z + (b.z - a.z) * fraction);
+
                 maximum = Math.max(maximum, Math.hypot(dx, dy, dz));
             }
         }
 
         if (maximum <= maxDeviation || depth === maxDepth) {
-            result.push(to);
+            observedMaxDeviation = Math.max(observedMaxDeviation, maximum);
+
+            if (maximum > maxDeviation) {
+                saturated.push([from, to]);
+            }
+
+            stations.push(to);
             return;
         }
 
-        const mid = (from + to) * 0.5;
-        visit(from, mid, start, middle, depth + 1);
-        visit(mid, to, middle, end, depth + 1);
+        const middleStation = from + (to - from) * 0.5;
+        visit(from, middleStation, start, middle, depth + 1);
+        visit(middleStation, to, middle, end, depth + 1);
     }
 
     const anchors = [0, ...knots, 1];
+
     for (let i = 0; i < anchors.length - 1; i++) {
         const from = anchors[i]!;
         const to = anchors[i + 1]!;
         const start = i === 0 ? first : sample(from);
         const end = i === anchors.length - 2 ? last : sample(to);
+
         check(start);
         check(end);
         visit(from, to, start, end, 0);
     }
-    return result;
+
+    if (requireAccuracy && saturated.length > 0) {
+        failure(
+            "sampling-limit",
+            `Cannot satisfy deviation ${maxDeviation}m at depth ${maxDepth}`
+        );
+    }
+
+    return { stations, observedMaxDeviation, saturated };
+}
+
+/** Existing consumers retain their station-array API during migration. */
+export function adaptiveStations(
+    sample: (t: number) => readonly Position3[],
+    options: AdaptiveStationsOptions
+): number[] {
+    return [...sampleAdaptiveStations(sample, options).stations];
 }
