@@ -169,10 +169,11 @@ A ray or nearest-point query may use an acceleration structure
 over that triangle representation. A hit is mapped back to its
 authored face and semantic region.
 
-The query normal comes from the actual intersected geometric
-triangle. It is transformed by the inverse-transpose of the
-target's matrix. Surface selection may also consult authored
-face normals or connected planar patches.
+The query normal follows actual triangle winding, transformed to
+world coordinates, and never flips merely to face an incoming ray.
+`frontFacing` reports the ray relationship separately. Surface
+selection can also consult authored face normals or connected
+planar patches.
 
 For a quad, querying uses the same chosen diagonal as the renderer.
 A nonplanar authored quad is evaluated as the two render triangles;
@@ -242,6 +243,10 @@ The beer mug's fill levels remain a volume-based geometry/runtime
 composition: the cavity defines capacity and the persistent
 liquid mesh supplies the morph shapes. GLB carries shapes and
 weights; the engine supplies the controller logic.
+
+The numerical policy, sampling saturation behavior, Float32 export
+limits and exact query result fields are defined in
+[11](11-numerics-and-query-fidelity.md).
 
 The output of these operations is reusable geometry, with its
 construction and surface information available for the next step.

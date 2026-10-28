@@ -65,10 +65,11 @@ Keep this display path. A compiled render mesh is associated with
 the corresponding authored snapshot. Geometry edits create a
 new authored/render pair, avoiding stale control positions.
 
-Genuine quads and triangles remain distinct. The triangle mapping
-records its original authored face, allowing render and spatial
-queries to use the same triangulation of each quad. Texture and
-normal seams do not add false construction edges. Triangle counts
+Genuine quads and triangles remain distinct. The shared tessellation
+records each generated triangle's original authored face and three
+corner offsets. Render and spatial query adapters consume those
+records, including the same quad diagonal. UV and smoothing seams
+do not create new construction edges. Triangle counts
 reflect the final GPU triangles, while the control view retains
 the original construction topology.
 
@@ -107,6 +108,8 @@ Retain the runtime features already present:
 - Skinned meshes preserve skinning.
 - Morph targets preserve their shapes and current weights.
 - GLB carries triangles; Quad View keeps authored construction faces.
+- Quantization to Float32 is checked against authoring tolerances;
+  small features that collapse at the export scale are reported.
 - Atlased and merged export meshes may have different object counts,
   UVs and triangle indices from the authored scene.
 - TypeScript model methods are absent from GLB. The beer mug exports

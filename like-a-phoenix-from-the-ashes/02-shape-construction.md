@@ -67,8 +67,11 @@ provides genuine transition triangles. Shared landmarks are kept at
 the same stations on both sides.
 
 `adaptiveStations()` already chooses subdivisions using actual
-geometric deviation and fixed knots. The chosen stations are returned
-as construction data and reused by every surface that must join.
+geometric deviation and fixed knots. The target API also returns
+measured deviation and saturated intervals when the recursion limit
+was reached. Hard tolerance requests fail explicitly if an interval
+remains over tolerance. Every neighboring surface uses the same
+returned station array.
 
 `bridgeBoundaries` receives correspondence parameters for each
 boundary. When the sample density differs, the bridge advances
@@ -141,7 +144,7 @@ sweepSection({
   path,
   sectionAt: t => sectionProfile(t),
   startingFrame,
-  stations: adaptiveStations(sampleSections, { maxDeviation }),
+  stations: adaptiveStations(sampleSections, { maxDeviation }).stations,
   ends: "cap"
 });
 ```
@@ -152,10 +155,9 @@ section geometry.
 
 A rectangular timber, bent pipe, dagger handle, and branch can
 all use this mechanism. For a periodic path (`closedPath: true`),
-frame transport must account for residual twist around the loop
-and distribute that correction over the samples. The first and
-last sections then share the exact same construction vertices,
-forming a coherent seam.
+frame transport distributes residual twist over the loop. The
+construction stations occupy `[0, 1)` and the wrapping faces reuse
+the first ring's vertex IDs, producing a coherent closed seam.
 
 ### Revolution
 
@@ -200,7 +202,8 @@ and boundary names. For example, a loft exposes `start`, `end`,
 `side`; a shell exposes `outer`, `inner`, and `rim`.
 The caller can rename regions to suit the model. Named boundary
 arrays include every resulting outer rim and each opening around an
-inner wall.
+inner wall. Sampling and precision behavior follow
+[11](11-numerics-and-query-fidelity.md).
 
 Caps, rims, and transitions are real surfaces. Models select their
 materials and choose how individual constructed parts fit together.

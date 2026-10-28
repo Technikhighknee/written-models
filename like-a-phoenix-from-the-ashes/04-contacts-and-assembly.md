@@ -44,10 +44,11 @@ to the desired joint. The current `supportFacePlane()` only checks
 quads and chooses a matching normal above 0.9. The shared query
 also supports triangles and connected coplanar patches.
 
-The resulting *plane* is not necessarily a valid contact. A fitted
-section corner must lie inside the actual support footprint.
-Otherwise the operation selects an explicitly suitable larger patch
-or reports an invalid fit.
+The resulting *plane* is not necessarily a valid contact. The entire
+fitted outline, including its segments, must be contained within
+the chosen support footprint and outside its holes. Checking only
+corners fails on concave patches. The model selects a different
+patch explicitly when the original one cannot contain the section.
 
 ## Fit a member between surfaces
 
@@ -176,8 +177,9 @@ exist in one place.
 
 Fitting a shape is independent from choosing the parent object.
 The geometry can be prepared before the scene hierarchy exists.
-The complete projection, split, and query conventions are specified
-in [10](10-geometry-semantics.md).
+The geometric operation semantics are in [10](10-geometry-semantics.md).
+Numerical tolerances and exact query-normal behavior are defined
+in [11](11-numerics-and-query-fidelity.md).
 
 ## Existing consumers
 

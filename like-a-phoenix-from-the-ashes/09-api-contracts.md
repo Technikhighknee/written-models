@@ -91,6 +91,10 @@ interface GeometryPrecision {
   relativeLength: number; // multiplied by operation extent
   angle: number;          // radians
 }
+
+interface PrecisionOptions {
+  precision?: GeometryPrecision; // default policy in document 11
+}
 ```
 
 Planar profiles have 2D coordinates in their own oriented frame.
@@ -188,14 +192,14 @@ required stations before their faces are built.
 The geometric controls are explicit. All dimensions below are meters.
 
 ```ts
-interface ExtrudeOptions {
+interface ExtrudeOptions extends PrecisionOptions {
   frame: THREE.Matrix4; // local 2D profile → construction space
   depth: number;
   caps?: boolean;
   layers?: readonly { position: number; contourOffset: number }[];
 }
 
-interface LoftOptions {
+interface LoftOptions extends PrecisionOptions {
   ends?: "open" | "cap";
   outerRegion?: string;
   innerRegions?: readonly string[];
@@ -203,7 +207,7 @@ interface LoftOptions {
   endRegion?: string;
 }
 
-interface RevolveOptions {
+interface RevolveOptions extends PrecisionOptions {
   axisOrigin: THREE.Vector3Like;
   axisDirection: THREE.Vector3Like;
   angle: number; // radians, 2π for a complete revolution
@@ -211,14 +215,14 @@ interface RevolveOptions {
   caps?: boolean;
 }
 
-interface BridgeOptions {
+interface BridgeOptions extends PrecisionOptions {
   region?: string;
   reverseWinding?: boolean;
   fromStations: readonly number[];
   toStations: readonly number[];
 }
 
-interface CapOptions {
+interface CapOptions extends PrecisionOptions {
   region: string;
   uvFrame: THREE.Matrix4;
   tessellation: "quad-if-planar" | "triangulate";
@@ -293,18 +297,18 @@ interface Plane3 {
   normal: THREE.Vector3Like;
 }
 
-interface SplitOptions {
+interface SplitOptions extends PrecisionOptions {
   cap: boolean;
   cutRegion: string;
 }
 
-interface RecessOptions {
+interface RecessOptions extends PrecisionOptions {
   depth: number; // positive depth into the selected surface
   wallRegion: string;
   floorRegion: string;
 }
 
-interface ThroughCutOptions {
+interface ThroughCutOptions extends PrecisionOptions {
   wallRegion: string;
   entry: { patch: SurfacePatchRef; contour: Contour2 };
   exit: { patch: SurfacePatchRef; contour: Contour2 };
@@ -325,12 +329,14 @@ interface Ray3 {
 ```ts
 clipContour(
   profile: Profile2,
-  halfPlane: HalfPlane2
+  halfPlane: HalfPlane2,
+  precision?: GeometryPrecision
 ): readonly Profile2[];
 
 partitionContour(
   profile: Profile2,
-  cuts: readonly PlanarCut2[]
+  cuts: readonly PlanarCut2[],
+  precision?: GeometryPrecision
 ): ContourPartition;
 
 splitByPlane(
@@ -359,12 +365,14 @@ cutThrough(
 
 deformVertices(
   source: MeshData | GeometryResult,
-  field: DeformationField
+  field: DeformationField,
+  precision?: GeometryPrecision
 ): GeometryResult;
 
 transformGeometry(
   source: MeshData | GeometryResult,
-  localToDestination: THREE.Matrix4
+  localToDestination: THREE.Matrix4,
+  precision?: GeometryPrecision
 ): GeometryResult;
 
 bevelEdges(
@@ -436,7 +444,7 @@ interface FittedSections {
   endPatch: SurfacePatchHit;
 }
 
-interface BoundaryFitOptions {
+interface BoundaryFitOptions extends PrecisionOptions {
   projection:
     | { kind: "ray"; direction: THREE.Vector3Like; maxDistance: number }
     | { kind: "closest"; maxDistance: number };
@@ -447,13 +455,15 @@ interface BoundaryFitOptions {
 
 raycastSurface(
   target: SurfaceTarget,
-  ray: Ray3
+  ray: Ray3,
+  precision?: GeometryPrecision
 ): SurfaceHit | null;
 
 findFacingPatch(
   target: SurfaceTarget,
   point: THREE.Vector3Like,
-  direction: THREE.Vector3Like
+  direction: THREE.Vector3Like,
+  precision?: GeometryPrecision
 ): SurfacePatchHit;
 
 fitBetweenSurfaces(options: {
@@ -461,6 +471,7 @@ fitBetweenSurfaces(options: {
   end: SurfaceAttachment;
   section: Profile2;
   referenceDirection: THREE.Vector3Like; // fixes rotation around member axis
+  precision?: GeometryPrecision;
 }): FittedSections;
 
 fitBoundary(
@@ -482,12 +493,12 @@ orient the cross-section; a parallel hint is invalid. The fitted
 sections are returned in world coordinates, ready to be converted
 to the model's assembly space with a geometry transform.
 
-Plane-fitting intersects every point of the section's outer and
-inner loops along the member axis. Each contact must lie inside
-the finite selected support patch, excluding holes. The caller
-can explicitly select a larger connected patch when necessary.
-An end extending beyond that patch fails instead of intersecting
-an infinite plane extension.
+Plane-fitting intersects the section's outer and inner loops
+along the member axis. The entire projected outline, including
+all edge segments, must remain inside the finite support footprint
+and outside its holes. This is stricter than testing only vertices:
+an edge joining two interior points can leave a concave patch.
+The caller can explicitly select a different support patch.
 
 Curved-boundary fitting accepts an ordered boundary loop, records
 hits for every station, and returns newly displaced geometry.
@@ -537,6 +548,31 @@ Geometry fitting remains independent of scene parenting.
 `toBufferGeometry` handles triangulation, render vertex splits,
 material groups, and mapping back to authored faces for Quad View.
 
+## Error contract
+
+```ts
+type GeometryFailure =
+  | "invalid-input" | "invalid-topology" | "degenerate-geometry"
+  | "sampling-limit" | "no-intersection" | "outside-contact-patch"
+  | "self-intersection" | "unsupported-topology" | "precision-loss";
+
+interface GeometryOperationError extends Error {
+  operation: string;
+  reason: GeometryFailure;
+  context?: {
+    face?: FaceRef;
+    vertex?: number;
+    station?: number;
+    boundary?: string;
+  };
+}
+```
+
+The supported-domain contract of an operation is either a complete,
+valid result or a typed `GeometryOperationError`. Callers can recover
+by choosing alternative geometry or changing inputs. Tolerances do not
+trigger silent vertex welding or arbitrary retopology.
+
 ## Conventions
 
 - All length values and geometric tolerances use meters.
@@ -555,8 +591,9 @@ material groups, and mapping back to authored faces for Quad View.
 - Position-based welding is explicit. Independent coincident pieces
   have distinct topology unless deliberately joined.
 - Linear tolerances are in meters, angular tolerances in radians and
-  area thresholds in square meters. Operations use a shared
-  `GeometryPrecision` policy and their relevant geometric extent.
+  area thresholds in square meters. Operations use the shared default
+  `GeometryPrecision` or an explicit per-operation override. The
+  relevant extent belongs to the geometry participating in the call.
 - Render/export precision is assessed separately from authoring
   precision after Float32 conversion.
 - Renderer and runtime compiler may be highly optimized; they do

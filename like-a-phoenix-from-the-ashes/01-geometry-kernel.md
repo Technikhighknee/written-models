@@ -86,8 +86,10 @@ surface names even when the mesh is closed. A region may have multiple
 disconnected loops and holes.
 
 The index is a read-only view of a specific geometry result. It can
-be cached with that result and discarded when topology changes.
-No global mutable registry is needed.
+be cached with that result and discarded when geometry changes.
+Results are treated as snapshots: callers do not mutate their vectors,
+faces or UVs in place, and operations produce new owned geometry.
+That rule is necessary for caching geometry queries safely.
 
 ### A boundary is an ordered edge chain
 
@@ -173,7 +175,7 @@ or assigned to the new faces.
 | Connectivity | Connected components and ordered boundary loops |
 | Surface membership | Every face belongs to a named region |
 | Shared interfaces | Same stations on both sides of a joined boundary |
-| Render mapping | Every render vertex maps back to its authored source |
+| Render mapping | Every render vertex maps back to its authored source; each query triangle also identifies its original authored face |
 
 These checks are reusable functions. Constructors and editors enforce
 the invariants needed for their supported inputs. A model can inspect
@@ -199,7 +201,8 @@ The quad count never conceals a degenerate face.
 - `adaptiveStations.ts` and `stitchPolylines.ts` remain the
   foundation for compatible subdivision and boundary bridging.
 
-Construction operates on fresh authored geometry. Query and render
-compilers can use derived triangles and acceleration structures while
-retaining their source-face mapping. The detailed operation rules
-are in [10](10-geometry-semantics.md).
+Construction operates on fresh authored geometry. The query and
+render compilers use one authored-face tessellation and preserve the
+face mapping even when rendering reorders material groups. Details
+are in [10](10-geometry-semantics.md) and the shared numerical policy
+in [11](11-numerics-and-query-fidelity.md).

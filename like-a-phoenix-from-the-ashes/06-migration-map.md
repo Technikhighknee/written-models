@@ -61,7 +61,7 @@ These are the extraction boundaries that the new modules implement.
 | Current behavior | Target operation / data |
 | --- | --- |
 | `AuthoredMeshBuilder` welds any coincident points at 1e-9 resolution | Explicit vertex sharing and optional spatial welding; independent coincident parts retain distinct topology |
-| `profiledBoard` stores stations in a WeakMap keyed by `MeshData` | Section sampler returns station parameters alongside its shapes; a shared panel computes the common station union before constructing parts |
+| `profiledBoard` stores stations in a WeakMap keyed by `MeshData` | Section sampler returns `StationSamplingResult` with stations, measured deviation and saturation data; a shared panel computes the common station union before constructing parts |
 | `seamedPlankExtrusion` returns `BufferGeometry` and keeps longitudinal stations in another WeakMap | Return authored geometry with named regions/boundaries; produce the stations from a general sampler instead of render metadata |
 | `boardPanel` and `circularPlankPanel` independently assemble board-specific pieces | One contour partition returns shared cut boundaries; model recipes choose plank count, gaps, crown and wear |
 | `loftSections` and `loftRings` duplicate side stitching but differ on caps | Shared loft strips; separate cap generation preserves valid four-corner quads and triangulates arbitrary planar outlines |
@@ -82,7 +82,7 @@ when its call sites use the corresponding shared operation.
 | --- | --- |
 | `geometry/mesh/MeshData.ts` | Keep as canonical face/vertex format; add shared result and boundary types |
 | `geometry/mesh/AuthoredMeshBuilder.ts` | Keep as face authoring helper; integrate topology validity checks |
-| `geometry/mesh/toBufferGeometry.ts` | Move to rendering boundary; retain compilation and source association |
+| `geometry/mesh/toBufferGeometry.ts` | Retain rendering compilation; share authored-face tessellation with geometric queries, including face/corner provenance |
 | `geometry/mesh/controlOutline.ts` | Viewer utility backed by shared topology index |
 | `geometry/mesh/surfaceMesh.ts` | Rendering adapter that maps face regions to material palettes |
 | `geometry/topology/adaptiveStations.ts` | Keep; become standard shared geometry sampling |
@@ -172,7 +172,7 @@ operations.
 | `construction/beams.ts` | Generic member geometry or model composition using section and frame tools |
 | `construction/timber.ts` | Wood face/material and grain policy goes with models/materials; geometric fitting remains shared |
 | `construction/fitBoundaryToSurface.ts` | Fitting layer consuming exact boundary references |
-| `spatial/queries/MeshSurfaceQuery.ts` | Query adapter over authored geometry + transform, including generated triangle → authored face mapping |
+| `spatial/queries/MeshSurfaceQuery.ts` | Query adapter over authored geometry + transform; ray hits report actual winding normals, original face/corner mapping and barycentrics |
 | `spatial/queries/bounds.ts` | Keep general bounding queries |
 | `spatial/frames/contactFrame.ts` | Shared frame based on point/normal/tangent |
 | `spatial/frames/frames.ts` | Shared transform frame helpers |
@@ -240,6 +240,8 @@ and its old name contains no remaining independent model behavior.
 
 The final toolbox should be navigable by **geometric capability**:
 section construction, cutting, deformation, contact fitting, and
-surface operations. The exact edge cases and outputs of these
-algorithms are specified in [10](10-geometry-semantics.md). Its useful primitives have names that describe
+surface operations. The geometric output behavior is specified in
+[10](10-geometry-semantics.md). Precision, sampled approximation
+limits and ray-normal rules are in
+[11](11-numerics-and-query-fidelity.md). Its useful primitives have names that describe
 geometry itself.

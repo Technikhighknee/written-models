@@ -28,6 +28,8 @@ and the viewer shows the faces that were actually authored.
       to each new authored snapshot.
 - [ ] **1.8** Exercise a box and loft through construction → topology
       query → deformation → render → Quad View.
+- [ ] **1.9** Apply one documented `GeometryPrecision` policy to
+      kernel operations and expose typed geometric failures.
 
 **Working proof:** The query index recognizes real shared edges and
 ordered boundaries, including disconnected pieces; repeated render
@@ -42,8 +44,9 @@ constructors, each yielding the same kind of geometry result.
       `Contour3`, `Section3` and `Path3` contracts.
 - [ ] **2.2** Consolidate contour cleanup, winding, correspondence,
       landmarks and physically measured sampling.
-- [ ] **2.3** Keep `adaptiveStations` as the common sampler and
-      `stitchPolylines` as the mixed-density bridge.
+- [ ] **2.3** Make adaptive sampling return its achieved station
+      sequence, observed deviation and saturated intervals; use
+      those stations for the mixed-density bridge.
 - [ ] **2.4** Merge the repeated side-loft logic of `loftSections`
       and `loftRings` into a section-loft engine.
 - [ ] **2.5** Make cap creation independent: planar quads when
@@ -112,8 +115,9 @@ support surfaces without object-specific fitting code.
       local-to-world transforms for geometric queries.
 - [ ] **4.2** Query rays, nearest points, face regions, planar
       patches, intersections and boundary loops.
-- [ ] **4.3** Select relevant support patches using proximity and
-      direction; map query triangles to authored face IDs and regions.
+- [ ] **4.3** Share triangle tessellation between render and query;
+      return authored face/corner references, barycentrics and
+      ray-independent geometric normals on surface hits.
 - [ ] **4.4** Fit arbitrary compatible cross-sections between
       finite planar support patches, including holes; fix section
       roll with a world-space reference direction.
@@ -151,6 +155,8 @@ pipeline across construction and editing operations.
       and fill behavior; keep the beer mug's 0..1 fill usable.
 - [ ] **5.8** Verify exported edited geometry and the mug's
       active fill level in GLB/Godot.
+- [ ] **5.9** Detect authoring details that become degenerate
+      after Float32 conversion at export scale.
 
 **Working proof:** A mesh with a new cut surface renders with its
 correct material and UVs. Dynamic fill retains its morph shapes
@@ -212,6 +218,7 @@ with no duplicate special-case algorithm families.
 | Correct contacts | Contact points lie on selected finite patches within geometric tolerance |
 | Valid composition | Build → edit → fit → render uses the same authored data |
 | Reliable export | Materials, UVs, morphs, instances and skins survive their supported export paths |
+| Numerical fidelity | Saturated sampling, contact precision and Float32 precision loss are reported instead of silently accepted |
 | Deterministic geometry | Same input and seed yield the same shape and sample stations |
 
 The visual quality of the model is checked directly; the tests focus
@@ -243,7 +250,9 @@ Some individual model conversions can happen as soon as their
 required shared operations work. Phase 6 records completion of
 the entire collection.
 
-The output contracts and edge-case semantics are defined in
-[09](09-api-contracts.md) and [10](10-geometry-semantics.md).
+The output contracts, operation semantics and numerical behavior
+are defined in [09](09-api-contracts.md),
+[10](10-geometry-semantics.md) and
+[11](11-numerics-and-query-fidelity.md).
 Once those decisions are embodied in the code and documented by
 the permanent toolbox README, this temporary directory can go.

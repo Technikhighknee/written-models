@@ -26,11 +26,12 @@ can use the same geometric vocabulary.
 | 08 | [Composition examples](08-composition-examples.md) | Actual geometric combinations the design must enable |
 | 09 | [API contracts](09-api-contracts.md) | Shared TypeScript contracts used throughout the other files |
 | 10 | [Operation semantics](10-geometry-semantics.md) | Exact behavior of seams, cuts, caps, fitting and topology changes |
+| 11 | [Numerics and query fidelity](11-numerics-and-query-fidelity.md) | Precision policy, sampling limits, triangle provenance and failure behavior |
 
 These documents describe one architecture. **09 defines the API,
-10 defines its geometric behavior, 06 maps existing code to the new
-operations, and 07 is the implementation sequence.** The remaining
-files describe the underlying systems and worked compositions.
+10 defines operation behavior, 11 defines numerical behavior,
+06 maps existing code and 07 gives the implementation sequence.**
+The remaining files explain the geometric constructions.
 
 ## The geometry pipeline
 
@@ -76,9 +77,10 @@ operations and reusable query methods.
 - **The same construction path accepts different profiles.**
   Rectangular members, hollow sections, tapered grips and curved
   forms are compositions of general operations.
-- **Contacts use real surface geometry and explicit transforms.**
-  Plane intersection includes the support footprint; curved fitting
-  uses actual sampled target surfaces.
+- **Contacts use real surfaces and explicit transforms.**
+  Plane fitting checks entire outlines against finite support patches;
+  curved fitting uses actual sampled target surfaces and consistent
+  face normals.
 - **Geometry topology and rendering are different representations.**
   Quads remain authored quads. GPU and GLB meshes may be triangulated,
   grouped and optimized independently.
@@ -89,9 +91,10 @@ operations and reusable query methods.
   Booleans can produce real triangles. Opening a surface, creating
   a recess and cutting through a solid are distinct operations.
 
-Meters, intentional topological structure, physical UV scale,
-the existing asset quality, Quad View and runtime features remain
-part of the design.
+Meters, intentional topology, physical UV scale, predictable
+precision and failure behavior, Quad View and current runtime
+features remain part of the design. Authoring precision and exported
+Float32 precision have separate validity checks.
 
 ## How it becomes real
 
