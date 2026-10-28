@@ -119,10 +119,14 @@ unexplained changes to materials/UVs.
 **Result:** The table, barrel heads and chair seat can be made from
 independent pieces with precise adjoining geometry.
 
-- [ ] **3.1** Partition a simple convex source outline with
+- [x] **3.1** Partition a simple convex source outline with
       noncrossing boundary-to-boundary polyline cuts and shared stations.
       Resulting pieces may be concave. Reserve arbitrary concave-input
       division, holes, crossing cuts and disconnected results for 6.1.
+      `partitionContour` returns independently usable Profile2 parts,
+      canonical cut coordinates and stations, and transfers interface
+      ownership after subsequent cuts. Commit: `c37c824`.
+      Verified against a circular-head outline and extruded pieces.
 - [ ] **3.2** Return `SampledProfile2` with exact outer/hole
       boundary stations; all consumers of an interface use the same
       samples.

@@ -43,6 +43,23 @@ constructing the output faces. Expand that vocabulary:
 | `splitBoundary(boundary, stations)` | One sampled boundary for every adjacent piece |
 | `resampleBoundary(boundary, landmarks, tolerance)` | Adaptive samples preserving key points |
 
+`partitionContour(profile, cuts)` is the supported convex-input
+partition operation. Each `PlanarCut2` gives a named boundary-to-boundary
+polyline; its intermediate points become shared construction stations.
+Each resulting `Profile2` has an independent outer contour, while every
+`ContourPartition.interfaces` entry retains the canonical polyline,
+normalized physical-length stations, and both current owning part indices.
+If a later cut divides a piece, earlier interface ownership follows the
+piece that actually retains that interface, rather than a stale array index.
+
+The first partitioner rejects intersecting or perimeter-touching cuts,
+holes in the input, nonconvex source outlines and ambiguous topology.
+A concave **output** is valid and can be independently extruded through
+`extrudeContour`. Exact source interface coordinates are shared,
+without hidden resampling or vertex welding between independent parts.
+Converting these contours to coordinated `SampledProfile2` inputs is
+the next step (3.2); curved shared surface construction follows in 3.3.
+
 A concave clipping result may have multiple components and holes.
 The `Profile2` result contains the boundary and any hole contours;
 `clipContour()` returns an array of profiles. The convex fast path
