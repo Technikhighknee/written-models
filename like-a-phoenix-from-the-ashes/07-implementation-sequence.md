@@ -61,11 +61,11 @@ section, path and face-construction operations.
       and `stitchPolylines`. Respect sample limitations and return
       stations for all interfaces.
       Commits: `75af415`, `0847f81`, `5c70ba2`.
-- [ ] **2.3** Unify `loftSections` and `loftRings` side construction,
+- [x] **2.3** Unify `loftSections` and `loftRings` side construction,
       with real quads, inner loops, precise surface regions and
       smoothing callbacks by contour edge and interval.
-      Shared outer quad strips: `f6abf25`. Inner loops and unified
-      `Section3` handling remain.
+      Shared strips: `f6abf25`. Multi-loop `Section3` walls:
+      `c4a6207`. End caps and tips follow in 2.4.
 - [ ] **2.4** Implement caps and explicit triangle-fan tips; retain
       complex cap triangulation with precise source boundaries.
 - [ ] **2.5** Implement `bridgeBoundaries` with unequal densities,
