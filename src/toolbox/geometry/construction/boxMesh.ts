@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { MeshData, QuadFace } from "../mesh/MeshData";
+import { AuthoredMeshBuilder } from "../mesh/AuthoredMeshBuilder";
 
 export interface BoxMeshOptions {
     width: number;
@@ -87,7 +88,28 @@ export function boxMesh({
         }
     }
 
-    return { vertices, quads };
+    // UV and material seams remain face-local, while adjacent sides
+    // refer to the same construction vertices.
+    const smallestStep = Math.min(
+        width / widthSegments,
+        height / heightSegments,
+        depth / depthSegments
+    );
+    const builder = new AuthoredMeshBuilder({
+        weld: "position",
+        resolution: Math.min(1e-9, smallestStep / 8)
+    });
+
+    for (const face of quads) {
+        builder.addFace(
+            face.corners.map(index => vertices[index]!),
+            face.uvs,
+            face.surface,
+            face.smoothingGroup
+        );
+    }
+
+    return builder.build();
 }
 
 export const BOX_SURFACES = {

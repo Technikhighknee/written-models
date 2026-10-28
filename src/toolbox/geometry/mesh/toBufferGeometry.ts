@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { MeshData } from "./MeshData";
+import type { GeometryResult } from "../kernel/GeometryResult";
 import {
     triangulateAuthoredFaces,
     type AuthoredTriangle
@@ -14,6 +15,7 @@ function authoredFace(mesh: MeshData, triangle: AuthoredTriangle): Face {
 }
 
 const controlMeshes = new WeakMap<THREE.BufferGeometry, MeshData>();
+const controlResults = new WeakMap<THREE.BufferGeometry, GeometryResult>();
 const controlVertexIds = new WeakMap<THREE.BufferGeometry, readonly number[]>();
 const renderTriangleSources = new WeakMap<
     THREE.BufferGeometry, readonly AuthoredTriangle[]
@@ -39,15 +41,23 @@ export function getControlMesh(
     return controlMeshes.get(geometry);
 }
 
+/** Retrieves the exact authored result used to compile this render geometry. */
+export function getControlResult(
+    geometry: THREE.BufferGeometry
+): GeometryResult | undefined {
+    return controlResults.get(geometry);
+}
+
 /**
  * Render authored quads and genuine triangles with the same UV, material
  * and smoothing rules. A triangle from a mismatched loft cap remains a
  * triangle in the control mesh; no fake degenerates are introduced.
  */
 export function toBufferGeometry(
-    mesh: MeshData,
+    source: MeshData | GeometryResult,
     materialBySurface: Readonly<Record<string, number>>
 ): THREE.BufferGeometry {
+    const mesh = "geometry" in source ? source.geometry : source;
     const byMaterial = new Map<number, AuthoredTriangle[]>();
     const smoothNormals = new Map<string, Map<number, THREE.Vector3>>();
 
@@ -213,6 +223,9 @@ export function toBufferGeometry(
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     controlMeshes.set(geometry, mesh);
+    if ("geometry" in source) {
+        controlResults.set(geometry, source);
+    }
     controlVertexIds.set(geometry, sourceVertexIds);
     renderTriangleSources.set(geometry, triangleSources);
     return geometry;

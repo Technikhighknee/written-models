@@ -45,7 +45,7 @@ export function surfaceMesh({
     }
 
     const result = new THREE.Mesh(
-        toBufferGeometry(authored, indices),
+        toBufferGeometry(geometry, indices),
         palette.length === 1 ? palette[0]! : palette
     );
     result.name = name;
