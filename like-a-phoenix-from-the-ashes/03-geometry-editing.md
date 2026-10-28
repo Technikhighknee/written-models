@@ -11,18 +11,15 @@ once and used by every adjoining piece.
 
 ```ts
 interface PartitionResult {
-  parts: GeometryResult[];
-  interfaces: readonly {
-    left: BoundaryRef;
-    right: BoundaryRef;
-    shared: SharedBoundary;
-  }[];
+  parts: readonly GeometryResult[];
+  interfaces: readonly PartitionInterface[];
 }
 ```
 
-A shared boundary contains a curve, its sample parameters and its
-actual points. The shared API calls this `SampledBoundary`. Neighboring pieces use those very same stations.
-Clearance or gap width is applied to each side as a deliberate offset.
+`PartitionInterface` links both output pieces to the same
+`SampledBoundary`: the sampled geometry and its parameters.
+Neighboring pieces reuse those stations. A gap or clearance is
+an intentional offset from this common source.
 
 This is how irregular tabletop planks, barrel heads, segmented metal
 plates, and stone blocks can share one partitioning system.
@@ -39,7 +36,7 @@ constructing the output faces. Expand that vocabulary:
 | Operation | Output |
 | --- | --- |
 | `clipContour(contour, halfPlane)` | Kept regions and cut segments |
-| `partitionContour(contour, cuts)` | Contour pieces with common cut boundaries |
+| `partitionContour(profile, cuts)` | Profile pieces with common cut boundaries |
 | `offsetContour(contour, distanceField)` | Insets, gap offsets, expanded contours |
 | `splitBoundary(boundary, stations)` | One sampled boundary for every adjacent piece |
 | `resampleBoundary(boundary, landmarks, tolerance)` | Adaptive samples preserving key points |

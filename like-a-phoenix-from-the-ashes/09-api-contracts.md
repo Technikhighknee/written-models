@@ -290,15 +290,21 @@ interface SurfaceHit {
   distance: number;
 }
 
+interface SurfacePatchHit {
+  faces: readonly FaceRef[];
+  contact: SurfaceHit;
+  frame: THREE.Matrix4;
+}
+
 interface SurfaceAttachment {
   target: SurfaceTarget;
   near: THREE.Vector3Like; // world coordinates
 }
 
 interface FittedSections {
-  sections: readonly Section3[];
-  startContact: SurfaceHit;
-  endContact: SurfaceHit;
+  sections: readonly [Section3, Section3];
+  startPatch: SurfacePatchHit;
+  endPatch: SurfacePatchHit;
 }
 
 interface BoundaryFitOptions {
@@ -337,11 +343,9 @@ fitBoundary(
 ```
 
 `SurfaceAttachment` contains a target and a near-contact point in
-world coordinates. `SurfacePatchHit` identifies actual faces, surface
-points, normal and local frame. `FittedSections` returns placed 3D
-start/end sections, alongside the selected contact locations.
-The full fitting result can include the selected patch faces so the
-caller can inspect and reuse the actual footprint.
+world coordinates. `SurfacePatchHit` identifies the actual support
+faces, closest chosen contact, and local frame. `FittedSections`
+returns two placed 3D sections and their selected support patches.
 
 Plane-fitting intersects the member's individual section corners
 along its axis and checks that their actual contact lies inside the
@@ -351,8 +355,9 @@ returns an explicit failure.
 
 Curved-boundary fitting accepts an ordered boundary loop, records
 hits for every station, and returns newly displaced geometry.
-It can request refinement before projection. It does not weld
-independent solids together.
+It can request refinement before projection. It leaves independent
+solids topologically independent. Clearance is a signed offset
+along the target hit normal, measured in world meters.
 
 Queries operate on authored geometry plus a transform. A triangle
 acceleration structure or render-backed ray implementation may be

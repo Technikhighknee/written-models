@@ -64,7 +64,7 @@ const fitted = fitBetweenSurfaces({
   start: { target: firstSupport, near: firstJoint },
   end:   { target: secondSupport, near: secondJoint },
   section,
-  frame
+  startingFrame
 });
 
 const member = loftSections(fitted.sections);
@@ -74,10 +74,10 @@ Each section corner intersects the support plane *along the member
 axis*, producing a properly slanted end across the whole profile.
 
 The return value identifies selected surfaces, contact normals,
-endpoint frames and actual section loops. A hollow member fits the
-outer and inner contours while retaining their correspondence. This replaces the
-wood-specific `TimberContactNormals` dependency currently imported
-by `fitBetweenSupports()`.
+endpoint frames and actual section loops. A hollow member fits the outer and inner contours while retaining
+their correspondence. This removes the wood-specific
+`TimberContactNormals` dependency currently imported by
+`fitBetweenSupports()`.
 
 ## Fit a boundary to a curved surface
 
@@ -91,9 +91,14 @@ or embedding depth, falloff, and the source transform.
 ```ts
 fitBoundary(
   handle,
-  handle.boundaries.start,
+  handle.boundaries.start[0]!,
   mugBody,
-  { projection: "ray", direction, falloff }
+  {
+    projection: { kind: "ray", direction, maxDistance },
+    sourceLocalToWorld: handleTransform,
+    clearance: 0,
+    falloffRings: 2
+  }
 );
 ```
 
@@ -137,7 +142,10 @@ childInParent = parentFrame × matingTransform × inverse(childFrame)
 with opposite normals.
 
 ```ts
-attachAtFrames(parent, child, parentFrame, childFrame, { mate: true });
+attachAtFrames({
+  parent, child, parentFrame, childFrame,
+  matingTransform: opposingContactRotation
+});
 ```
 
 Frames have explicit local/parent coordinate conventions. Normals

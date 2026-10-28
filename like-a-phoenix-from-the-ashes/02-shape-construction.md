@@ -133,9 +133,9 @@ object-specific constructor:
 sweepSection({
   path,
   sectionAt: t => sectionProfile(t),
-  frames: "parallel-transport",
-  stations: adaptiveStations(...),
-  endCaps: "flat"
+  startingFrame,
+  stations: adaptiveStations(sampleSections, { maxDeviation }),
+  ends: "cap"
 });
 ```
 
