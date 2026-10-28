@@ -26,6 +26,18 @@ export interface SampledProfile2 {
     holes?: readonly SampledContour2[];
 }
 
+export interface ContourCorrespondence {
+    stations: readonly number[];
+    first: Contour3;
+    second: Contour3;
+    /** Landmark indices refer to the returned, jointly sampled contours. */
+    landmarks: readonly {
+        id: string;
+        first: number;
+        second: number;
+    }[];
+}
+
 export interface Section3 {
     outer: Contour3;
     inner?: readonly Contour3[];

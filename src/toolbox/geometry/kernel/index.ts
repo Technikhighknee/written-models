@@ -29,3 +29,7 @@ export { extrudeContour } from "../build/extrudeContour";
 export type { ExtrudeOptions, ExtrudeLayer } from "../build/extrudeContour";
 export { samplePolarStripSections } from "../build/samplePolarStripSections";
 export type { PolarStripOptions } from "../build/samplePolarStripSections";
+export { sampleProfile } from "../build/sampleProfile";
+export type { ProfileStations } from "../build/sampleProfile";
+export { correspondContours } from "../build/correspondContours";
+export type { ContourCorrespondence } from "../definitions/geometry";
