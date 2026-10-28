@@ -1,217 +1,185 @@
-# written-models: Toolbox Target Architecture
+# written-models — The Toolbox We Actually Want
 
-> **Scope:** The toolbox, its API, and how models consume it.
-> **Not a goal:** Replacing authored models with a generic object-recipe generator.
+**Build geometry. Not object generators.**
 
-## 1. Purpose
+A chair, a dagger, a barrel, a pipe, a tree branch, a hand: they should all be
+built from the same growing set of geometric powers.
 
-`written-models` should be a toolbox for **geometry and geometric operations**,
-not an ever-growing collection of increasingly powerful object generators.
+Today, too much of our cleverness is trapped inside functions named after
+things. We can build a beautiful board, then discover we need half its tricks
+again for something that isn't a board.
 
-New objects should result from **composing existing, object-independent
-capabilities**. When a fundamentally new geometric capability is necessary,
-implement it so that it remains useful independently of the model that
-motivated it.
+That's backwards.
 
-**Question for every toolbox API:**
+**Every model should make the toolbox more powerful for the next model —
+especially when the next model is nothing like it.**
 
-> If the original model disappeared, what general geometric capability
-> would remain, and which *different kinds of geometry* could use it?
+## The idea
 
-"It might also be useful for another board" is not sufficient.
+The toolbox knows **geometry**. Models know **what they're making**.
 
-### Non-negotiable principles
+A board is a shape, a path, a thickness, a few edges and surface details.
+A pipe is a different shape and perhaps a hollow cross-section, traveling
+along a path. A dagger grip, chair leg, barrel stave, or finger may call for
+different profiles and deformations.
 
-- **No object-specific geometry algorithms in the toolbox.** A board, barrel
-  stave, chair, or metal pipe is a model-design decision, not a fundamental
-  geometric operation.
-- **Operations before objects.** An operation describes *what happens to
-  geometry*, not *which object is being made*.
-- **Material independence.** Wood grain, metal, ceramics, etc. must not be
-  prerequisites for extrusion, cutting, fitting, or deformation.
-- **Topology is construction data.** Original quads remain genuine quads;
-  necessary triangles remain genuine triangles. No recovered fake quads
-  and no viewer hacks.
-- **Solve geometry with geometry.** Contacts, openings, wall thickness,
-  and joints exist as real faces and edges.
-- **Preserve artistic authorship.** Generic tools must not dictate the
-  shape, proportions, or design choices of a model.
-- **No fake generality.** Avoid a universal function with endless options
-  and a collection of special-case algorithms hidden inside.
-- **No duplicated algorithms under new object names.** Find and compose
-  existing capabilities first; extend them at the appropriate layer.
+They shouldn't need separate implementations of how to loft, bend, cut,
+partition, fit, or connect geometry.
 
-## 2. What belongs in the toolbox
+The toolbox provides those operations. The model composes them.
 
-| Toolbox capabilities | Model-specific decisions, outside the toolbox |
+No more hiding a generally useful algorithm inside `boardPanel()`,
+`cutBoard()`, or the next object-specific helper. The names aren't the
+real problem; **the trapped capabilities are**.
+
+## What we want to be able to do
+
+### Create any shape
+
+- Define points, curves, paths, contours, profiles, cross-sections, surfaces.
+- Build solids and shells with extrusion, lofting, sweeping, revolving, and
+  surface construction.
+- Vary a shape along its length: taper, widen, twist, curve, offset,
+  transition between completely different cross-sections.
+- Work with both hollow and solid geometry, planar and curved surfaces,
+  regular and irregular forms.
+
+A rectangular prism, a hollow tube, a curved plank and an organic limb
+are different uses of geometric operations, not four separate toolkits.
+
+### Work on geometry
+
+- Cut, split, partition, trim, remove material, open holes and cavities.
+- Add thickness, bevels, fillets, grooves, recesses and transitions.
+- Bend, warp, twist, taper, displace and reshape existing geometry.
+- Refine geometry where detail matters while keeping control of topology.
+- Carry useful information — faces, boundaries, UVs and surface regions —
+  through these operations.
+
+The same operation should work on wildly different shapes wherever its
+geometric inputs make sense.
+
+### Make pieces fit
+
+- Ask geometry where its surfaces, edges, intersections and contact points are.
+- Fit one surface or boundary to another, including slanted and curved targets.
+- Cut the ends of a member to meet its actual supports, not guessed planes.
+- Place, orient, connect and align pieces in arbitrary coordinate frames.
+- Partition shapes into separate pieces that share *exactly matching*
+  boundaries, even when those boundaries are irregular.
+
+A chair stretcher, a metal brace and a bone joint should draw from the
+same contact and fitting capabilities.
+
+### Keep full artistic control
+
+- Every contour, proportion, imperfection and detail can be deliberately
+  authored.
+- Variation is a geometric input, not an excuse for random-looking results.
+- We can create pristine, damaged, asymmetric, worn, precise or organic shapes
+  with the same tools.
+- No forced aesthetic. No one-size-fits-all mesh recipe.
+
+### Own the topology
+
+- Author actual quads and genuine triangles. Quad View shows the real thing.
+- Keep control of edge loops, surface regions, smoothing and UV coordinates.
+- Preserve construction geometry through operations instead of reconstructing
+  it from render triangles later.
+- Convert to Three.js meshes and GLB/Godot output at the rendering boundary.
+
+Rendering is what we *do with* geometry. It isn't how we *define* geometry.
+
+### Combine everything
+
+This is the real payoff.
+
+A profile built by one tool can be swept by another, deformed by a third,
+cut by a fourth, and fitted to another part by a fifth.
+
+The resulting geometry is still editable, still carries its surfaces and
+topology, and still works with the next tool.
+
+**Capabilities compound.** Building a new object should get easier because
+previous objects expanded what the toolbox can do.
+
+## What that means for the existing code
+
+The toolbox already has real building blocks. We don't need to throw away
+working geometry; we need to free its capabilities from the objects that
+happen to contain them.
+
+Some obvious places to dig:
+
+| Existing code | The capability we're after |
 | --- | --- |
-| Contours, sections, paths, frames, coordinate transforms | "This oak board is 4 cm thick and worn here" |
-| Extrusion, lofting, sweeping, revolving, surface construction | "These six staves form a barrel" |
-| Splitting, partitioning, cutting, hollowing, combining geometry | "This seat consists of three planks" |
-| Thickness, chamfers, roundovers, profiles, deformation | "The dagger grip has this section and curvature" |
-| Finding contact surfaces, fitting endpoints and boundaries | "This strut connects these two chair legs" |
-| Topology, UV assignment, surface regions, validation | Specific material choices, palettes, and aging recipes |
-| Generic layouts, distribution, variation, positioning | The design and assembly of a particular object |
+| `straightBoard`, `profiledBoard`, `loftBoard` | Arbitrary cross-sections, changing profiles, lofting, edge shaping |
+| `boardPanel`, `circularPlankPanel` | Partitioning shapes into cooperating pieces with shared boundaries |
+| `cutBoard`, `seamedPlankExtrusion` | Cuts, openings, recesses, surface transitions, controllable seams |
+| `radialStaves`, `radialStripLayout`, `bandAroundProfile` | Radial distribution, curved strips, offsets and surface-following geometry |
+| `timber`, `beams`, `beamBetweenPlanes` | Members with arbitrary sections and fitted ends |
+| `supportFacePlane`, `fitBetweenSupports`, `fitBoundaryToSurface` | Surface queries and geometric contact/fitting |
+| `turnedVessel`, `profiledCavity`, `fillableVolume` | Shells, enclosed volumes, interior profiles, changing geometry |
+| `attachByAnchors`, `attachByFrames` | A common way to position and connect geometry |
 
-**Explicitly:** `boardPanel()` is **not** a fundamental geometric capability.
-The general operations it contains must be usable independently.
+This table is a starting point, not an exhaustive list. Every toolbox file
+deserves the same question:
 
-An object-specific adapter outside the toolbox does **not** justify hiding
-general geometric algorithms inside that adapter. Its job is to compose
-existing tools and make model-specific decisions.
+**What can this code do that would still be useful if we deleted the model
+it was originally written for?**
 
-Renaming an operation to something generic does not make it generic:
-`cutBoard()` still has a problem if it fundamentally supports only
-board-shaped geometry.
+Keep that capability. Extract it if necessary. Compose it with the others.
+Leave the decisions about *what object to make* in the models.
 
-## 3. Desired capabilities (conceptual layers, NOT a directory plan)
+## What success looks like
 
-This is a dependency model, **not yet a decision about folders, files,
-or concrete APIs**.
+Imagine starting a new model we've never attempted before.
 
-1. **Geometry data and topology:** Vertices, edges/boundaries, genuine faces
-   (quads and triangles), surface regions, UV/smoothing semantics, and
-   controlled conversion to render geometry.
-2. **Geometric definitions:** Points, directions, planes, frames, profiles,
-   open and closed contours, paths, cross-sections, interpolated fields,
-   and units.
-3. **General construction operations:** Extrude, loft, sweep, revolve,
-   connect contours/sections with surfaces, build shells and wall thickness.
-   Input geometry defines the result, not the words "board", "pipe", or "grip".
-4. **General modification operations:** Split/partition, cut/open,
-   chamfer/round, deform, edit edge/surface contours, sample and refine
-   geometry where necessary. Existing topology and surface information
-   are preserved or transformed explicitly.
-5. **Relationships and contact:** Query geometry and its faces/regions,
-   fit geometry against actual surfaces, cut member ends between contacts,
-   adapt boundaries to targets, position and orient parts.
-6. **Output and presentation:** Assign surface regions, materials, and UVs;
-   derive meshes and exported geometry without losing the construction
-   topology they originate from.
+Instead of searching for a similar object generator, we pick the geometric
+operations we need. They work together. If something is missing, we add one
+new capability — and the entire toolbox becomes stronger.
 
-**No mandate for one implementation per verb:** Fitting a planar joint
-and fitting to a curved surface can require different algorithms.
-Their shared pieces and interfaces should still be consistent.
-Not every operation has to support every topology; prerequisites and
-limits must be explicit.
+We should be able to go from a tavern table to a wrought-iron hinge to an
+anatomically convincing character **without starting our modeling vocabulary
+over each time**.
 
-## 4. Geometry and API contracts
+The existing models still need to look good. Real joins stay real, authored
+quads stay quads, and GLB export still works.
 
-Exact types and signatures are deliberately left open.
+But preserving the current models is the floor, not the ambition.
 
-- **Construction data first:** Core operations should, when practical,
-  work on authored geometry without requiring render meshes or materials.
-- **Predictable inputs and outputs:** Document coordinate space,
-  orientation, winding, open/closed contours, normals, UV units, and
-  material regions.
-- **No silent corruption:** Reject invalid or unsupported inputs rather
-  than generating degenerate geometry or covering errors with overlaps.
-- **Composable results:** A suitable operation can consume another
-  operation's result without bespoke adapter code.
-- **Preserve information:** Do not discard quads/triangles, boundary
-  identity, surface regions, or UVs without an explicit reason.
-- **Independent of Three.js rendering where appropriate:** Three.js
-  vector types may be convenient, but geometry algorithms should not
-  depend on material instances, the viewer, or GLB.
-- **Quality is not a passing test:** Correct geometry, useful topology,
-  real contacts, and a convincing visible result all matter.
+**The ambition is a toolbox that can grow toward almost anything we can
+imagine modeling.**
 
-## 5. Existing code to investigate
+## Build checklist
 
-The following are **investigation candidates**, not decisions to remove,
-relocate, or replace anything. Existing APIs get no special protection
-merely because they already exist.
+Mark `[x]` when the work is actually in the repository and working.
+Add the commit beside completed items. Split tasks whenever useful.
 
-| Candidates | Question |
-| --- | --- |
-| `MeshData`, `AuthoredMeshBuilder`, `toBufferGeometry`, `surfaceMesh` | How does authored geometry remain the source of truth? Where is the rendering boundary? |
-| `loftRings`, `loftSections`, `loftBoard`, `loftAxialProfile` | What loft mechanisms are common? Which differences are topologically necessary, and which are object-specific input formats? |
-| `sweepSection`, `extrude`, `revolveShell`, `latheMeridian` | Which section/contour/path concepts are shared? Where is render geometry produced prematurely? |
-| `straightBoard`, `profiledBoard`, `boardPanel`, `cutBoard` | Which general profile, partition, cut, opening, seam, and variation capabilities are hidden inside? |
-| `circularPlankPanel`, `seamedPlankExtrusion` | What general partitioning, neighboring-boundary, seam, wear, and adaptive-topology capabilities are bundled together? |
-| `radialStripLayout`, `radialStaves`, `bandAroundProfile` | What is general radial layout/surface construction, and what is a stave/band recipe? Why does a layout return `BoardSection`? |
-| `beams`, `timber`, `sectionsBetweenPlanes`, `beamBetweenPlanes` | How can arbitrary profiles be fitted to real contacts without assuming wood or rectangular beams? |
-| `supportFacePlane`, `fitBetweenSupports`, `fitBoundaryToSurface`, `MeshSurfaceQuery`, `contactFrame` | Which generic query/contact/fitting primitives are distinct? How should planar and curved targets work together? |
-| `attachByAnchors`, `attachByFrames` | Which transform and cycle-protection logic is duplicated? |
-| `assignMaterialsByNormal`, `classifyExtrudedSurfaces`, `surfaceMesh` | How should surface regions and material assignment work before/after render conversion? |
-| `turnedVessel`, `profiledCavity`, `fillableVolume` | What is generic shape construction, volume computation, and deformation? What is container/liquid-fill application logic? |
-| `models/components/oakSeating.ts`, `trestleSupport.ts`, `table.ts`, `tavernChair.ts` | Do model helpers hide reusable geometric algorithms that belong at a lower level? |
+- [ ] Inventory every toolbox capability and identify algorithms trapped
+      inside object-specific functions.
+- [ ] Give construction geometry a consistent, composable representation
+      for faces, edges, boundaries, surfaces and topology.
+- [ ] Consolidate the core operations for contours, profiles, sections,
+      paths, lofts, sweeps, extrusion and rotation.
+- [ ] Extract general cutting, splitting, partitioning, holes, grooves,
+      surface details and shape-editing operations.
+- [ ] Make deformation and controlled variation work across different
+      kinds of geometry.
+- [ ] Make surface queries, contacts, fitting and assembly fully reusable.
+- [ ] Make repeated pieces share boundaries and subdivisions accurately,
+      without a board- or stave-specific implementation.
+- [ ] Keep UVs, materials, authored quads and export compatible with
+      composed geometry.
+- [ ] Rebuild existing models from the new capabilities; move any remaining
+      object recipes out of the toolbox.
+- [ ] Prove reuse with **different kinds of geometry** — not three versions
+      of another plank.
+- [ ] Remove superseded specialized algorithms and update the toolbox
+      capability guide.
 
-**Dependency warning:** `geometry/construction` already imports from
-`shapes/operations`, while `shapes/operations/revolveShell` imports
-`geometry/construction/latheMeridian`. The desired dependency direction
-must be explicitly defined.
+---
 
-## 6. Acceptance criteria
+**A toolbox isn't great because it already contains a tool for everything.**
 
-Judge the toolbox by what can be built with it, **not** by file,
-function, or class counts.
-
-- The same fundamental operation can work on a **wooden board**,
-  a **metal pipe**, and a **different profile-based object**, whenever
-  the geometric prerequisites apply.
-- Fitting a member between surfaces is not a chair, table, or wood
-  operation; at least two different models use the same fitting mechanism
-  without reimplementing it locally.
-- Cutting, seams, partitioning, and cross-section changes are not
-  restricted to a particular object category.
-- A new type of model does not require an existing geometric operation
-  to be developed a second time.
-- Existing models retain their intended shape and usable results:
-  table, barrel, plank, sandpaper, dagger, beer mug, bench, and chair
-  must not silently break or require render hacks.
-- Quad View and GLB/Godot export retain the necessary construction
-  and material information.
-- An unfamiliar future model can be approached through an
-  **organized capability catalog**, without searching by similar
-  object names first.
-
-**Countercheck:** If a supposedly generic operation fundamentally requires
-"board", "barrel", "timber", or a particular material, reconsider
-the abstraction.
-
-## 7. Open design decisions
-
-Decide these as part of refining the target architecture.
-
-- [ ] Decide the conceptual layers and direction of dependencies.
-- [ ] Decide whether authored geometry, render geometry, and finished
-      objects need shared or deliberately different result types.
-- [ ] Define boundaries of general operations for arbitrary profiles,
-      closed solids, hollow solids, and curved surfaces.
-- [ ] Define rules for surface regions, boundaries, material assignments,
-      and UV preservation.
-- [ ] Decide how existing specialized constructors will be handled:
-      extract reusable geometric algorithms, then relocate or dissolve
-      the object recipes.
-- [ ] Decide migration and quality-checking rules so existing models
-      remain good without writing tests merely for the sake of tests.
- ## 8. Implementation checklist
-
-> Check off completed work only after integration and verification.
-> Include the relevant commit for each completed item. Add tasks as needed.
-
-- [ ] **0. Baseline:** Inventory existing capabilities, consumers,
-      API boundaries, and visible model results.
-- [ ] **1. Target architecture:** Establish dependency rules and API
-      contracts, and make them discoverable in the repository.
-- [ ] **2. Geometry core:** Consolidate shared data, contours, sections,
-      faces, boundaries, and operation results where the inventory
-      demonstrates a genuine need.
-- [ ] **3. Construction:** Reduce object-specific extrude/loft/sweep/revolve
-      variants to reusable geometric operations.
-- [ ] **4. Modification:** Separate general partitioning, seam/cut geometry,
-      profile editing, and deformation from board/stave/vessel code.
-- [ ] **5. Contact and assembly:** Provide composable, material- and
-      object-independent queries, contact surfaces, boundary fitting,
-      and member-end trimming.
-- [ ] **6. Rendering boundary:** Connect authored topology, UVs, surface
-      regions, materials, and export consistently.
-- [ ] **7. Model migration:** Verify all eight models use the new toolbox
-      composition; eliminate hidden duplicated algorithms in their recipes.
-- [ ] **8. Cross-object checks:** Build and modify different geometries
-      with the same capabilities; inspect Quad View and export. Automate
-      only durable invariants worth maintaining.
-- [ ] **9. Cleanup:** Remove obsolete interfaces, update the capability
-      catalog, and record completed work with concrete commit hashes.
-
+**It's great because each new tool expands what everything else can do.**
