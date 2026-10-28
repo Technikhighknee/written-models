@@ -204,7 +204,8 @@ export function bridgeBoundaries(
         if (
             !advancesFirst &&
             aligned &&
-            nextFace?.[0] === quadIds[0] &&
+            nextFace !== undefined &&
+            nextFace[0] === quadIds[0] &&
             nextFace[1] === nextSecond &&
             nextFace[2] === nextFirst &&
             canBeQuad(quadIds)
