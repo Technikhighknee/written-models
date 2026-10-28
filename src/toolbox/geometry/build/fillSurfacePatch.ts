@@ -73,6 +73,127 @@ function sampleChart(
     return new THREE.Vector3(point.x, point.y, point.z);
 }
 
+function pointOnEdge(
+    point: THREE.Vector2,
+    first: THREE.Vector2,
+    second: THREE.Vector2,
+    tolerance: number
+): boolean {
+    const segment = second.clone().sub(first);
+    const lengthSquared = segment.lengthSq();
+    if (lengthSquared <= tolerance * tolerance) return false;
+
+    const t = point.clone().sub(first).dot(segment) / lengthSquared;
+    const projected = first.clone().addScaledVector(segment, t);
+
+    return t >= -tolerance / Math.sqrt(lengthSquared) &&
+        t <= 1 + tolerance / Math.sqrt(lengthSquared) &&
+        point.distanceTo(projected) <= tolerance;
+}
+
+function crossing(
+    a: THREE.Vector2,
+    b: THREE.Vector2,
+    c: THREE.Vector2,
+    d: THREE.Vector2,
+    tolerance: number
+): boolean {
+    if (
+        pointOnEdge(a, c, d, tolerance) ||
+        pointOnEdge(b, c, d, tolerance) ||
+        pointOnEdge(c, a, b, tolerance) ||
+        pointOnEdge(d, a, b, tolerance)
+    ) {
+        return true;
+    }
+
+    const cross = (u: THREE.Vector2, v: THREE.Vector2, w: THREE.Vector2) =>
+        (v.x - u.x) * (w.y - u.y) -
+        (v.y - u.y) * (w.x - u.x);
+    const threshold = tolerance * Math.max(
+        a.distanceTo(b), c.distanceTo(d)
+    );
+    const x = cross(a, b, c);
+    const y = cross(a, b, d);
+    const z = cross(c, d, a);
+    const w = cross(c, d, b);
+
+    return ((x > threshold && y < -threshold) ||
+            (x < -threshold && y > threshold)) &&
+        ((z > threshold && w < -threshold) ||
+            (z < -threshold && w > threshold));
+}
+
+function insideContour(
+    point: THREE.Vector2,
+    outline: readonly THREE.Vector2[]
+): boolean {
+    let inside = false;
+
+    for (let i = 0, j = outline.length - 1; i < outline.length; j = i++) {
+        const a = outline[i]!;
+        const b = outline[j]!;
+
+        if ((a.y > point.y) !== (b.y > point.y) &&
+            point.x < a.x + (point.y - a.y) *
+                (b.x - a.x) / (b.y - a.y)) {
+            inside = !inside;
+        }
+    }
+
+    return inside;
+}
+
+function validateLoops(
+    loops: readonly (readonly THREE.Vector2[])[],
+    tolerance: number
+): void {
+    for (let loop = 0; loop < loops.length; loop++) {
+        const points = loops[loop]!;
+
+        for (let i = 0; i < points.length; i++) {
+            const a = points[i]!;
+            const b = points[(i + 1) % points.length]!;
+
+            for (let other = loop; other < loops.length; other++) {
+                const candidate = loops[other]!;
+
+                for (let j = 0; j < candidate.length; j++) {
+                    if (
+                        other === loop &&
+                        (i === j || (i + 1) % points.length === j ||
+                            (j + 1) % points.length === i)
+                    ) {
+                        continue;
+                    }
+
+                    if (crossing(
+                        a, b,
+                        candidate[j]!,
+                        candidate[(j + 1) % candidate.length]!,
+                        tolerance
+                    )) {
+                        fail(
+                            "unsupported-topology",
+                            "Surface boundaries intersect or touch"
+                        );
+                    }
+                }
+            }
+        }
+
+        if (loop > 0 && !insideContour(points[0]!, loops[0]!)) {
+            fail("unsupported-topology", "Hole lies outside the outer contour");
+        }
+
+        if (loop > 0 && loops.slice(1).some((other, index) =>
+            index !== loop - 1 && insideContour(points[0]!, other)
+        )) {
+            fail("unsupported-topology", "Holes are nested or overlapping");
+        }
+    }
+}
+
 function validateProfile(
     profile: SampledProfile2,
     precision: GeometryPrecision
@@ -129,6 +250,11 @@ function validateProfile(
         loops.push(points.map((_, i) => offset + i));
         offset += points.length;
     }
+
+    validateLoops(
+        loops.map(loop => loop.map(id => uv[id]!)),
+        tolerance
+    );
 
     return { uv, loops, tolerance };
 }

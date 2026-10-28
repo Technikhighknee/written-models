@@ -25,6 +25,9 @@ const { resolvePrecision } = await toolbox(
 const { topologyOf } = await toolbox(
     "geometry/kernel/topology.ts"
 );
+const { extrudeContour } = await toolbox(
+    "geometry/build/extrudeContour.ts"
+);
 const { getControlOutline } = await toolbox(
     "geometry/mesh/controlOutline.ts"
 );
@@ -214,6 +217,117 @@ test("curved adjacent patches gain interior detail but retain one exact seam", (
     assert.equal(
         partition.interfaces[0].stations.length,
         interfacePoints.length
+    );
+});
+
+test("a separately extruded neighbor uses the exact same sampled rim", () => {
+    const source = partitionContour(rectangle(), [{
+        id: "edge",
+        points: [v(1, 0), v(0.4, 0), v(-1, 0)]
+    }]);
+    const sampledParts = samplePartition(source, {
+        edge: [0, 0.15, 0.35, 0.7, 1]
+    });
+
+    for (const profile of sampledParts.parts) {
+        const patch = fillSurfacePatch({
+            profile, chart: planarChart(), region: "patch"
+        });
+        const solid = extrudeContour(profile, {
+            frame: new THREE.Matrix4(),
+            depth: 0.2,
+            caps: false
+        });
+
+        assert.equal(topologyOf(solid).openBoundaries().length, 2);
+
+        for (const vertex of patch.geometry.vertices) {
+            assert.ok(solid.geometry.vertices.some(candidate =>
+                candidate.equals(vertex)
+            ));
+        }
+
+        for (const boundary of patch.boundaries.outer) {
+            for (const id of boundary.vertices) {
+                const vertex = patch.geometry.vertices[id];
+
+                assert.ok(solid.geometry.vertices.some(candidate =>
+                    candidate.equals(vertex)
+                ));
+            }
+        }
+    }
+});
+
+test("rejects crossing, exterior and perimeter-touching hole boundaries", () => {
+    const outside = sampled({
+        ...rectangle(),
+        holes: [{
+            closed: true,
+            points: [
+                v(1.2, -0.2), v(1.6, -0.2),
+                v(1.6, 0.2), v(1.2, 0.2)
+            ]
+        }]
+    });
+
+    assert.throws(
+        () => fillSurfacePatch({
+            profile: outside,
+            chart: planarChart(),
+            region: "patch"
+        }),
+        error => error.operation === "fillSurfacePatch" &&
+            error.reason === "unsupported-topology"
+    );
+
+    const touching = sampled({
+        ...rectangle(),
+        holes: [{
+            closed: true,
+            points: [
+                v(-1, -0.2), v(-0.5, -0.2),
+                v(-0.5, 0.2), v(-1, 0.2)
+            ]
+        }]
+    });
+
+    assert.throws(
+        () => fillSurfacePatch({
+            profile: touching,
+            chart: planarChart(),
+            region: "patch"
+        }),
+        error => error.reason === "unsupported-topology"
+    );
+
+    const overlapping = sampled({
+        ...rectangle(),
+        holes: [
+            {
+                closed: true,
+                points: [
+                    v(-0.6, -0.2), v(0.1, -0.2),
+                    v(0.1, 0.3), v(-0.6, 0.3)
+                ]
+            },
+            {
+                closed: true,
+                points: [
+                    v(-0.1, -0.3), v(0.6, -0.3),
+                    v(0.6, 0.2), v(-0.1, 0.2)
+                ]
+            }
+        ]
+    });
+
+    assert.throws(
+        () => fillSurfacePatch({
+            profile: overlapping,
+            chart: planarChart(),
+            region: "patch"
+        }),
+        error => error.reason === "unsupported-topology"
     );
 });
 
