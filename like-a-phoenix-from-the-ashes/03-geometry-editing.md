@@ -161,7 +161,10 @@ The edge/corner work in `profiledBoard`,
 construction-time section shaping plus patch relief. General
 post-hoc `bevelEdges` is implemented only after local edge splitting
 and adjacent-face reconstruction are available. Initially it accepts
-well-formed manifold chains with unambiguous corner joins; branching,
+well-formed manifold chains with unambiguous corner joins; the
+input edges must describe ordered nonbranching chains in their
+source result, and the width field's `t` is normalized arc length
+along each chain. Unordered/branched selections, excessive widths,
 nonmanifold, intersecting or otherwise unsupported bevel junctions
 fail explicitly instead of silently corrupting the mesh.
 
