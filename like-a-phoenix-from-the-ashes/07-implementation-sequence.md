@@ -202,7 +202,8 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       with holes and multiple connected outputs.
 - [ ] **6.2** Implement plane-splitting of authored surfaces/solids,
       pairing cut interfaces and labeling every resulting component
-      by half-space.
+      by half-space. Handle coincident source faces without duplicating
+      geometry into both halves.
 - [ ] **6.3** Implement planar `openPatch` and `recessPatch` with
       explicit connected patches, new walls/floors and usable rims.
 - [ ] **6.4** Implement `cutThrough` for matching entry/exit
