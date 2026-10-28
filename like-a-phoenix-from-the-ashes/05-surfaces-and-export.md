@@ -136,8 +136,8 @@ implemented with a persistent contents mesh and eight named
 volume-calibrated morph targets. Godot controls the resulting
 blend-shape weights with a value from 0 to 1. The physical cavity
 comes from **twelve separate stave inner surfaces**, which must
-be intersected and assembled into ordered closed height sections
-with matching sample stations. `cavitySectionsFromSurfaces`
+be intersected in a rigid mug-local section frame and assembled
+into ordered closed height sections with matching sample stations. `cavitySectionsFromSurfaces`
 returns those cross-sections for the existing `ProfiledCavity`.
 
 Separate the geometric and runtime capabilities:
