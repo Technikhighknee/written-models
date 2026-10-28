@@ -85,6 +85,12 @@ type ScalarField = (t: number) => number;
 interface GeometricFrame {
   localToWorld: THREE.Matrix4;
 }
+
+interface GeometryPrecision {
+  absoluteLength: number; // meters
+  relativeLength: number; // multiplied by operation extent
+  angle: number;          // radians
+}
 ```
 
 Planar profiles have 2D coordinates in their own oriented frame.
@@ -107,6 +113,12 @@ interface SampledBoundary {
   parameters: readonly number[]; // ordered stations from 0 to 1
   points: readonly THREE.Vector3Like[]; // same order and length
   closed: boolean;
+}
+
+interface StationSamplingResult {
+  stations: readonly number[];
+  observedMaxDeviation: number; // sampled measurements in meters
+  saturated: readonly [from: number, to: number][];
 }
 
 interface PartitionInterface {
@@ -160,6 +172,12 @@ A shared seam is sampled once. Each interface identifies the owner
 of both boundary references with part indices. The two pieces reuse
 the source stations; gaps or relief are deliberate offsets from that
 common seam. The references are local to their owning parts.
+
+`adaptiveStations` returns `StationSamplingResult`. A non-empty
+`saturated` set signals that recursion stopped while a requested
+deviation threshold was still exceeded at sampled probes.
+The measured error is not a mathematical guarantee about all
+points on an arbitrary curve.
 
 `adaptiveStations(sample, { maxDeviation, knots })` remains the
 standard shared sampler. All connected surfaces use the union of
@@ -262,8 +280,9 @@ explicit authored patches.
 
 A sweep produces 3D sections using parallel transport before
 calling the same loft engine. For `closedPath: true`, position
-and tangent are periodic, frame transport closes without a residual
-seam twist, and the first and last rings share construction vertices.
+and tangent are periodic, the stations occupy `[0, 1)`, frame
+transport closes without residual seam twist, and the final
+wrapping strip shares the original first-ring vertices.
 `ends` applies only to open paths.
 
 ## Editing
@@ -391,10 +410,13 @@ interface SurfaceTarget {
 
 interface SurfaceHit {
   point: THREE.Vector3;
-  normal: THREE.Vector3;
+  normal: THREE.Vector3; // geometric world-space normal, not ray-facing
   face: FaceRef;
+  faceCorners: readonly [number, number, number];
+  barycentric: readonly [number, number, number];
   region: string;
   distance: number;
+  frontFacing: boolean;
 }
 
 interface SurfacePatchHit {
@@ -475,7 +497,14 @@ along the target hit normal, measured in world meters.
 
 Queries operate on authored geometry plus a transform. A triangle
 acceleration structure or render-backed ray implementation may be
-used internally, without making the caller own a `THREE.Mesh`.
+used internally without requiring callers to own a `THREE.Mesh`.
+
+The query and renderer share the triangulation of each authored face.
+A query triangle records its originating `FaceRef` and the three
+face-corner offsets. Barycentric coordinates provide interpolation
+of the original face-corner UVs. `normal` follows geometric winding
+and never flips merely to face the ray; `frontFacing` reports which
+side was hit.
 
 ## Rendering and scene attachment
 
@@ -526,11 +555,15 @@ material groups, and mapping back to authored faces for Quad View.
 - Position-based welding is explicit. Independent coincident pieces
   have distinct topology unless deliberately joined.
 - Linear tolerances are in meters, angular tolerances in radians and
-  area thresholds in square meters; algorithms validate the scales
-  of their own tolerance parameters.
+  area thresholds in square meters. Operations use a shared
+  `GeometryPrecision` policy and their relevant geometric extent.
+- Render/export precision is assessed separately from authoring
+  precision after Float32 conversion.
 - Renderer and runtime compiler may be highly optimized; they do
   not define construction topology.
 
 The target examples in [08](08-composition-examples.md) use this
-vocabulary. Each completed phase of [07](07-implementation-sequence.md)
-turns more of these contracts into working code.
+vocabulary. [10](10-geometry-semantics.md) defines operation behavior;
+[11](11-numerics-and-query-fidelity.md) fixes precision, source-face
+mapping and failure semantics. The milestones in
+[07](07-implementation-sequence.md) implement these contracts.
