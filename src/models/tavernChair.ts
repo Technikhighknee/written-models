@@ -1,6 +1,7 @@
 import * as THREE from "three";
 
-import {oakPlankPanel, oakTimberShop} from "./components/oakSeating";
+import {oakPlank, oakPlankPanel, oakTimberShop} from "./components/oakSeating";
+import {piercedBoard} from "../toolbox/geometry/construction/piercedBoard";
 import {profiledBoard} from "../toolbox/geometry/construction/profiledBoard";
 import {toBufferGeometry} from "../toolbox/geometry/mesh/toBufferGeometry";
 import {tintVertices} from "../toolbox/geometry/materials/tintVertices";
@@ -19,15 +20,17 @@ const SEAT_HEIGHT = cm(46);
 const SEAT_THICKNESS = cm(3.8);
 const SEAT_UNDERSIDE = SEAT_HEIGHT - SEAT_THICKNESS;
 const APRON_Y = SEAT_UNDERSIDE - cm(8.3) / 2;
-const SEAT_WIDTH = cm(46);
-const SEAT_DEPTH = cm(41.6);
-const SEAT_CENTER_Z = mm(8);
+const SEAT_WIDTH = cm(47);
+const SEAT_BACK = -cm(26.2);
+const SEAT_REAR_BOARD_FRONT = -cm(8.7);
+const SEAT_FRONT_BOARD_BACK = -cm(8.5);
+const SEAT_FRONT = cm(21);
 
 const FRONT_X = cm(18.5);
 const FRONT_Z = cm(16.0);
-const REAR_X = cm(19.8);
-const REAR_FOOT_Z = -cm(20.3);
-const REAR_TOP_Z = -cm(27.5);
+const REAR_X = cm(18.5);
+const REAR_FOOT_Z = -cm(17.3);
+const REAR_TOP_Z = -cm(24.5);
 const REAR_HEIGHT = cm(96);
 const FRONT_POST_SIZE = cm(6.2);
 const BACK_POST_SIZE = cm(6.6);
@@ -46,22 +49,7 @@ function create(): THREE.Group {
     chair.name = "TavernChair";
     const oak = oakTimberShop(5);
 
-    // Three equal-length, hand-planed boards; the rear stiles are behind
-    // the seat at this height, not cut through it.
-    const seat = oakPlankPanel({
-        name: "BoardedSeat",
-        length: SEAT_WIDTH,
-        depth: SEAT_DEPTH,
-        thickness: SEAT_THICKNESS,
-        planks: 3,
-        widthWeights: [1.04, 0.96, 1.00],
-        gap: mm(1.8),
-        seed: 412,
-        wear: 0.55,
-        crown: mm(0.7)
-    });
-    seat.position.set(0, SEAT_HEIGHT - SEAT_THICKNESS / 2, SEAT_CENTER_Z);
-    chair.add(seat);
+    addSeat(chair);
 
     addPosts(chair, oak);
     addSeatFrame(chair, oak);
@@ -71,6 +59,58 @@ function create(): THREE.Group {
 }
 
 type Workshop = ReturnType<typeof oakTimberShop>;
+
+function addSeat(chair: THREE.Group): void {
+    const seatCenterY = SEAT_HEIGHT - SEAT_THICKNESS / 2;
+
+    const front = oakPlankPanel({
+        name: "FrontSeatBoards",
+        length: SEAT_WIDTH,
+        depth: SEAT_FRONT - SEAT_FRONT_BOARD_BACK,
+        thickness: SEAT_THICKNESS,
+        planks: 2,
+        widthWeights: [1.05, 0.95],
+        gap: mm(1.8),
+        seed: 412,
+        wear: 0.5,
+        crown: mm(0.6)
+    });
+    front.position.set(
+        0, seatCenterY, (SEAT_FRONT + SEAT_FRONT_BOARD_BACK) / 2
+    );
+    chair.add(front);
+
+    const slope = (REAR_TOP_Z - REAR_FOOT_Z) / REAR_HEIGHT;
+    const halfStileDepth = BACK_POST_SIZE / 2 *
+        Math.sqrt(1 + slope * slope);
+    const clearance = mm(1.5);
+    const openingAt = (height: number): readonly [number, number] => [
+        rearZ(height) - halfStileDepth - clearance,
+        rearZ(height) + halfStileDepth + clearance
+    ];
+
+    const rear = piercedBoard({
+        width: SEAT_WIDTH,
+        depth: SEAT_REAR_BOARD_FRONT - SEAT_BACK,
+        centerZ: (SEAT_BACK + SEAT_REAR_BOARD_FRONT) / 2,
+        thickness: SEAT_THICKNESS,
+        crown: mm(0.6),
+        bevel: mm(1.3),
+        openings: ([-1, 1] as const).map(side => ({
+            minX: side * REAR_X - BACK_POST_SIZE / 2 - clearance,
+            maxX: side * REAR_X + BACK_POST_SIZE / 2 + clearance,
+            topZ: openingAt(SEAT_HEIGHT),
+            bottomZ: openingAt(SEAT_UNDERSIDE)
+        }))
+    });
+    const backBoard = oakPlank(
+        "RearSeatBoardWithStileMortises",
+        rear, 6, 0.97,
+        {u: cm(3), v: cm(13)}
+    );
+    backBoard.position.y = seatCenterY;
+    chair.add(backBoard);
+}
 
 function addPosts(chair: THREE.Group, oak: Workshop): void {
     for (const sign of [-1, 1] as const) {
