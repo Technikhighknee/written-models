@@ -1,4 +1,5 @@
 import { GeometryOperationError } from "../kernel/GeometryResult";
+import { resolvePrecision, type GeometryPrecision } from "../kernel/precision";
 
 /** A 3D point sampled from a curve or a corresponding section vertex. */
 export interface Position3 {
@@ -14,6 +15,7 @@ export interface AdaptiveStationsOptions {
     knots?: readonly number[];
     /** Reject when maximum subdivision is insufficient. */
     requireAccuracy?: boolean;
+    precision?: GeometryPrecision;
 }
 
 export interface StationSamplingResult {
@@ -46,9 +48,12 @@ export function sampleAdaptiveStations(
         maxDeviation,
         maxDepth = 5,
         knots = [],
-        requireAccuracy = false
+        requireAccuracy = false,
+        precision
     }: AdaptiveStationsOptions
 ): StationSamplingResult {
+    resolvePrecision(precision);
+
     if (
         !Number.isFinite(maxDeviation) || maxDeviation <= 0 ||
         !Number.isInteger(maxDepth) || maxDepth < 0 || maxDepth > 8 ||
