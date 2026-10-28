@@ -27,3 +27,5 @@ export type {
 export { triangulateProfile } from "../build/triangulateProfile";
 export { extrudeContour } from "../build/extrudeContour";
 export type { ExtrudeOptions, ExtrudeLayer } from "../build/extrudeContour";
+export { samplePolarStripSections } from "../build/samplePolarStripSections";
+export type { PolarStripOptions } from "../build/samplePolarStripSections";
