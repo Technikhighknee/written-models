@@ -108,8 +108,10 @@ independent pieces with precise adjoining geometry.
       closed rims; retain patch charts only with valid round-trip
       mapping. Arbitrary deformation invalidates patch charts by
       default, while invertible transforms update them.
-- [ ] **3.8** Centralize face-region material mapping, physical
-      UV projection and per-piece render tint/variation.
+- [ ] **3.8** Implement `classifyAuthoredFaces` with owned region
+      updates, centralize physical UV projection and per-piece render
+      tint/variation. Classification uses authored faces rather
+      than GPU render index groups.
 - [ ] **3.9** Reproduce the tabletop's worn but coherent plank seams,
       the barrel head's detailed outer/simple inner faces, and
       the chair's slanted rear-seat corner housings.
