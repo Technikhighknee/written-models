@@ -57,14 +57,15 @@ section, path and face-construction operations.
       `Section3`, `Path3`, sampled contours and explicit
       correspondence at matching landmarks.
       Commit: `0847f81`.
-- [ ] **2.2** Consolidate winding, contour cleanup, `adaptiveStations`
+- [x] **2.2** Consolidate winding, contour cleanup, `adaptiveStations`
       and `stitchPolylines`. Respect sample limitations and return
       stations for all interfaces.
-      Explicit-station stitching: `0847f81`. Winding and shared
-      contour cleanup remain.
+      Commits: `75af415`, `0847f81`, `5c70ba2`.
 - [ ] **2.3** Unify `loftSections` and `loftRings` side construction,
       with real quads, inner loops, precise surface regions and
       smoothing callbacks by contour edge and interval.
+      Shared outer quad strips: `f6abf25`. Inner loops and unified
+      `Section3` handling remain.
 - [ ] **2.4** Implement caps and explicit triangle-fan tips; retain
       complex cap triangulation with precise source boundaries.
 - [ ] **2.5** Implement `bridgeBoundaries` with unequal densities,
