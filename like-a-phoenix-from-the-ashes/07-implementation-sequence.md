@@ -19,13 +19,15 @@ queries, the viewer and export with the correct authored identity.
 - [ ] **1.2** Retain `MeshData` and its existing authored faces.
       Give each new `GeometryResult` an opaque identity and enforce
       selection ownership on `BoundaryRef` and `SurfacePatchRef`.
-- [ ] **1.3** Establish deep-copy snapshot semantics (including
+- [x] **1.3** Establish deep-copy snapshot semantics (including
       mutable THREE vectors), document immutable-by-contract output,
       and define explicit builder welding policies. Coincident
       independent parts remain topologically distinct.
-- [ ] **1.4** Provide one topology index for directed edges, face
+      Commit: `f80c8ae`.
+- [x] **1.4** Provide one topology index for directed edges, face
       adjacency, region boundaries and connected components. Owner-
       check selected edges as well as patches and boundary loops.
+      Commit: `f80c8ae`.
 - [ ] **1.5** Make one authored-face triangulation supply both
       render and geometric-query triangles, with face/corner mapping.
 - [ ] **1.6** Keep Quad View tied to the exact authored snapshot,
