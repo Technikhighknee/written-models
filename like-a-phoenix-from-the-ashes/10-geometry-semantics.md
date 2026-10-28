@@ -81,7 +81,11 @@ at each station along the loft.
 - Caps with distinct inner and outer contour rows may be bridged
   with quad strips when their correspondence permits it.
 - Different boundary sampling densities use explicitly constructed
-  transition triangles.
+  transition triangles. `bridgeBoundaries` only merges consecutive
+  transition triangles into a real quad when *both* station endpoints
+  match and the resulting quad is geometrically valid. It preserves
+  every source boundary edge, closed-loop seams and physical UVs.
+  It does not silently weld into separate source meshes.
 - A tip at a single point is represented by true fan triangles. The source end remains open until the tip operation closes it; already capped ends are rejected.
 - An open end exposes its outer and inner boundary chains.
 - For a periodic sweep, the final contours reconnect to the
