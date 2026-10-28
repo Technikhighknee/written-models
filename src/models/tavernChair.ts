@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import {oakPlank, oakPlankPanel, oakTimberShop} from "./components/oakSeating";
-import {piercedBoard} from "../toolbox/geometry/construction/piercedBoard";
+import {cutBoard} from "../toolbox/geometry/construction/cutBoard";
 import {profiledBoard} from "../toolbox/geometry/construction/profiledBoard";
 import {toBufferGeometry} from "../toolbox/geometry/mesh/toBufferGeometry";
 import {tintVertices} from "../toolbox/geometry/materials/tintVertices";
@@ -20,7 +20,7 @@ const SEAT_HEIGHT = cm(46);
 const SEAT_THICKNESS = cm(3.8);
 const SEAT_UNDERSIDE = SEAT_HEIGHT - SEAT_THICKNESS;
 const APRON_Y = SEAT_UNDERSIDE - cm(8.3) / 2;
-const SEAT_WIDTH = cm(47);
+const SEAT_WIDTH = cm(49);
 const SEAT_BACK = -cm(26.2);
 const SEAT_REAR_BOARD_FRONT = -cm(8.7);
 const SEAT_FRONT_BOARD_BACK = -cm(8.5);
@@ -28,7 +28,7 @@ const SEAT_FRONT = cm(21);
 
 const FRONT_X = cm(18.5);
 const FRONT_Z = cm(16.0);
-const REAR_X = cm(18.5);
+const REAR_X = cm(20.5);
 const REAR_FOOT_Z = -cm(17.3);
 const REAR_TOP_Z = -cm(24.5);
 const REAR_HEIGHT = cm(96);
@@ -80,31 +80,38 @@ function addSeat(chair: THREE.Group): void {
     );
     chair.add(front);
 
-    const slope = (REAR_TOP_Z - REAR_FOOT_Z) / REAR_HEIGHT;
-    const halfStileDepth = BACK_POST_SIZE / 2 *
-        Math.sqrt(1 + slope * slope);
-    const clearance = mm(1.5);
-    const openingAt = (height: number): readonly [number, number] => [
-        rearZ(height) - halfStileDepth - clearance,
-        rearZ(height) + halfStileDepth + clearance
-    ];
+    // The rear board extends between the back stiles. Open housings at
+    // its corners follow the posts, while the front edge stays continuous.
+    const clearance = mm(2.6);
+    const innerStileFaceX = REAR_X - BACK_POST_SIZE / 2;
+    const cheekX = innerStileFaceX - clearance;
+    const frontOfStile = (height: number) =>
+        rearFront(height) + clearance;
 
-    const rear = piercedBoard({
+    const rear = cutBoard({
         width: SEAT_WIDTH,
         depth: SEAT_REAR_BOARD_FRONT - SEAT_BACK,
         centerZ: (SEAT_BACK + SEAT_REAR_BOARD_FRONT) / 2,
         thickness: SEAT_THICKNESS,
         crown: mm(0.6),
-        bevel: mm(1.3),
-        openings: ([-1, 1] as const).map(side => ({
-            minX: side * REAR_X - BACK_POST_SIZE / 2 - clearance,
-            maxX: side * REAR_X + BACK_POST_SIZE / 2 + clearance,
-            topZ: openingAt(SEAT_HEIGHT),
-            bottomZ: openingAt(SEAT_UNDERSIDE)
-        }))
+        bevel: mm(1.25),
+        cuts: [
+            {
+                minX: -SEAT_WIDTH / 2,
+                maxX: -cheekX,
+                topZ: [SEAT_BACK, frontOfStile(SEAT_HEIGHT)],
+                bottomZ: [SEAT_BACK, frontOfStile(SEAT_UNDERSIDE)]
+            },
+            {
+                minX: cheekX,
+                maxX: SEAT_WIDTH / 2,
+                topZ: [SEAT_BACK, frontOfStile(SEAT_HEIGHT)],
+                bottomZ: [SEAT_BACK, frontOfStile(SEAT_UNDERSIDE)]
+            }
+        ]
     });
     const backBoard = oakPlank(
-        "RearSeatBoardWithStileMortises",
+        "RearSeatBoardWithCornerHousings",
         rear, 6, 0.97,
         {u: cm(3), v: cm(13)}
     );
@@ -129,8 +136,8 @@ function addPosts(chair: THREE.Group, oak: Workshop): void {
             }
         ));
 
-        // Each rear stile passes through a fitted opening in the rear
-        // seat board and continues into the backrest as one timber.
+        // The rear legs and back stiles are continuous. The seat's rear
+        // corners fit against their inner and front faces.
         chair.add(oak.timber(
             `${side}BackStile`,
             new THREE.Vector3(sign * REAR_X, 0, REAR_FOOT_Z),
@@ -163,7 +170,7 @@ function addSeatFrame(chair: THREE.Group, oak: Workshop): void {
     ));
 
     const rearRailY = APRON_Y;
-    const rearRailZ = rearZ(rearRailY) + cm(3);
+    const rearRailZ = rearZ(rearRailY);
     chair.add(oak.timber(
         "RearSeatRail",
         new THREE.Vector3(-innerRear, rearRailY, rearRailZ),

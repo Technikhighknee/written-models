@@ -2,21 +2,21 @@ import * as THREE from "three";
 import {AuthoredMeshBuilder} from "../mesh/AuthoredMeshBuilder";
 import type {MeshData} from "../mesh/MeshData";
 
-export interface ThroughOpening {
+export interface BoardCut {
     minX: number;
     maxX: number;
-    /** Rear and front bounds at the upper surface. */
+    /** Rear and front cut bounds at the upper surface. */
     topZ: readonly [number, number];
-    /** Rear and front bounds at the underside (may follow a raked post). */
+    /** Rear and front bounds below, independently of the upper contour. */
     bottomZ: readonly [number, number];
 }
 
-export interface PiercedBoardOptions {
+export interface CutBoardOptions {
     width: number;
     depth: number;
     thickness: number;
     centerZ?: number;
-    openings: readonly ThroughOpening[];
+    cuts: readonly BoardCut[];
     bevel?: number;
     crown?: number;
 }
@@ -27,43 +27,39 @@ interface Station {
 }
 
 /**
- * Build an actual, solid board with through-openings and wood around
- * their complete perimeter. The top and underside use matching quad grids,
- * and every exposed boundary has its own chamfer and thickness walls.
- *
- * Opening positions may change through the thickness, allowing slanted
- * through-mortises for raked members without a later boolean operation.
- * The long grain runs along X, as it does in ordinary boardPanel().
+ * Build an all-quad solid board with precise cut profiles. Cuts can open
+ * onto an edge (corner housings) or remain enclosed (through mortises).
+ * Exposed wood receives continuous thickness walls and a small bevel.
+ * Different upper/lower cut profiles accommodate sloping support members.
  */
-export function piercedBoard({
-    width, depth, thickness, centerZ = 0, openings,
+export function cutBoard({
+    width, depth, thickness, centerZ = 0, cuts,
     bevel = 0, crown = 0
-}: PiercedBoardOptions): MeshData {
+}: CutBoardOptions): MeshData {
     const values = [width, depth, thickness, centerZ, bevel, crown];
     if (values.some(value => !Number.isFinite(value)) ||
         width <= 0 || depth <= 0 || thickness <= 0 ||
         bevel < 0 || bevel >= Math.min(thickness / 3, depth / 20) ||
         crown < 0 || crown >= thickness / 5 ||
-        openings.some(o =>
+        cuts.some(o =>
             ![o.minX, o.maxX, ...o.topZ, ...o.bottomZ].every(Number.isFinite) ||
             !(o.minX < o.maxX) ||
             !(o.topZ[0] < o.topZ[1] && o.bottomZ[0] < o.bottomZ[1]) ||
-            o.minX <= -width / 2 + bevel * 2 ||
-            o.maxX >= width / 2 - bevel * 2 ||
-            Math.min(o.topZ[0], o.bottomZ[0]) <= centerZ - depth / 2 + bevel * 2 ||
-            Math.max(o.topZ[1], o.bottomZ[1]) >= centerZ + depth / 2 - bevel * 2
+            o.minX < -width / 2 || o.maxX > width / 2 ||
+            Math.min(o.topZ[0], o.bottomZ[0]) < centerZ - depth / 2 ||
+            Math.max(o.topZ[1], o.bottomZ[1]) > centerZ + depth / 2
         )) {
-        throw new RangeError("Invalid pierced board dimensions or opening");
+        throw new RangeError("Invalid board dimensions or cut");
     }
 
-    for (let a = 0; a < openings.length; a++) {
-        for (let b = a + 1; b < openings.length; b++) {
-            const x = openings[a]!;
-            const z = openings[b]!;
+    for (let a = 0; a < cuts.length; a++) {
+        for (let b = a + 1; b < cuts.length; b++) {
+            const x = cuts[a]!;
+            const z = cuts[b]!;
             if (x.minX < z.maxX && z.minX < x.maxX &&
                 Math.min(x.topZ[1], z.topZ[1], x.bottomZ[1], z.bottomZ[1]) >
                 Math.max(x.topZ[0], z.topZ[0], x.bottomZ[0], z.bottomZ[0])) {
-                throw new RangeError("Through-openings must not intersect");
+                throw new RangeError("Through-cuts must not intersect");
             }
         }
     }
@@ -74,7 +70,7 @@ export function piercedBoard({
     const xStops = [
         -halfWidth, -halfWidth * 0.65, -halfWidth * 0.35, 0,
         halfWidth * 0.35, halfWidth * 0.65, halfWidth,
-        ...openings.flatMap(o => [o.minX, o.maxX])
+        ...cuts.flatMap(o => [o.minX, o.maxX])
     ].sort((a, b) => a - b);
     const xs = xStops.filter((v, i) =>
         i === 0 || v - xStops[i - 1]! > 1e-8
@@ -85,7 +81,7 @@ export function piercedBoard({
     const zStops: Station[] = [
         {top: rear, bottom: rear},
         {top: front, bottom: front},
-        ...openings.flatMap(o => [
+        ...cuts.flatMap(o => [
             {top: o.topZ[0], bottom: o.bottomZ[0]},
             {top: o.topZ[1], bottom: o.bottomZ[1]}
         ])
@@ -100,7 +96,7 @@ export function piercedBoard({
         Array.from({length: nz - 1}, (_, j) => {
             const x = (xs[i]! + xs[i + 1]!) / 2;
             const z = (zs[j]!.top + zs[j + 1]!.top) / 2;
-            return !openings.some(o =>
+            return !cuts.some(o =>
                 x > o.minX && x < o.maxX &&
                 z > o.topZ[0] && z < o.topZ[1]
             );
