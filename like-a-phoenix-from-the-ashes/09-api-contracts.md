@@ -484,6 +484,12 @@ capBoundary(
 ): GeometryResult;
 ```
 
+`extrudeContour` accepts a raw profile or an already sampled one;
+when the latter is supplied, it must use the supplied boundary
+vertices and station order exactly. This allows a partition's
+resolved interface samples to be shared with `fillSurfacePatch`
+and neighboring extrusions without a loss of correspondence.
+
 `ExtrudeOptions` extrudes along the frame's local positive Z axis.
 Layer positions are normalized depths; their signed contour offsets
 are measured in local meters. Offsets must preserve the profile's
