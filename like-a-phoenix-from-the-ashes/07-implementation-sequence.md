@@ -23,7 +23,8 @@ queries, the viewer and export with the correct authored identity.
       builder welding policies. Coincident independent parts remain
       topologically distinct.
 - [ ] **1.4** Provide one topology index for directed edges, face
-      adjacency, region boundaries and connected components.
+      adjacency, region boundaries and connected components. Owner-
+      check selected edges as well as patches and boundary loops.
 - [ ] **1.5** Make one authored-face triangulation supply both
       render and geometric-query triangles, with face/corner mapping.
 - [ ] **1.6** Keep Quad View tied to the exact authored snapshot,
@@ -63,7 +64,9 @@ section, path and face-construction operations.
 - [ ] **2.8** Extract the general polar strip sampler with detailed
       outer and sparse inner section rows.
 - [ ] **2.9** Implement `correspondContours` and `sampleProfile`
-      with exact ordered outline/landmark stations.
+      with exact ordered outline/landmark stations. Verify that
+      mapped top/bottom coordinates, not just normalized station
+      numbers, coincide with their independently filled patch rims.
 - [ ] **2.10** Reproduce the plank's bend, the dagger's steel/wood
        transitions, the barrel stave cross-section and the mug's
        curved handle through the shared constructors.
@@ -89,7 +92,9 @@ independent pieces with precise adjoining geometry.
       boundary pairs, validated winding and explicit vertex welding.
 - [ ] **3.5** Implement batched `shapeSurfaceRelief`, combining
       all grooves, shoulders, crown/wear features and overlaps for
-      a surface in one coherent reconstruction.
+      a surface in one coherent reconstruction. Preserve boundary
+      coordinates required by neighboring walls; edge relief must
+      taper to the seam or explicitly rebuild the interface.
 - [ ] **3.6** Provide reusable selected-edge shaping and chamfers
       for model details without object-specific geometry names.
 - [ ] **3.7** Give authored results valid patch selections after
@@ -116,8 +121,9 @@ dynamic cavity behavior.
 - [ ] **4.2** Select finite support patches by position/orientation
       and fit member sections against their complete footprints,
       including concavities and holes.
-- [ ] **4.3** Support explicitly authored contact planes alongside
-      geometry-selected support patches for trestles and braces.
+- [ ] **4.3** Support explicitly authored finite planar contacts
+      alongside geometry-selected support patches for trestles and
+      braces through one fitting result with discriminated contacts.
 - [ ] **4.4** Fit ordered geometry boundaries onto curved targets,
       preserving other boundaries, and validate travel, face
       orientation and contact tolerance.
