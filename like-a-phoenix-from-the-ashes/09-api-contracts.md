@@ -895,12 +895,36 @@ valid result or a typed `GeometryOperationError`. Callers can recover
 by choosing alternative geometry or changing inputs. Tolerances do not
 trigger silent vertex welding or arbitrary retopology.
 
+## Coordinate space conventions
+
+| Operation | Input coordinates | Output coordinates |
+| --- | --- | --- |
+| `sampleProfile`, `partitionContour` | Planar 2D profile | Planar 2D profile |
+| `loftSections`, `bridgeBoundaries`, `joinGeometry` | One shared construction-local 3D frame | Same construction-local frame |
+| `fillSurfacePatch`, patch editing | Chart-local 2D outline + chart evaluating into construction-local 3D | Construction-local 3D |
+| `sweepSection` | Profile-local 2D + path and frame in construction-local 3D | Construction-local 3D |
+| `revolveProfile` | Meridian and axis in one construction-local 3D frame | Same construction-local frame |
+| `splitByPlane`, `booleanSolids` | Plane/operands in the same construction-local 3D frame | Same construction-local 3D frame |
+| `transformGeometry` | Construction-local 3D + explicit mapping | Destination-local 3D |
+| Surface queries, clearance and fitting | `SurfaceTarget` carries local→world; ray/near/directions are world-space | World-space hits and fitting sections |
+| `attachAtFrames` | Parent and child frames in their respective object-local spaces | Child transform in parent space |
+
+For `booleanSolids`, `regionAt` and `uvAt` receive point and normal
+in the common local frame of both operands. The inputs are required
+to share this frame; transform them explicitly before calling.
+
+A `SurfaceChart` returns construction-local 3D points from its
+chart-local 2D coordinates. Its inverse receives construction-local
+positions. A planar chart's 2D coordinates also provide the
+physical-scale UV mapping for new patches; model UV offsets apply
+after construction.
+
 ## Conventions
 
 - All length values and geometric tolerances use meters.
 - Path parameters and normalized profile fields use `0..1`.
-- A coordinate space is specified at every boundary between an
-  authored model, a transformed target, and world-space queries.
+- Coordinate spaces are defined by the table above, including
+  the physical units of chart coordinates and Boolean callbacks.
 - Normals transform with the inverse-transpose of the spatial
   transform; reflections also correct winding.
 - Source inputs remain unchanged across geometric operations.

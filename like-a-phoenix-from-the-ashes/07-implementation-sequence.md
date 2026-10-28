@@ -33,7 +33,7 @@ queries, the viewer and export with the correct authored identity.
 - [ ] **1.8** Apply the documented precision and typed failure rules
       to core operations; return sampling saturation information.
 - [ ] **1.9** Use a real box and five-section plank through
-      construction → edit → query → render → Quad View → GLB.
+      construction → edit → topology query → render → Quad View → GLB.
 
 **Gate:** Authored vertices, face references, UVs and source-face
 triangulation agree throughout that complete path.

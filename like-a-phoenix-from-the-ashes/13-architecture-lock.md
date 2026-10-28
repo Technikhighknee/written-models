@@ -83,6 +83,22 @@ from the output selection and remaps remaining references.
 This supplies the chair seat, barrel heads, and table planks without
 requiring a general remeshing algorithm.
 
+## Geometric coordinate spaces
+
+Geometry constructors consume and produce positions in one explicit
+construction-local frame. Surface charts map chart-local 2D coordinates
+into that same frame. Geometry queries consume `SurfaceTarget` with
+an explicit local-to-world transform and return world-space hits.
+`fitBetweenSurfaces` likewise returns world-space sections;
+`transformGeometry` converts them into an assembly-local frame when
+needed. The scene-parenting operation resolves its own parent-local
+and child-local attachment frames.
+
+Both operands of `booleanSolids` occupy one common construction
+frame. Its region/UV callbacks receive positions in that frame.
+This prevents implicit dependence on a render mesh's world transform.
+The exact API table is in [09](09-api-contracts.md).
+
 ## Execution has two dependency paths
 
 **The existing-model migration is the first integrated proof.**

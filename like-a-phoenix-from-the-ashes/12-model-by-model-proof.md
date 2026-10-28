@@ -249,11 +249,12 @@ visible `fill_level = 1` represents 90% of the physical cavity.
    then fit the second using the updated result and saved
    boundary references. The projection keeps the topological
    structure and checks face inversion.
-6. **Extract cavity section loops from the collection of disconnected
-   stave inner faces.** At each authored height, reconstruct the
-   collectively enclosed XZ contour, including shared seam
-   correspondence and a stable starting station. Reject missing,
-   doubled or open sections.
+6. **Extract cavity section loops from the collection of
+   independent stave inner faces.** Reuse the authored horizontal
+   row edges to form the XZ contour at each authored height,
+   preserving seam correspondence and a stable starting station.
+   Reject missing, doubled and open sections. Interpolation at
+   intermediate heights belongs to `ProfiledCavity`.
 7. Build a `ProfiledCavity` from those ordered rings. Its
    piecewise-linear interpolation provides a volume function
    and inverse `heightAtFill`.
