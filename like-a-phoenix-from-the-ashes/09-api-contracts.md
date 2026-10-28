@@ -230,17 +230,18 @@ interface MeshRegionTarget {
 }
 
 interface CavityRing {
-  /** World-space Y height, in meters. */
+  /** Height in the section frame's local Y, in meters. */
   y: number;
-  /** World XZ polygon: x represents X, y represents Z. */
+  /** Local XZ polygon: x represents X, y represents Z. */
   outline: readonly THREE.Vector2Like[];
 }
 
 interface CavitySectionsOptions extends PrecisionOptions {
   /** Open wall pieces whose combined sections enclose a single contour. */
   pieces: readonly MeshRegionTarget[];
-  axis: "y";
-  heights: readonly number[]; // strictly increasing world-Y heights
+  /** Section-local XZ/Y to world; rigid and invertible. */
+  sectionFrame: THREE.Matrix4;
+  heights: readonly number[]; // strictly increasing section-local Y heights
 }
 
 interface ClearanceOptions extends PrecisionOptions {
@@ -871,10 +872,12 @@ cavitySectionsFromSurfaces(
 ): readonly CavityRing[];
 ```
 
-The cavity source may contain **separate** meshes. Transforms
-place every region in world coordinates. At every requested world-Y
-height, the regions contribute edges/section segments that must
-form exactly one ordered, simple, closed XZ polygon. At authored
+The cavity source may contain **separate** meshes. Each piece's
+local-to-world transform and the inverse of the explicit section
+frame place its faces into a common section-local coordinate
+system. At every requested section-local Y height, the regions
+contribute edges/section segments that must form exactly one
+ordered, simple, closed XZ polygon. At authored
 horizontal row heights, coincident row edges are collected once;
 generic plane intersections instead apply a deterministic half-open
 vertex/edge rule to avoid duplicate segments at shared vertices.
@@ -886,6 +889,10 @@ vertex counts. If correspondence cannot be established or a section
 changes topology, the operation fails instead of resampling away a
 real feature. The resulting rings are compatible with
 `ProfiledCavity` without a model-specific circular approximation.
+The section frame must be rigid and invertible (a reflection is
+allowed with winding correction); scale must be applied to source
+geometry explicitly. The caller places the resulting liquid
+assembly using that same frame.
 
 `surfaceClearance` checks actual finite triangles, including their
 interiors and edges. It is usable after a circular-band sweep to
@@ -990,6 +997,7 @@ trigger silent vertex welding or arbitrary retopology.
 | `transformGeometry` | Construction-local 3D + explicit mapping | Destination-local 3D |
 | Surface queries, clearance and fitting | `SurfaceTarget` carries local→world; authored planar supports and ray/near/directions are world-space | World-space hits and fitting sections |
 | `attachAtFrames` | Parent and child frames in their respective object-local spaces | Child transform in parent space |
+| `cavitySectionsFromSurfaces` | Piece-local geometry and local→world transforms, plus section-local frame | `CavityRing` in section-frame Y/XZ coordinates |
 
 For `booleanSolids`, `regionAt` and `uvAt` receive point and normal
 in the common local frame of both operands. The inputs are required
