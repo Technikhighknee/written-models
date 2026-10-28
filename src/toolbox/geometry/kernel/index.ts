@@ -20,3 +20,8 @@ export { bridgeBoundaries } from "../build/bridgeBoundaries";
 export type { BridgeOptions } from "../build/bridgeBoundaries";
 export { sweepSection } from "../build/sweepSection";
 export type { PathSweepOptions } from "../build/sweepSection";
+export { revolveProfile, revolveMeridianMesh } from "../build/revolveProfile";
+export type {
+    RevolveOptions, RevolveFaceContext, MeridianStation
+} from "../build/revolveProfile";
+export { triangulateProfile } from "../build/triangulateProfile";

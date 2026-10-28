@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { cleanClosedContour } from "./cleanClosedContour";
+import { triangulateProfile } from "../../geometry/build/triangulateProfile";
 import type { MeshData, QuadFace, TriangleFace } from "../../geometry/mesh/MeshData";
 import { toBufferGeometry } from "../../geometry/mesh/toBufferGeometry";
 
@@ -54,64 +55,10 @@ export function extrude(
         if (THREE.ShapeUtils.isClockWise(hole)) hole.reverse();
     }
 
-    // ShapeUtils returns only the indices of the genuine cap triangles.
-    // It never defines the side topology, which is constructed below.
-    const triangulation = THREE.ShapeUtils.triangulateShape(contour, holes);
-    if (triangulation.length === 0) {
-        throw new RangeError("Extrusion cap cannot be triangulated");
-    }
-
     const loops = [contour, ...holes];
     const outline = loops.flat();
     const count = outline.length;
-
-    // Earcut may omit collinear outline stations. Those stations still
-    // define authored sidewall edges: split affected cap triangles so the
-    // same boundary vertices appear on BOTH sides of the rim. This avoids
-    // invisible T-junctions without changing the original silhouette.
-    const capTriangles: [number, number, number][] = [];
-
-    function completeCap(triangle: [number, number, number]): void {
-        for (let edge = 0; edge < 3; edge++) {
-            const a = triangle[edge]!;
-            const b = triangle[(edge + 1) % 3]!;
-            const opposite = triangle[(edge + 2) % 3]!;
-            const from = outline[a]!;
-            const to = outline[b]!;
-            const dx = to.x - from.x;
-            const dy = to.y - from.y;
-            const lengthSq = dx * dx + dy * dy;
-
-            const between = outline.flatMap((point, index) => {
-                if (index === a || index === b || index === opposite) return [];
-                const px = point.x - from.x;
-                const py = point.y - from.y;
-                const t = (px * dx + py * dy) / lengthSq;
-                const distance = Math.abs(px * dy - py * dx) / Math.sqrt(lengthSq);
-                return t > 1e-10 && t < 1 - 1e-10 && distance < 1e-10
-                    ? [{ index, t }] : [];
-            }).sort((left, right) => left.t - right.t);
-
-            if (between.length) {
-                let previous = a;
-                for (const point of between) {
-                    completeCap([previous, point.index, opposite]);
-                    previous = point.index;
-                }
-                completeCap([previous, b, opposite]);
-                return;
-            }
-        }
-        capTriangles.push(triangle);
-    }
-
-    for (const face of triangulation) {
-        const [a, b, c] = face;
-        if (a === undefined || b === undefined || c === undefined) {
-            throw new Error("Invalid cap triangulation indices");
-        }
-        completeCap([a, b, c]);
-    }
+    const capTriangles = triangulateProfile(loops);
 
     /**
      * Offset corner along the intersection of its two neighboring parallel
