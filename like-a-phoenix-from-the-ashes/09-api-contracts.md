@@ -266,11 +266,9 @@ interface SplitOptions {
   cutRegion: string;
 }
 
-interface PatchCutOptions {
-  depth: number; // 0 for an opening without a recessed floor
-  wallRegion: string;
-  floorRegion?: string;
-}
+type PatchCutOptions =
+  | { kind: "recess"; depth: number; wallRegion: string; floorRegion: string }
+  | { kind: "opening"; wallRegion: string };
 
 type DeformationField = (
   position: THREE.Vector3Like,

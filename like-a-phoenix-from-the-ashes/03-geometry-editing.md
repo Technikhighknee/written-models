@@ -77,7 +77,8 @@ edges into the region, cuts or removes the selected patch, and
 constructs rim/wall/floor faces where needed.
 
 ```ts
-cutPatch(geometry, region, outline, {
+cutPatch(geometry, patch, outline, {
+  kind: "recess",
   depth,
   wallRegion: "cut-wall",
   floorRegion: "cut-floor"
