@@ -181,6 +181,9 @@ closes only valid planar exposed boundaries.
 
 Poles use genuine triangles. Regular rotational strips use quads.
 The angular seam remains explicit and UV-continuous where intended.
+Per-meridian and per-angular-interval metadata preserve separate
+outer, inner, lip, floor and smoothing regions. Optional caps only
+close geometrically valid planar exposed boundaries.
 
 ### Shells and thickness
 
