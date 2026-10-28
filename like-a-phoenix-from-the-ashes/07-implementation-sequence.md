@@ -135,9 +135,14 @@ independent pieces with precise adjoining geometry.
       inserts their exact coordinates into both owners, and produces
       clockwise sampled profiles directly usable by extrusion
       (`077cc39`, `3c8a43a`).
-- [ ] **3.3** Implement `fillSurfacePatch` from exact sampled
+- [x] **3.3** Implement `fillSurfacePatch` from exact sampled
       boundaries and a chart, refining the interior without changing
       shared boundary stations.
+      Chart round-trip validation, owned patch/loop selections,
+      adaptive conforming interior triangulation and explicit
+      boundary sampling limits: `8a1cc12`, `3650b03`.
+      Tested with hole loops, curved shared interfaces, independent
+      extrusion rims and the render-control-mesh pipeline.
 - [ ] **3.4** Implement `joinGeometry` with declared matching
       boundary pairs, validated winding and explicit vertex welding.
       Reject multiple welds of one edge, inconsistent matching cycles,

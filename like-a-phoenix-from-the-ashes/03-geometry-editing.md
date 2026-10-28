@@ -67,7 +67,27 @@ subsequent patch operations. The outer contour is oriented clockwise
 for the existing sampled-extrusion contract. The independent
 `sampleProfile` operation also supports sampled outer contours and holes.
 Arbitrary hole-bearing **partition inputs** still belong to 6.1.
-Curved shared surface construction follows in 3.3.
+`fillSurfacePatch({ profile, chart, region, maxDeviation })`
+constructs a charted authored surface from these exactly sampled
+outer/hole loops. Its patch selection owns the generated face references
+and chart; the boundary selections retain each loop's original
+construction vertices. Curved surfaces may be refined by inserting
+vertices **only in the interior**. Shared interior edges are subdivided
+consistently in all incident triangles, never on one side alone.
+
+Boundary chord deviation is checked independently. A requested
+`maxDeviation` that cannot be met without changing a boundary
+produces a typed `sampling-limit` error: the interface must be
+resampled jointly before either neighboring surface is reconstructed.
+The deviation is assessed at edge midpoints and face centroids,
+not a proven continuous maximum for arbitrary chart functions.
+The chart must be finite, locally oriented and invertible at sampled
+points. Folded or self-overlapping chart domains are unsupported.
+
+The resulting triangles retain physical chart-space UVs and their
+authored face provenance through the regular mesh/render compiler.
+Subsequent topology-changing edits must return refreshed patch owners
+or invalidate the chart; this lifecycle is addressed explicitly in 3.7.
 
 A concave clipping result may have multiple components and holes.
 The `Profile2` result contains the boundary and any hole contours;
