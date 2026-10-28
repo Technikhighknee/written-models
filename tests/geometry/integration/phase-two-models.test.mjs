@@ -22,6 +22,9 @@ const { profileSpans } = await toolbox(
 const { radialStaves } = await toolbox(
     "geometry/construction/radialStaves.ts"
 );
+const { bulgedProfile } = await toolbox(
+    "shapes/profiles/bulged.ts"
+);
 const { geometryResult } = await toolbox(
     "geometry/kernel/GeometryResult.ts"
 );
@@ -153,11 +156,14 @@ test("the dagger's steel / oak / iron section boundaries remain authored", () =>
 });
 
 test("twenty-four barrel staves keep sparse inner rows and closed end grain", () => {
-    const profile = [
-        [0.26, 0], [0.275, 0.0975], [0.288, 0.195],
-        [0.297, 0.2925], [0.30, 0.39], [0.297, 0.4875],
-        [0.288, 0.585], [0.275, 0.6825], [0.26, 0.78]
-    ].map(([radius, y]) => new THREE.Vector2(radius, y));
+    const profile = bulgedProfile({
+        height: 0.78,
+        bottomDiameter: 0.52,
+        topDiameter: 0.52,
+        peakDiameter: 0.60,
+        points: 9,
+        curve: "quadratic"
+    });
 
     const staves = radialStaves(profile, {
         count: 24,

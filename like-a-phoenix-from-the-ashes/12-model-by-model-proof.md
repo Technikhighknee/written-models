@@ -429,6 +429,32 @@ present in the target design:
 These capabilities are part of the API contracts and implementation
 sequence, with the exact part-by-part requirements above.
 
+## Phase 2 model-level geometry proof
+
+The geometry integration checks exercise four actual construction paths
+against the common topology kernel:
+
+- **Plank:** Five sections with the model's real bend and dimensions
+  reproduce the original vertex positions, quad count and regions.
+- **Dagger:** The axial hilt profile retains exact iron/wood/iron
+  transition intervals and the existing loft's quad count and surface
+  assignment. Blade tips and full assembly remain part of model migration.
+- **Barrel:** All 24 staves using the nine-row radius profile retain
+  their five-point visible row, two-point interior row, independent end
+  triangles and closed authored topology.
+- **Mug:** `buildTankardGeometry()` constructs the complete stave, band
+  and eight-sided handle geometry, performs both real stave contact fits,
+  and retains control quads and end-cap faces.
+
+`loftBoard` shares side generation with `loftSideQuads`, including
+the first-corner travel metric used by existing board UVs. The
+Catmull–Rom sweep adapter uses `build/sweepSection` for its transported
+sections and authored ends, preserving its existing signature and
+smoothing metadata.
+
+These are geometry integration proofs, not claims that the eight final
+models have already been migrated or visually approved.
+
 ## Final model migration acceptance
 
 | Model | Main geometric acceptance | Appearance/runtime acceptance |

@@ -101,9 +101,14 @@ section, path and face-construction operations.
       named landmark anchors: `9a51881`. Planar patch-rim proof and
       shared cap triangulation preserving authored boundary edges:
       `34dd166`, `0cad2f3`. General curved `fillSurfacePatch` is 3.3.
-- [ ] **2.10** Reproduce the plank's bend, the dagger's steel/wood
+- [x] **2.10** Reproduce the plank's bend, the dagger's steel/wood
        transitions, the barrel stave cross-section and the mug's
        curved handle through the shared constructors.
+       Four model-level geometry proofs, including the tankard's real
+       two-point handle fitting: `507f4be`. `loftBoard` now reuses
+       `loftSideQuads`; the Catmull–Rom handle adapter reuses the
+       transported `build/sweepSection`. Full model migration and
+       visual/runtime acceptance remain separate work.
 
 **Gate:** Different cross-sections and object categories reuse
 actual geometry code, with no false quads, collapsed caps or

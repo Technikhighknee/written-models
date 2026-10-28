@@ -249,6 +249,17 @@ but retain independent vertices and part ownership. The sampler
 rejects collapsed radii, thicknesses and self-crossing section
 contours rather than producing invalid wall strips.
 
+The `loftBoard` construction uses the shared `loftSideQuads`
+engine for all longitudinal surfaces, retaining the existing
+perimeter U and first-corner longitudinal V coordinates. Its
+mixed-density end faces retain the authored boundary vertices without
+inserting subdivisions.
+The Catmull–Rom sweep convenience API also delegates to the
+transported `build/sweepSection` implementation, retaining its
+section flare, named caps and smoothing groups. These routes are
+exercised against the plank, dagger, barrel and wooden mug geometry
+in the Phase 2 model-level proof.
+
 ### Shells and thickness
 
 A wall follows two related surface contours. In the initial
