@@ -138,7 +138,9 @@ dynamic cavity behavior.
 - [ ] **4.5** Unify frame/anchor attachment math, coordinate-space
       conversions and cycle detection.
 - [ ] **4.6** Query finite surface clearance, including polygon
-      chord intersections between path sample points.
+      chord intersections between path sample points. Separately
+      verify the intended exterior-side placement of hoops and bands;
+      unsigned separation does not establish inside versus outside.
 - [ ] **4.7** Extract aligned cavity sections from separate inner
       stave surfaces, deduplicating horizontal row edges and resolving
       crossings at intermediate heights. Reject ambiguous seams or
