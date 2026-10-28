@@ -1,185 +1,171 @@
-# written-models — The Toolbox We Actually Want
+# written-models — Toolbox Direction
 
-**Build geometry. Not object generators.**
+The toolbox should make increasingly ambitious 3D models possible through
+reusable geometric capabilities.
 
-A chair, a dagger, a barrel, a pipe, a tree branch, a hand: they should all be
-built from the same growing set of geometric powers.
+A new model brings new problems. Solving them expands what every subsequent
+model can do. The goal is a growing collection of tools that work together
+across furniture, weapons, architecture, mechanical parts, organic shapes,
+and whatever else we decide to make.
 
-Today, too much of our cleverness is trapped inside functions named after
-things. We can build a beautiful board, then discover we need half its tricks
-again for something that isn't a board.
+A function developed while building a barrel might later help shape a
+dagger, a metal pipe, or a character. That kind of reuse is what makes
+the toolbox worth building.
 
-That's backwards.
+## The foundation
 
-**Every model should make the toolbox more powerful for the next model —
-especially when the next model is nothing like it.**
+Geometry is the common language.
 
-## The idea
+A model defines its dimensions, profiles, construction, details, materials,
+and artistic choices. The toolbox provides the operations that make those
+choices possible.
 
-The toolbox knows **geometry**. Models know **what they're making**.
+Consider a plank, a metal tube, a chair leg, and a finger. Each can be
+described using cross-sections, paths, surfaces, and local variations.
+Their geometry differs, but they can share the same techniques for
+building, shaping, cutting, and connecting parts.
 
-A board is a shape, a path, a thickness, a few edges and surface details.
-A pipe is a different shape and perhaps a hollow cross-section, traveling
-along a path. A dagger grip, chair leg, barrel stave, or finger may call for
-different profiles and deformations.
+**A new geometric capability should have a useful life far beyond the
+model that first needed it.**
 
-They shouldn't need separate implementations of how to loft, bend, cut,
-partition, fit, or connect geometry.
+## Capabilities we want
 
-The toolbox provides those operations. The model composes them.
+### Shape construction
 
-No more hiding a generally useful algorithm inside `boardPanel()`,
-`cutBoard()`, or the next object-specific helper. The names aren't the
-real problem; **the trapped capabilities are**.
+- Define points, curves, paths, profiles, cross-sections, contours,
+  surfaces, and coordinate frames.
+- Extrude, loft, sweep, revolve, and build surfaces between arbitrary
+  compatible boundaries.
+- Change a cross-section along a path: taper, flare, bend, twist,
+  offset, or transition between profiles.
+- Build solid and hollow bodies, shells, open surfaces, and complex
+  assemblies.
+- Control the shape and density of the resulting topology.
 
-## What we want to be able to do
+These operations should be flexible enough to describe straight beams,
+curved tubes, forged metal shapes, barrel staves, and organic forms.
 
-### Create any shape
+### Geometry editing
 
-- Define points, curves, paths, contours, profiles, cross-sections, surfaces.
-- Build solids and shells with extrusion, lofting, sweeping, revolving, and
-  surface construction.
-- Vary a shape along its length: taper, widen, twist, curve, offset,
-  transition between completely different cross-sections.
-- Work with both hollow and solid geometry, planar and curved surfaces,
-  regular and irregular forms.
+- Cut, split, partition, trim, and remove material.
+- Create holes, cavities, slots, grooves, recesses, bevels, fillets,
+  and smooth transitions.
+- Bend, twist, warp, reshape, and displace existing geometry.
+- Refine individual regions where the shape needs more detail.
+- Preserve usable boundaries, surface identities, topology, and UVs
+  as geometry changes.
 
-A rectangular prism, a hollow tube, a curved plank and an organic limb
-are different uses of geometric operations, not four separate toolkits.
+Editing should work on the geometry we already have, including geometry
+produced by other toolbox operations.
 
-### Work on geometry
+### Contacts and assembly
 
-- Cut, split, partition, trim, remove material, open holes and cavities.
-- Add thickness, bevels, fillets, grooves, recesses and transitions.
-- Bend, warp, twist, taper, displace and reshape existing geometry.
-- Refine geometry where detail matters while keeping control of topology.
-- Carry useful information — faces, boundaries, UVs and surface regions —
-  through these operations.
+- Find faces, edges, intersections, contact points, and local frames
+  on existing geometry.
+- Fit endpoints and boundaries to flat, slanted, and curved surfaces.
+- Construct members whose ends meet their actual supporting surfaces.
+- Align, attach, orient, and position components in arbitrary
+  coordinate systems.
+- Partition a shape into separate pieces with matching boundaries,
+  including irregular seams and shared subdivisions.
 
-The same operation should work on wildly different shapes wherever its
-geometric inputs make sense.
+A wooden stretcher and a metal brace can use the same fitting operations.
+The profiles and surrounding construction come from the models.
 
-### Make pieces fit
+### Controlled detail
 
-- Ask geometry where its surfaces, edges, intersections and contact points are.
-- Fit one surface or boundary to another, including slanted and curved targets.
-- Cut the ends of a member to meet its actual supports, not guessed planes.
-- Place, orient, connect and align pieces in arbitrary coordinate frames.
-- Partition shapes into separate pieces that share *exactly matching*
-  boundaries, even when those boundaries are irregular.
+- Shape edges, corners, and surfaces with deliberately chosen wear,
+  irregularity, and deformation.
+- Apply coherent variation across neighboring pieces while maintaining
+  their required contact geometry.
+- Choose where detail appears, how strong it is, and how it changes
+  across a surface.
+- Create precise, rough, asymmetric, damaged, weathered, or organic
+  results using the same underlying operations.
 
-A chair stretcher, a metal brace and a bone joint should draw from the
-same contact and fitting capabilities.
+The artist stays in control of the shape.
 
-### Keep full artistic control
+### Topology, surfaces, and export
 
-- Every contour, proportion, imperfection and detail can be deliberately
-  authored.
-- Variation is a geometric input, not an excuse for random-looking results.
-- We can create pristine, damaged, asymmetric, worn, precise or organic shapes
-  with the same tools.
-- No forced aesthetic. No one-size-fits-all mesh recipe.
+- Keep genuine authored quads and triangles throughout construction.
+- Preserve edge loops, meaningful boundaries, surface regions,
+  smoothing, and physical UV coordinates.
+- Make the output of one operation usable by the next.
+- Derive Three.js meshes from authored geometry and retain the
+  information needed for Quad View.
+- Export the finished models to GLB/Godot with their geometry,
+  materials, and runtime features intact.
 
-### Own the topology
+Our geometry representation should make composition natural.
+We should be able to sweep a profile, deform the result, cut into it,
+and fit it against another surface while keeping its topology useful.
 
-- Author actual quads and genuine triangles. Quad View shows the real thing.
-- Keep control of edge loops, surface regions, smoothing and UV coordinates.
-- Preserve construction geometry through operations instead of reconstructing
-  it from render triangles later.
-- Convert to Three.js meshes and GLB/Godot output at the rendering boundary.
+## Existing capabilities to develop further
 
-Rendering is what we *do with* geometry. It isn't how we *define* geometry.
+There is already substantial geometric work in the repository.
+The next step is to identify the general operations within it and
+make them available across the entire toolbox.
 
-### Combine everything
-
-This is the real payoff.
-
-A profile built by one tool can be swept by another, deformed by a third,
-cut by a fourth, and fitted to another part by a fifth.
-
-The resulting geometry is still editable, still carries its surfaces and
-topology, and still works with the next tool.
-
-**Capabilities compound.** Building a new object should get easier because
-previous objects expanded what the toolbox can do.
-
-## What that means for the existing code
-
-The toolbox already has real building blocks. We don't need to throw away
-working geometry; we need to free its capabilities from the objects that
-happen to contain them.
-
-Some obvious places to dig:
-
-| Existing code | The capability we're after |
+| Current functions | Geometric capabilities to develop |
 | --- | --- |
-| `straightBoard`, `profiledBoard`, `loftBoard` | Arbitrary cross-sections, changing profiles, lofting, edge shaping |
-| `boardPanel`, `circularPlankPanel` | Partitioning shapes into cooperating pieces with shared boundaries |
-| `cutBoard`, `seamedPlankExtrusion` | Cuts, openings, recesses, surface transitions, controllable seams |
-| `radialStaves`, `radialStripLayout`, `bandAroundProfile` | Radial distribution, curved strips, offsets and surface-following geometry |
-| `timber`, `beams`, `beamBetweenPlanes` | Members with arbitrary sections and fitted ends |
-| `supportFacePlane`, `fitBetweenSupports`, `fitBoundaryToSurface` | Surface queries and geometric contact/fitting |
-| `turnedVessel`, `profiledCavity`, `fillableVolume` | Shells, enclosed volumes, interior profiles, changing geometry |
-| `attachByAnchors`, `attachByFrames` | A common way to position and connect geometry |
+| `straightBoard`, `profiledBoard`, `loftBoard` | Arbitrary sections, lofting, edge shaping, changing profiles |
+| `boardPanel`, `circularPlankPanel` | Shape partitioning, shared boundaries, cooperating pieces |
+| `cutBoard`, `seamedPlankExtrusion` | Cuts, openings, grooves, recesses, surface transitions |
+| `radialStaves`, `radialStripLayout`, `bandAroundProfile` | Radial layouts, curved strips, offsets, surface-following forms |
+| `timber`, `beams`, `beamBetweenPlanes` | Profile-based members and precisely fitted ends |
+| `supportFacePlane`, `fitBetweenSupports`, `fitBoundaryToSurface` | Surface queries, contacts, boundary fitting |
+| `turnedVessel`, `profiledCavity`, `fillableVolume` | Shells, enclosed volumes, interior contours, geometric changes |
+| `attachByAnchors`, `attachByFrames` | Transformations, positioning, attachments |
 
-This table is a starting point, not an exhaustive list. Every toolbox file
-deserves the same question:
+This is an initial set of candidates. The same examination should extend
+to the rest of the toolbox.
 
-**What can this code do that would still be useful if we deleted the model
-it was originally written for?**
+For each function, identify the geometric work it performs, the inputs
+it truly needs, and the other kinds of geometry that could benefit.
+Extract shared operations and compose them wherever they are used.
 
-Keep that capability. Extract it if necessary. Compose it with the others.
-Leave the decisions about *what object to make* in the models.
+Object-specific construction remains in the models, built from the
+toolbox's capabilities.
 
 ## What success looks like
 
-Imagine starting a new model we've never attempted before.
+We can start an unfamiliar model by selecting and combining geometric
+operations we already understand. New challenges lead to tools with
+uses across many different models.
 
-Instead of searching for a similar object generator, we pick the geometric
-operations we need. They work together. If something is missing, we add one
-new capability — and the entire toolbox becomes stronger.
+A metal tube can inherit techniques developed for a wooden beam.
+An organic limb can use profile transitions, surface editing, and
+controlled deformation. A complex joint can reuse the same surface
+queries and contact-fitting operations as a chair.
 
-We should be able to go from a tavern table to a wrought-iron hinge to an
-anatomically convincing character **without starting our modeling vocabulary
-over each time**.
+The table, barrel, beer mug, dagger, plank, sandpaper, bench, and chair
+retain their visual quality. Their geometry remains authored, Quad View
+stays accurate, and GLB export works.
 
-The existing models still need to look good. Real joins stay real, authored
-quads stay quads, and GLB export still works.
+As the toolbox grows, entirely new categories of models become
+approachable with an increasingly powerful set of familiar operations.
 
-But preserving the current models is the floor, not the ambition.
+## Progress
 
-**The ambition is a toolbox that can grow toward almost anything we can
-imagine modeling.**
+Check off an item when its changes are working in the repository.
+Record the relevant commit alongside completed items.
 
-## Build checklist
-
-Mark `[x]` when the work is actually in the repository and working.
-Add the commit beside completed items. Split tasks whenever useful.
-
-- [ ] Inventory every toolbox capability and identify algorithms trapped
-      inside object-specific functions.
-- [ ] Give construction geometry a consistent, composable representation
-      for faces, edges, boundaries, surfaces and topology.
-- [ ] Consolidate the core operations for contours, profiles, sections,
-      paths, lofts, sweeps, extrusion and rotation.
-- [ ] Extract general cutting, splitting, partitioning, holes, grooves,
-      surface details and shape-editing operations.
-- [ ] Make deformation and controlled variation work across different
-      kinds of geometry.
-- [ ] Make surface queries, contacts, fitting and assembly fully reusable.
-- [ ] Make repeated pieces share boundaries and subdivisions accurately,
-      without a board- or stave-specific implementation.
-- [ ] Keep UVs, materials, authored quads and export compatible with
-      composed geometry.
-- [ ] Rebuild existing models from the new capabilities; move any remaining
-      object recipes out of the toolbox.
-- [ ] Prove reuse with **different kinds of geometry** — not three versions
-      of another plank.
-- [ ] Remove superseded specialized algorithms and update the toolbox
-      capability guide.
-
----
-
-**A toolbox isn't great because it already contains a tool for everything.**
-
-**It's great because each new tool expands what everything else can do.**
+- [ ] Examine every toolbox function and identify its reusable
+      geometric capabilities.
+- [ ] Establish a consistent, composable representation for geometry,
+      faces, boundaries, surface regions, and topology.
+- [ ] Consolidate contour, profile, cross-section, path, loft, sweep,
+      extrusion, and revolution operations.
+- [ ] Extract general-purpose cutting, splitting, partitioning,
+      openings, grooves, and surface editing.
+- [ ] Make deformation and controlled variation reusable across
+      different forms of geometry.
+- [ ] Consolidate surface queries, contact fitting, and assembly.
+- [ ] Support separate pieces with precisely matching boundaries
+      and subdivisions.
+- [ ] Keep authored quads, UVs, surface regions, materials, Quad View,
+      and export working through composed operations.
+- [ ] Rebuild existing models using the shared capabilities and relocate
+      object-specific construction to model code.
+- [ ] Demonstrate reuse across genuinely different geometries.
+- [ ] Remove superseded algorithms and update the toolbox capability guide.
