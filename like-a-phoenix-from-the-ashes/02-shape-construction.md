@@ -154,9 +154,11 @@ sweepSection({
 });
 ```
 
-An explicit starting frame fixes the roll orientation. Frame
-transport avoids sudden flips. Sampling is shared with adaptive
-section geometry.
+The rigid starting frame fixes the roll orientation: local +Z
+matches the path's forward tangent, local +X/+Y define the profile
+axes, and its origin lies at the path start. Inconsistent frames or
+zero tangents fail explicitly. Frame transport avoids sudden flips.
+Sampling is shared with adaptive section geometry.
 
 A rectangular timber, bent pipe, dagger handle, and branch can
 all use this mechanism. For a periodic path (`closedPath: true`),
