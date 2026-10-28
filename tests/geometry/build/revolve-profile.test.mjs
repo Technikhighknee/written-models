@@ -259,7 +259,7 @@ test("invalid axis, meridian and collapsed radial modulation are rejected", () =
     assert.throws(
         () => revolveProfile({
             closed: false,
-            points: [vector(0.3, 0), vector(1, 0), vector(0, 1)]
+            points: [vector(0.3, 0), vector(0, 0.5), vector(0.5, 1)]
         }, options()),
         error => error.reason === "unsupported-topology"
     );
