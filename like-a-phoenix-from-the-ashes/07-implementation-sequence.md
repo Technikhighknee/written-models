@@ -70,8 +70,10 @@ section, path and face-construction operations.
       complex cap triangulation with precise source boundaries.
       Planar solid/annular caps, concave end contours and convex
       outward-only apex fans: `f263ebe` and follow-up refinement.
-- [ ] **2.5** Implement `bridgeBoundaries` with unequal densities,
+- [x] **2.5** Implement `bridgeBoundaries` with unequal densities,
       authored triangle transitions and corresponding sample stations.
+      Real aligned quads, unequal-density triangles, open/periodic seams,
+      owned boundary selections: `c26a1db`, `583b8aa`, `93b4c32`.
 - [ ] **2.6** Implement a section-varying path sweep with transport
       frames and a truly periodic, connected closed-path option.
 - [ ] **2.7** Consolidate authored extrusion, revolution and
