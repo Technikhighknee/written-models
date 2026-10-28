@@ -466,7 +466,7 @@ bridgeBoundaries(
   from: Contour3,
   to: Contour3,
   options: BridgeOptions
-): GeometryResult;
+): GeometryResult; // named "from" and "to" boundaries
 
 correspondContours(
   first: Contour3,
