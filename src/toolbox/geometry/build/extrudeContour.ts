@@ -125,7 +125,15 @@ function offsetContour(
         result.push(current.clone().add(shift));
     }
 
-    if (contourWinding(result) !== contourWinding(original)) {
+    let winding: "clockwise" | "counterclockwise";
+
+    try {
+        winding = contourWinding(result);
+    } catch {
+        invalid("degenerate-geometry", "Contour offset collapsed its outline");
+    }
+
+    if (winding !== contourWinding(original)) {
         invalid("unsupported-topology", "Contour offset inverted its outline");
     }
 
