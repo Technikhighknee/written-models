@@ -93,7 +93,8 @@ adjoining the same interface use the same boundary stations,
 including after adaptive refinement.
 
 An opening along a table edge may receive an inset or groove.
-A metal plate may receive holes using `cutPatch()`. The
+A metal plate can receive surface openings using `openPatch()` or
+through-holes using `cutThrough()`. The
 partition operation has no concept of wood or iron.
 
 **Proof:** Every internal interface agrees geometrically, with

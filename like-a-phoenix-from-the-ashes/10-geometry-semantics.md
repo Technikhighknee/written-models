@@ -54,7 +54,9 @@ For example:
 ```text
 extrudeContour → geometry, front/back faces, outer/inner rim loops
 splitByPlane  → two solids, new cut faces, paired cut loops
-cutPatch      → modified surface, opening rim, walls, optional floor
+openPatch     → open rim where surface faces were removed
+recessPatch   → named rim, inset walls and a floor
+cutThrough    → matching entry/exit rims and connecting walls
 fitBoundary   → moved/refined geometry, updated boundary selection
 ```
 
@@ -127,7 +129,7 @@ Open input shells may be cut without automatically becoming solids.
 `SurfacePatchRef` selects a connected collection of authored faces
 and a coordinate chart that maps its local 2D plane to 3D positions.
 
-The first `cutPatch` supports planar connected patches with valid
+The first patch-editing operations support planar connected patches with valid
 outer boundary and optional existing holes.
 
 The operation:

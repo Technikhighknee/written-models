@@ -83,20 +83,20 @@ that can make an iron plate, a stone surface or separate solid parts.
       paired interfaces identifying the owning output pieces.
 - [ ] **3.5** Implement `openPatch` and `recessPatch` on connected
       planar patches, with explicit rims, walls and optional floors.
-- [ ] **3.5a** Implement `cutThrough` for compatible entry/exit
+- [ ] **3.6** Implement `cutThrough` for compatible entry/exit
       patches, creating the connecting inner walls.
-- [ ] **3.6** Add parameterized curved-patch cutting based on explicit
+- [ ] **3.7** Add parameterized curved-patch cutting based on explicit
       surface charts and mapped cut boundaries.
-- [ ] **3.7** Turn edge recess, chamfer, bevel, roundover and groove
+- [ ] **3.8** Turn edge recess, chamfer, bevel, roundover and groove
       geometry into reusable selected-edge/patch operations.
-- [ ] **3.8** Combine seeded/coherent variation with authored
+- [ ] **3.9** Combine seeded/coherent variation with authored
       geometry fields and region-weighted deformation.
-- [ ] **3.9** Implement local edge/face subdivision with consistent
+- [ ] **3.10** Implement local edge/face subdivision with consistent
       neighboring stations and genuine transition triangles.
-- [ ] **3.10** Wrap `manifold-3d` for closed-solid booleans;
+- [ ] **3.11** Wrap `manifold-3d` for closed-solid booleans;
       preserve actual triangulated output, assign surface/UV data,
       and report disconnected components.
-- [ ] **3.11** Apply these tools to a wooden panel, circular barrel
+- [ ] **3.12** Apply these tools to a wooden panel, circular barrel
       head and metal plate, using shared cuts and source boundaries.
 
 **Working proof:** Adjacent parts use precisely matching boundaries.
