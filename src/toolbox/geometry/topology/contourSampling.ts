@@ -18,6 +18,18 @@ function invalid(operation: string, message: string): never {
     throw new GeometryOperationError(operation, "invalid-input", message);
 }
 
+function distance(
+    a: THREE.Vector2 | THREE.Vector3,
+    b: THREE.Vector2 | THREE.Vector3
+): number {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const dz = a instanceof THREE.Vector3 && b instanceof THREE.Vector3
+        ? a.z - b.z : 0;
+
+    return Math.hypot(dx, dy, dz);
+}
+
 /**
  * Normalize the authored perimeter without removing or moving its corners.
  * The first point is the seam for a closed contour.
@@ -42,7 +54,7 @@ export function measureContour<T extends THREE.Vector2 | THREE.Vector3>(
     }
 
     const extent = positions.reduce(
-        (size, point) => Math.max(size, point.distanceTo(origin)),
+        (size, point) => Math.max(size, distance(point, origin)),
         0
     );
     const tolerance = lengthTolerance(precision, extent);
@@ -50,15 +62,16 @@ export function measureContour<T extends THREE.Vector2 | THREE.Vector3>(
     const edges = closed ? positions.length : positions.length - 1;
 
     for (let i = 0; i < edges; i++) {
-        const distance = positions[i]!.distanceTo(
+        const edgeLength = distance(
+            positions[i]!,
             positions[(i + 1) % positions.length]!
         );
 
-        if (!(distance > tolerance) || !Number.isFinite(distance)) {
+        if (!(edgeLength > tolerance) || !Number.isFinite(edgeLength)) {
             invalid(operation, "Contour contains a collapsed edge");
         }
 
-        distances.push(distances.at(-1)! + distance);
+        distances.push(distances.at(-1)! + edgeLength);
     }
 
     const length = distances.at(-1)!;
