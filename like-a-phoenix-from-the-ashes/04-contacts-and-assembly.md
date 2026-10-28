@@ -215,7 +215,10 @@ in [11](11-numerics-and-query-fidelity.md).
 triangle surfaces, not enclosed solid volume. It reports surface
 contact or crossing separately from satisfaction of a nonnegative
 requested gap. A band must pass this finite-surface clearance check;
-checking only sampled hoop vertices is insufficient.
+checking only sampled hoop vertices is insufficient. Unsigned
+surface distance alone does not establish that the band lies on the
+*outside* of the wood: the analytic radial exterior placement or an
+explicit oriented-side check supplies that independent condition.
 
 ## Precision
 
