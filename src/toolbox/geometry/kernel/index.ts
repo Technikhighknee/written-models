@@ -14,3 +14,5 @@ export {
     lengthTolerance
 } from "./precision";
 export type { GeometryPrecision } from "./precision";
+export { capBoundary, capSectionEnd, tipBoundary } from "../build/finishBoundaries";
+export type { CapOptions, TipOptions } from "../build/finishBoundaries";

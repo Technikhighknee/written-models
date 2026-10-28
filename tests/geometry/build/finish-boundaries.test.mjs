@@ -183,6 +183,16 @@ test("stale selections, nonplanar caps, and out-of-rim tips fail", () => {
         error => error.reason === "unsupported-topology"
     );
 
+    assert.throws(
+        () => tipBoundary(
+            source,
+            source.boundaries["end-outer"][0],
+            v(0, 0, 1),
+            { region: "inverted-tip", uvFrame: frameAt(2) }
+        ),
+        error => error.reason === "unsupported-topology"
+    );
+
     const warped = solid(0);
     warped.outer.points[2].z = 0.1;
     const nonplanar = loftSectionWalls([warped, solid(2)]);

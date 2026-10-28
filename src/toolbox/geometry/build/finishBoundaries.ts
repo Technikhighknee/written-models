@@ -450,6 +450,16 @@ export function tipBoundary(
         fail(operation, "degenerate-geometry", "Tip apex is coplanar");
     }
 
+    const first = boundary.vertices;
+    const adjacent = topologyOf(source).edgeUses(first[0]!, first[1]!)[0]!;
+    const followsSide = adjacent.from === first[0] &&
+        adjacent.to === first[1];
+    const outward = (followsSide ? -1 : 1) * Math.sign(area(projected));
+
+    if (localApex.z * outward <= tolerance) {
+        fail(operation, "unsupported-topology", "Tip apex points into the source");
+    }
+
     // A fan is only reliable when its apex projects into the
     // convex rim; otherwise the sides may overlap one another.
     const sign = Math.sign(area(projected));

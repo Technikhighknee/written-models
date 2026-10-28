@@ -129,8 +129,14 @@ Use one section-loft engine to connect corresponding contours.
 The current `loftRings()` already triangulates concave flat ends using
 `THREE.ShapeUtils.triangulateShape()`, while four-corner `loftSections()`
 keeps authored quad caps. The unified engine retains both choices.
-A four-corner cap stays a quad when it is coplanar and simple;
+A four-corner cap stays a quad when it is coplanar and convex;
 concave or holed caps use explicit triangulation or patch faces.
+`capBoundary` closes a single open rim; `capSectionEnd` closes an
+outer rim together with its inner rims. Both reuse the exact source
+vertices and consume their open-boundary selections. `tipBoundary`
+adds a genuine apex fan for an outward-pointing convex end.
+Unsupported or nonplanar cap contours are rejected rather than
+silently flattened.
 
 Sections can translate, rotate, change scale, and change shape along
 the loft. Callers control the stations and section correspondence.

@@ -503,6 +503,14 @@ capBoundary(
   boundary: BoundaryRef,
   options: CapOptions
 ): GeometryResult;
+
+/** Close one planar outer rim together with its planar inner rims. */
+capSectionEnd(
+  source: GeometryResult,
+  outer: BoundaryRef,
+  holes: readonly BoundaryRef[],
+  options: CapOptions
+): GeometryResult;
 ```
 
 `extrudeContour` accepts a raw profile or an already sampled one;

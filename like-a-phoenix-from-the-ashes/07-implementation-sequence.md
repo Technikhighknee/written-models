@@ -66,8 +66,10 @@ section, path and face-construction operations.
       smoothing callbacks by contour edge and interval.
       Shared strips: `f6abf25`. Multi-loop `Section3` walls:
       `c4a6207`. End caps and tips follow in 2.4.
-- [ ] **2.4** Implement caps and explicit triangle-fan tips; retain
+- [x] **2.4** Implement caps and explicit triangle-fan tips; retain
       complex cap triangulation with precise source boundaries.
+      Planar solid/annular caps, concave end contours and convex
+      outward-only apex fans: `f263ebe` and follow-up refinement.
 - [ ] **2.5** Implement `bridgeBoundaries` with unequal densities,
       authored triangle transitions and corresponding sample stations.
 - [ ] **2.6** Implement a section-varying path sweep with transport
