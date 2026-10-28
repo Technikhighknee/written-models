@@ -23,6 +23,7 @@ different compositions of familiar geometric operations.
 | [06 — Migration map](06-migration-map.md) | Exact destinations for existing functions and model consumers |
 | [07 — Implementation sequence](07-implementation-sequence.md) | Ordered deliverables, dependencies, completion checkboxes |
 | [08 — Composition examples](08-composition-examples.md) | Concrete constructions demonstrating the shared operations |
+| [09 — API contracts](09-api-contracts.md) | Proposed TypeScript types, operation signatures and shared conventions |
 
 The numbered documents describe one design. Types and names shown in
 them are the proposed public contracts; the migration map connects

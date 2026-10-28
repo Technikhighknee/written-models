@@ -94,7 +94,7 @@ Introduce explicit boundary references in operation results:
 ```ts
 interface GeometryResult {
   geometry: MeshData;
-  boundaries: Readonly<Record<string, BoundaryLoop>>;
+  boundaries: Readonly<Record<string, BoundaryRef>>;
   regions: Readonly<Record<string, readonly FaceRef[]>>;
 }
 ```
@@ -104,13 +104,16 @@ A constructor can return `boundaries.start`, `boundaries.end`,
 A split returns boundaries for the new cut faces, with both sides
 linked to the same geometric source.
 
+A `BoundaryRef` contains the ordered vertex IDs of a boundary and its
+open/closed state. `FaceRef` identifies a quad or triangle by index.
 These references are local to the returned geometry. An operation that
 changes indexing produces a new result with updated references.
 Topology is never selected by hoping old vertex indices still match.
 
 The API can retain the existing `MeshData` returns internally while
 migrating consumers to `GeometryResult` where named outputs are useful.
-Plain `MeshData` remains a valid input to every geometric operation.
+Core geometric operations accept plain `MeshData`. Operations using
+named boundaries can take the accompanying `GeometryResult`.
 
 ## Composition
 

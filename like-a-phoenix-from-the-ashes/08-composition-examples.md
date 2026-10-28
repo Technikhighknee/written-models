@@ -140,7 +140,7 @@ at the relevant end:
 
 ```ts
 const shaped = fitBoundary(
-  rail.geometry,
+  rail,
   rail.boundaries.end,
   curvedTarget,
   { projection: "ray", direction: inward, falloff: 2 }
@@ -211,14 +211,14 @@ const handle = sweepSection({
 });
 
 const fittedStart = fitBoundary(
-  handle.geometry,
+  handle,
   handle.boundaries.start,
   mugSurface,
   { projection: "ray", direction: firstContactDirection }
 );
 
 const fittedHandle = fitBoundary(
-  fittedStart.geometry,
+  fittedStart,
   fittedStart.boundaries.end,
   mugSurface,
   { projection: "ray", direction: secondContactDirection }

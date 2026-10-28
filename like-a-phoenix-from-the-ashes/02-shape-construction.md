@@ -11,9 +11,14 @@ type Contour2 = {
   closed: boolean;
 };
 
-type Section3 = {
+type Contour3 = {
   points: readonly Vector3Like[];
   closed: boolean;
+};
+
+type Section3 = {
+  outer: Contour3;
+  inner?: readonly Contour3[];
 };
 
 type Path3 = {
@@ -37,6 +42,10 @@ usable by every construction algorithm.
 A contour has a specific vertex order and winding. Corresponding
 sections must establish which point or boundary feature maps to which
 one on the next section.
+
+A section has an outer contour and optionally one or more inner contours.
+An annular section produces separate outer and inner wall strips and
+an end cap spanning the two contours.
 
 For matching contours, each interval creates genuine quad side faces.
 When boundaries have different subdivisions, `stitchPolylines`
