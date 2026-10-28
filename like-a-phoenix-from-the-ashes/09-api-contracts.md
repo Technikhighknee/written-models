@@ -385,8 +385,10 @@ interface RevolveOptions extends PrecisionOptions {
 }
 
 interface BridgeOptions extends PrecisionOptions {
-  region?: string;
+  region?: string; // default "bridge"
   reverseWinding?: boolean;
+  // Open contours: exact 0 and 1 endpoints, increasing between.
+  // Closed contours: 0 seam and strictly increasing values below 1.
   fromStations: readonly number[];
   toStations: readonly number[];
 }
