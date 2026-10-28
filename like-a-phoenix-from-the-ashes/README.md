@@ -1,164 +1,106 @@
-# written-models — Toolbox Direction
+# Like a Phoenix from the Ashes
 
-The toolbox should make increasingly ambitious 3D models possible through
-reusable geometric capabilities.
+This directory contains the target architecture and implementation sequence
+for the next generation of `written-models`.
 
-A new model brings new problems. Solving them expands what every subsequent
-model can do. The goal is a growing collection of tools that work together
-across furniture, weapons, architecture, mechanical parts, organic shapes,
-and whatever else we decide to make.
+The toolbox grows through geometric capabilities that can be composed across
+very different models. A shape can be constructed, divided, reshaped,
+connected to another shape, textured, and exported while retaining useful
+topology. Every new capability expands what existing capabilities can create.
 
-A function developed while building a barrel might later help shape a
-dagger, a metal pipe, or a character. That kind of reuse is what makes
-the toolbox worth building.
+A tabletop, an iron hinge, a dagger, a pipe, and an organic limb become
+different compositions of familiar geometric operations.
 
-## The foundation
+## The architecture
 
-Geometry is the common language.
+| Document | Contents |
+| --- | --- |
+| [01 — Geometry kernel](01-geometry-kernel.md) | Authored faces, adjacency, boundaries, regions, data contracts, operation results |
+| [02 — Shape construction](02-shape-construction.md) | Contours, sampling, lofts, sweeps, revolutions, shells, caps |
+| [03 — Geometry editing](03-geometry-editing.md) | Partitioning, cuts, holes, seams, deformation, edge shaping |
+| [04 — Contacts and assembly](04-contacts-and-assembly.md) | Surface queries, fitted joints, frames, attachments |
+| [05 — Surfaces and export](05-surfaces-and-export.md) | UVs, materials, Quad View, GLB/Godot and runtime geometry |
+| [06 — Migration map](06-migration-map.md) | Exact destinations for existing functions and model consumers |
+| [07 — Implementation sequence](07-implementation-sequence.md) | Ordered deliverables, dependencies, completion checkboxes |
+| [08 — Composition examples](08-composition-examples.md) | Concrete constructions demonstrating the shared operations |
 
-A model defines its dimensions, profiles, construction, details, materials,
-and artistic choices. The toolbox provides the operations that make those
-choices possible.
+The numbered documents describe one design. Types and names shown in
+them are the proposed public contracts; the migration map connects
+them to the existing code. The implementation sequence is the execution
+order and the progress record.
 
-Consider a plank, a metal tube, a chair leg, and a finger. Each can be
-described using cross-sections, paths, surfaces, and local variations.
-Their geometry differs, but they can share the same techniques for
-building, shaping, cutting, and connecting parts.
+## The shape of the toolbox
 
-**A new geometric capability should have a useful life far beyond the
-model that first needed it.**
+The common currency is **authored geometry**: vertices, genuine triangular
+and quadrilateral faces, surface regions, UV coordinates, and identifiable
+boundaries.
 
-## Geometric capabilities
+A construction operation consumes geometric definitions or authored geometry
+and produces authored geometry. Editing operations work on those results.
+Spatial queries work directly with the same source. Rendering and export
+compile that information for their respective formats.
 
-### Shape construction
+```text
+points · contours · sections · paths · frames
+                      │
+                      ▼
+          authored geometry kernel ◄──── geometry queries
+                      │                      │
+            ┌─────────┼────────────┐         │
+            ▼         ▼            ▼         ▼
+         construct    edit       deform    fit / attach
+            └─────────┴────────────┴─────────┘
+                      │
+                      ▼
+             authored assemblies
+                      │
+                      ▼
+          Three.js viewer / Quad View
+                      │
+                      ▼
+               GLB / Godot
+```
 
-- Define points, curves, paths, profiles, cross-sections, contours,
-  surfaces, and coordinate frames.
-- Extrude, loft, sweep, revolve, and build surfaces between arbitrary
-  compatible boundaries.
-- Change a cross-section along a path: taper, flare, bend, twist,
-  offset, or transition between profiles.
-- Build solid and hollow bodies, shells, open surfaces, and complex
-  assemblies.
-- Control the shape and density of the resulting topology.
+Model code chooses the proportions, part construction, imperfections,
+material appearance, and relationships between parts. Shared geometric
+work remains available across the toolbox.
 
-These operations should be flexible enough to describe straight beams,
-curved tubes, forged metal shapes, barrel staves, and organic forms.
+We retain world units in **meters**, genuine authored quads, physical-scale
+UVs, the existing models' visual quality, and runtime features such as
+the beer mug's controllable fill level.
 
-### Geometry editing
+## The important decisions
 
-- Cut, split, partition, trim, and remove material.
-- Create holes, cavities, slots, grooves, recesses, bevels, fillets,
-  and smooth transitions.
-- Bend, twist, warp, reshape, and displace existing geometry.
-- Refine individual regions where the shape needs more detail.
-- Preserve usable boundaries, surface identities, topology, and UVs
-  as geometry changes.
+1. **`MeshData` remains the construction representation.** It grows
+   consistent topology, boundary, and operation-result utilities.
+2. **The render mesh is compiled from authored geometry.** Construction
+   operations return geometry; assigning materials or creating an
+   object belongs at the rendering/model boundary.
+3. **Adjacency is derived when needed.** Indexed faces remain the data
+   source; edge graphs, loops, and face neighborhoods are reusable queries.
+4. **An operation identifies its outputs.** Cuts and splits expose their
+   created boundaries and regions so the next operation can select them.
+5. **A shared boundary is constructed once.** Adjacent pieces sample
+   the same geometric curve and station sequence.
+6. **Contact fitting uses actual target geometry and explicit
+   transforms.** Planar and curved surfaces share the query system.
+7. **Object construction stays close to its model.** A wooden panel is
+   assembled using general contour partitioning and lofting operations.
+8. **Topology quality drives the algorithms.** Matching loops produce
+   quads; resolution transitions produce genuine triangles as needed.
+9. **Export preserves live asset capabilities.** Morph targets, skins,
+   instances, and material data retain their existing behavior.
 
-Editing should work on the geometry we already have, including geometry
-produced by other toolbox operations.
+## How the plan fits together
 
-### Contacts and assembly
+The sequence in [07](07-implementation-sequence.md) creates a usable
+vertical slice early: authored geometry → a general constructor →
+surface queries → rendering/export → a migrated model. Each subsequent
+slice extends the shared operations and uses an existing model as
+a real quality check.
 
-- Find faces, edges, intersections, contact points, and local frames
-  on existing geometry.
-- Fit endpoints and boundaries to flat, slanted, and curved surfaces.
-- Construct members whose ends meet their actual supporting surfaces.
-- Align, attach, orient, and position components in arbitrary
-  coordinate systems.
-- Partition a shape into separate pieces with matching boundaries,
-  including irregular seams and shared subdivisions.
+Completion means the capability works in more than one geometrically
+different context and the affected models still look and export correctly.
 
-A wooden stretcher and a metal brace can use the same fitting operations.
-The profiles and surrounding construction come from the models.
-
-### Controlled detail
-
-- Shape edges, corners, and surfaces with deliberately chosen wear,
-  irregularity, and deformation.
-- Apply coherent variation across neighboring pieces while maintaining
-  their required contact geometry.
-- Choose where detail appears, how strong it is, and how it changes
-  across a surface.
-- Create precise, rough, asymmetric, damaged, weathered, or organic
-  results using the same underlying operations.
-
-The artist stays in control of the shape.
-
-### Topology, surfaces, and export
-
-- Keep genuine authored quads and triangles throughout construction.
-- Preserve edge loops, meaningful boundaries, surface regions,
-  smoothing, and physical UV coordinates.
-- Make the output of one operation usable by the next.
-- Derive Three.js meshes from authored geometry and retain the
-  information needed for Quad View.
-- Export the finished models to GLB/Godot with their geometry,
-  materials, and runtime features intact.
-
-Our geometry representation should make composition natural.
-We should be able to sweep a profile, deform the result, cut into it,
-and fit it against another surface while keeping its topology useful.
-
-## How the toolbox is organized
-
-Every reusable operation is defined through geometric inputs and outputs.
-Profiles, paths, surfaces, boundaries, and meshes can pass between operations
-without depending on the object that originally motivated them.
-
-Construction specific to a barrel, board, chair, or dagger lives with that
-model. The geometric operations used to construct those parts belong to
-the shared toolbox.
-
-For example, splitting a shape into parts with matching boundaries is a
-toolbox capability. The number, placement, shape, and appearance of the
-planks in a tabletop are decisions made by the table model.
-
-Functions such as `boardPanel`, `cutBoard`, and `seamedPlankExtrusion`
-currently combine these concerns. Their geometric mechanisms will be
-reused through general operations, and their model-specific choices
-will stay with the models.
-
-## What success looks like
-
-We can start an unfamiliar model by selecting and combining geometric
-operations we already understand. New challenges lead to tools with
-uses across many different models.
-
-A metal tube can inherit techniques developed for a wooden beam.
-An organic limb can use profile transitions, surface editing, and
-controlled deformation. A complex joint can reuse the same surface
-queries and contact-fitting operations as a chair.
-
-The table, barrel, beer mug, dagger, plank, sandpaper, bench, and chair
-retain their visual quality. Their geometry remains authored, Quad View
-stays accurate, and GLB export works.
-
-As the toolbox grows, entirely new categories of models become
-approachable with an increasingly powerful set of familiar operations.
-
-## Implementation progress
-
-Each checked item represents a working result. Completed items carry
-the commit that delivered them.
-
-- [ ] A shared geometry representation preserves authored faces, edges,
-      boundaries, regions, and topology across operations.
-- [ ] Contours, profiles, cross-sections, and paths compose with general
-      extrusion, loft, sweep, and revolution operations.
-- [ ] Cutting, splitting, partitioning, openings, grooves, and surface
-      editing work across different geometric forms.
-- [ ] Deformation and controlled variation work on geometry constructed
-      by other tools.
-- [ ] Surface queries, contact fitting, and assembly are reusable across
-      different object types.
-- [ ] Separate pieces can be constructed with precisely matching
-      boundaries and subdivisions.
-- [ ] Authored quads, UVs, surface regions, materials, Quad View, and GLB
-      export survive composed operations.
-- [ ] The existing models use shared geometric capabilities, with their
-      object-specific construction alongside the models.
-- [ ] Reuse has been demonstrated across substantially different models,
-      including different profiles, materials, and contact geometries.
-- [ ] Superseded specialized algorithms are gone and the toolbox's
-      available capabilities are documented.
+Once the migration is complete, this temporary directory can disappear.
+Its lasting output will be the toolbox itself.
