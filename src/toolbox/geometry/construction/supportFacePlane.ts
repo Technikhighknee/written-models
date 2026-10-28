@@ -3,8 +3,9 @@ import {getControlMesh} from "../mesh/toBufferGeometry";
 import type {ContactPlane} from "./sectionsBetweenPlanes";
 
 /**
- * Find an actual planar side of an authored support mesh facing a direction.
- * This uses the construction faces, not a guessed axis-aligned bounding box.
+ * Find an actual planar construction face oriented toward a direction.
+ * Supports box faces and lofted support surfaces without relying on
+ * model-specific surface names or an axis-aligned bounding box.
  */
 export function supportFacePlane(
     target: THREE.Mesh,
@@ -32,7 +33,6 @@ export function supportFacePlane(
     let alignment = 0.9;
 
     for (const face of mesh.quads) {
-        if (!face.surface.startsWith("side-")) continue;
         const [a, b, c, d] = face.corners.map(index =>
             mesh.vertices[index]!.clone().applyMatrix4(target.matrixWorld)
         );

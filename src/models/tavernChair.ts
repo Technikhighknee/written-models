@@ -9,6 +9,7 @@ import {offsetMeshUvs} from "../toolbox/geometry/uv/offsetMeshUvs";
 import {oakBoardFace, oakVariant} from "../materials/wood/oak";
 import {cm, mm} from "../toolbox/units/length";
 import {supportFacePlane, pointOnContactPlane} from "../toolbox/geometry/construction/supportFacePlane";
+import {fitBetweenSupports} from "../toolbox/geometry/construction/fitBetweenSupports";
 
 export default {
     create,
@@ -67,7 +68,7 @@ interface ChairPosts {
     rear: Map<Side, THREE.Mesh>;
 }
 
-/** Trim each end to the actual authored surface of its supporting timber. */
+/** Add the chosen oak section using the toolbox's fitted contact geometry. */
 function fittedRail(
     chair: THREE.Group,
     oak: Workshop,
@@ -76,19 +77,15 @@ function fittedRail(
     last: THREE.Mesh,
     firstHint: THREE.Vector3,
     lastHint: THREE.Vector3,
-    firstFacing: THREE.Vector3,
-    lastFacing: THREE.Vector3,
-    castingAxis: THREE.Vector3,
     width: number,
     depth: number
 ): void {
-    const startPlane = supportFacePlane(first, firstFacing);
-    const endPlane = supportFacePlane(last, lastFacing);
-    const start = pointOnContactPlane(startPlane, firstHint, castingAxis);
-    const end = pointOnContactPlane(endPlane, lastHint, castingAxis);
+    const fitted = fitBetweenSupports(
+        {target: first, near: firstHint},
+        {target: last, near: lastHint}
+    );
     chair.add(oak.timber(
-        name, start, end, width, depth,
-        {startNormal: startPlane.normal, endNormal: endPlane.normal}
+        name, fitted.start, fitted.end, width, depth, fitted.contacts
     ));
 }
 
@@ -195,15 +192,10 @@ function addSeatFrame(
     oak: Workshop,
     posts: ChairPosts
 ): void {
-    const across = new THREE.Vector3(1, 0, 0);
-    const towardBack = new THREE.Vector3(0, 0, -1);
-    const towardFront = new THREE.Vector3(0, 0, 1);
     const left = posts.front.get(-1)!;
     const right = posts.front.get(1)!;
     const rearLeft = posts.rear.get(-1)!;
     const rearRight = posts.rear.get(1)!;
-    const insideLeft = new THREE.Vector3(1, 0, 0);
-    const insideRight = new THREE.Vector3(-1, 0, 0);
 
     for (const [name, height, width, depth] of [
         ["FrontSeatRail", APRON_Y, cm(8.3), cm(4.2)],
@@ -213,7 +205,7 @@ function addSeatFrame(
             chair, oak, name, left, right,
             new THREE.Vector3(-FRONT_X, height, FRONT_Z),
             new THREE.Vector3(FRONT_X, height, FRONT_Z),
-            insideLeft, insideRight, across, width, depth
+            width, depth
         );
     }
 
@@ -225,7 +217,7 @@ function addSeatFrame(
             chair, oak, name, rearLeft, rearRight,
             new THREE.Vector3(-REAR_X, height, rearZ(height)),
             new THREE.Vector3(REAR_X, height, rearZ(height)),
-            insideLeft, insideRight, across, width, depth
+            width, depth
         );
     }
 
@@ -241,7 +233,6 @@ function addSeatFrame(
                 posts.rear.get(sign)!,
                 new THREE.Vector3(sign * FRONT_X, height, FRONT_Z),
                 new THREE.Vector3(sign * REAR_X, height, rearZ(height)),
-                towardBack, towardFront, towardBack,
                 cm(4.4), depth
             );
         }
@@ -286,9 +277,6 @@ function addBack(chair: THREE.Group, oak: Workshop, posts: ChairPosts): void {
         posts.rear.get(-1)!, posts.rear.get(1)!,
         new THREE.Vector3(-REAR_X, lowerY, rearZ(lowerY) + cm(1.3)),
         new THREE.Vector3(REAR_X, lowerY, rearZ(lowerY) + cm(1.3)),
-        new THREE.Vector3(1, 0, 0),
-        new THREE.Vector3(-1, 0, 0),
-        new THREE.Vector3(1, 0, 0),
         cm(5.2), cm(4.1)
     );
 
