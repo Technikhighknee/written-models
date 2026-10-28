@@ -9,4 +9,5 @@ const vite = await createServer({
 
 after(() => vite.close());
 
-export const toolbox = path => vite.ssrLoadModule(`/src/toolbox/${path}`);
+export const sourceModule = path => vite.ssrLoadModule(`/src/${path}`);
+export const toolbox = path => sourceModule(`toolbox/${path}`);

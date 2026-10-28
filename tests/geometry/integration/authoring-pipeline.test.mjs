@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import * as THREE from "three";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
-import { toolbox } from "../../support/toolbox.mjs";
+import { sourceModule, toolbox } from "../../support/toolbox.mjs";
+
+const { prepareRuntimeModel } = await sourceModule(
+    "core/export/prepareRuntimeModel.ts"
+);
 
 const { boxMesh } = await toolbox("geometry/construction/boxMesh.ts");
 const { loftSections } = await toolbox("geometry/construction/loftSections.ts");
@@ -113,12 +117,23 @@ test("a box and five-section plank survive edits, topology, Quad View and GLB", 
         render("Plank", finishedPlank, material)
     );
 
+    // Use the same runtime compilation path as the browser's GLB export.
+    const runtime = prepareRuntimeModel(scene);
+    assert.equal(runtime.sourceMeshes, 2);
+    assert.equal(runtime.outputMeshes, 1);
+
+    const exportScene = new THREE.Scene();
+    exportScene.add(runtime.root);
+
     // GLTFExporter uses browser FileReader to assemble binary chunks.
     const previousReader = globalThis.FileReader;
     globalThis.FileReader = BinaryFileReader;
 
     try {
-        const glb = await new GLTFExporter().parseAsync(scene, { binary: true });
+        const glb = await new GLTFExporter().parseAsync(
+            exportScene,
+            { binary: true }
+        );
 
         assert.ok(glb instanceof ArrayBuffer);
         const header = new DataView(glb);
@@ -130,9 +145,11 @@ test("a box and five-section plank survive edits, topology, Quad View and GLB", 
         const document = JSON.parse(new TextDecoder().decode(jsonBytes).trim());
 
         assert.equal(document.asset.version, "2.0");
-        assert.equal(document.meshes.length, 2);
+        assert.equal(document.meshes.length, 1);
         assert.ok(document.accessors.some(accessor => accessor.count > 0));
     } finally {
+        runtime.dispose();
+
         if (previousReader === undefined) {
             delete globalThis.FileReader;
         } else {
