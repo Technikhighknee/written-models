@@ -55,24 +55,12 @@ intentionally disconnected geometry.
 
 Build one edge/face adjacency index over authored face corners.
 
-```ts
-type FaceRef =
-  | { kind: "quad"; index: number }
-  | { kind: "triangle"; index: number };
-
-interface EdgeUse {
-  face: FaceRef;
-  from: number;
-  to: number;
-}
-
-interface TopologyIndex {
-  edgeUses(a: number, b: number): readonly EdgeUse[];
-  faceNeighbors(face: FaceRef): readonly FaceRef[];
-  openBoundaries(): readonly BoundaryRef[];
-  regionBoundaries(region: string): readonly BoundaryRef[];
-}
-```
+The canonical `FaceRef`, `EdgeUse`, `TopologyIndex` and
+`topologyOf` contracts are defined in [09](09-api-contracts.md).
+A topology index is a read-only, owner-identified view of one
+`GeometryResult`. It exposes incident edge uses, neighbors,
+open/region boundary chains and connected face components.
+Its returned `BoundaryRef` values belong to the same result.
 
 Selected edge references carry the same result ownership token as
 selected loops and patches. Their vertex indices are valid only for
