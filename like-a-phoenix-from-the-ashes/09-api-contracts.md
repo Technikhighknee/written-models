@@ -415,7 +415,7 @@ interface GeometryJoinOptions extends PrecisionOptions {
 
 ```ts
 extrudeContour(
-  profile: Profile2,
+  profile: Profile2 | SampledProfile2,
   options: ExtrudeOptions
 ): GeometryResult;
 
