@@ -8,6 +8,7 @@ import {tintVertices} from "../toolbox/geometry/materials/tintVertices";
 import {offsetMeshUvs} from "../toolbox/geometry/uv/offsetMeshUvs";
 import {oakBoardFace, oakVariant} from "../materials/wood/oak";
 import {cm, mm} from "../toolbox/units/length";
+import {supportFacePlane, pointOnContactPlane} from "../toolbox/geometry/construction/supportFacePlane";
 
 export default {
     create,
@@ -51,14 +52,45 @@ function create(): THREE.Group {
 
     addSeat(chair);
 
-    addPosts(chair, oak);
-    addSeatFrame(chair, oak);
-    addBack(chair, oak);
-    addDrawPegs(chair, oak);
+    const posts = addPosts(chair, oak);
+    addSeatFrame(chair, oak, posts);
+    addBack(chair, oak, posts);
+    addDrawPegs(chair, oak, posts);
     return chair;
 }
 
 type Workshop = ReturnType<typeof oakTimberShop>;
+type Side = -1 | 1;
+
+interface ChairPosts {
+    front: Map<Side, THREE.Mesh>;
+    rear: Map<Side, THREE.Mesh>;
+}
+
+/** Trim each end to the actual authored surface of its supporting timber. */
+function fittedRail(
+    chair: THREE.Group,
+    oak: Workshop,
+    name: string,
+    first: THREE.Mesh,
+    last: THREE.Mesh,
+    firstHint: THREE.Vector3,
+    lastHint: THREE.Vector3,
+    firstFacing: THREE.Vector3,
+    lastFacing: THREE.Vector3,
+    castingAxis: THREE.Vector3,
+    width: number,
+    depth: number
+): void {
+    const startPlane = supportFacePlane(first, firstFacing);
+    const endPlane = supportFacePlane(last, lastFacing);
+    const start = pointOnContactPlane(startPlane, firstHint, castingAxis);
+    const end = pointOnContactPlane(endPlane, lastHint, castingAxis);
+    chair.add(oak.timber(
+        name, start, end, width, depth,
+        {startNormal: startPlane.normal, endNormal: endPlane.normal}
+    ));
+}
 
 function addSeat(chair: THREE.Group): void {
     const seatCenterY = SEAT_HEIGHT - SEAT_THICKNESS / 2;
@@ -119,13 +151,16 @@ function addSeat(chair: THREE.Group): void {
     chair.add(backBoard);
 }
 
-function addPosts(chair: THREE.Group, oak: Workshop): void {
+function addPosts(chair: THREE.Group, oak: Workshop): ChairPosts {
+    const posts: ChairPosts = {
+        front: new Map(),
+        rear: new Map()
+    };
     for (const sign of [-1, 1] as const) {
         const side = sign < 0 ? "Left" : "Right";
 
-        // Front legs stop against the underside of the seat; the seat
-        // remains a complete, uninterrupted wooden panel.
-        chair.add(oak.timber(
+        // Front legs finish against the bearing surface under the seat.
+        const frontLeg = oak.timber(
             `${side}FrontLeg`,
             new THREE.Vector3(sign * (FRONT_X + mm(3)), 0, FRONT_Z + mm(9)),
             new THREE.Vector3(sign * FRONT_X, SEAT_UNDERSIDE, FRONT_Z),
@@ -134,11 +169,12 @@ function addPosts(chair: THREE.Group, oak: Workshop): void {
                 startNormal: new THREE.Vector3(0, 1, 0),
                 endNormal: new THREE.Vector3(0, -1, 0)
             }
-        ));
+        );
+        chair.add(frontLeg);
+        posts.front.set(sign, frontLeg);
 
-        // The rear legs and back stiles are continuous. The seat's rear
-        // corners fit against their inner and front faces.
-        chair.add(oak.timber(
+        // Each rear leg continues into the backrest as a single timber.
+        const backStile = oak.timber(
             `${side}BackStile`,
             new THREE.Vector3(sign * REAR_X, 0, REAR_FOOT_Z),
             new THREE.Vector3(sign * REAR_X, REAR_HEIGHT, REAR_TOP_Z),
@@ -147,92 +183,72 @@ function addPosts(chair: THREE.Group, oak: Workshop): void {
                 startNormal: new THREE.Vector3(0, 1, 0),
                 endNormal: new THREE.Vector3(0, -1, 0)
             }
-        ));
+        );
+        chair.add(backStile);
+        posts.rear.set(sign, backStile);
     }
+    return posts;
 }
 
-function addSeatFrame(chair: THREE.Group, oak: Workshop): void {
-    const innerFront = FRONT_X - FRONT_POST_SIZE / 2;
-    const innerRear = REAR_X - BACK_POST_SIZE / 2;
+function addSeatFrame(
+    chair: THREE.Group,
+    oak: Workshop,
+    posts: ChairPosts
+): void {
+    const across = new THREE.Vector3(1, 0, 0);
+    const towardBack = new THREE.Vector3(0, 0, -1);
+    const towardFront = new THREE.Vector3(0, 0, 1);
+    const left = posts.front.get(-1)!;
+    const right = posts.front.get(1)!;
+    const rearLeft = posts.rear.get(-1)!;
+    const rearRight = posts.rear.get(1)!;
+    const insideLeft = new THREE.Vector3(1, 0, 0);
+    const insideRight = new THREE.Vector3(-1, 0, 0);
 
-    // Four rails form the rigid, mortise-and-tenon-style seat box.
-    // Cross-grain sizes follow the actual beam axes: across-X beams
-    // take their vertical height from the local width dimension.
-    chair.add(oak.timber(
-        "FrontSeatRail",
-        new THREE.Vector3(-innerFront, APRON_Y, FRONT_Z),
-        new THREE.Vector3(innerFront, APRON_Y, FRONT_Z),
-        cm(8.3), cm(4.2),
-        {
-            startNormal: new THREE.Vector3(1, 0, 0),
-            endNormal: new THREE.Vector3(-1, 0, 0)
-        }
-    ));
+    for (const [name, height, width, depth] of [
+        ["FrontSeatRail", APRON_Y, cm(8.3), cm(4.2)],
+        ["FrontLowStretcher", cm(18), cm(4.4), cm(4.2)]
+    ] as const) {
+        fittedRail(
+            chair, oak, name, left, right,
+            new THREE.Vector3(-FRONT_X, height, FRONT_Z),
+            new THREE.Vector3(FRONT_X, height, FRONT_Z),
+            insideLeft, insideRight, across, width, depth
+        );
+    }
 
-    const rearRailY = APRON_Y;
-    const rearRailZ = rearZ(rearRailY);
-    chair.add(oak.timber(
-        "RearSeatRail",
-        new THREE.Vector3(-innerRear, rearRailY, rearRailZ),
-        new THREE.Vector3(innerRear, rearRailY, rearRailZ),
-        cm(8.3), cm(4.2),
-        {
-            startNormal: new THREE.Vector3(1, 0, 0),
-            endNormal: new THREE.Vector3(-1, 0, 0)
-        }
-    ));
+    for (const [name, height, width, depth] of [
+        ["RearSeatRail", APRON_Y, cm(8.3), cm(4.2)],
+        ["RearLowStretcher", cm(18), cm(4.4), cm(4.2)]
+    ] as const) {
+        fittedRail(
+            chair, oak, name, rearLeft, rearRight,
+            new THREE.Vector3(-REAR_X, height, rearZ(height)),
+            new THREE.Vector3(REAR_X, height, rearZ(height)),
+            insideLeft, insideRight, across, width, depth
+        );
+    }
 
     for (const sign of [-1, 1] as const) {
         const side = sign < 0 ? "Left" : "Right";
-
-        function sideRail(name: string, height: number, depth: number): void {
-            const frontContact = new THREE.Vector3(
-                sign * FRONT_X, height, FRONT_Z - FRONT_POST_SIZE / 2
+        for (const [name, height, depth] of [
+            ["SeatApron", APRON_Y, cm(8.3)],
+            ["LowerStretcher", cm(18), cm(4.5)]
+        ] as const) {
+            fittedRail(
+                chair, oak, `${side}${name}`,
+                posts.front.get(sign)!,
+                posts.rear.get(sign)!,
+                new THREE.Vector3(sign * FRONT_X, height, FRONT_Z),
+                new THREE.Vector3(sign * REAR_X, height, rearZ(height)),
+                towardBack, towardFront, towardBack,
+                cm(4.4), depth
             );
-            const backContact = new THREE.Vector3(
-                sign * REAR_X, height, rearFront(height)
-            );
-            chair.add(oak.timber(
-                `${side}${name}`,
-                frontContact,
-                backContact,
-                cm(4.4),
-                depth,
-                {
-                    startNormal: new THREE.Vector3(0, 0, -1),
-                    endNormal: new THREE.Vector3(0, 0, 1)
-                }
-            ));
         }
-
-        sideRail("SeatApron", APRON_Y, cm(8.3));
-        sideRail("LowerStretcher", cm(18), cm(4.5));
     }
-
-    // The lower rails lock all four legs together below the seat frame.
-    chair.add(oak.timber(
-        "FrontLowStretcher",
-        new THREE.Vector3(-innerFront, cm(18), FRONT_Z),
-        new THREE.Vector3(innerFront, cm(18), FRONT_Z),
-        cm(4.4), cm(4.2),
-        {
-            startNormal: new THREE.Vector3(1, 0, 0),
-            endNormal: new THREE.Vector3(-1, 0, 0)
-        }
-    ));
-    chair.add(oak.timber(
-        "RearLowStretcher",
-        new THREE.Vector3(-innerRear, cm(18), rearZ(cm(18))),
-        new THREE.Vector3(innerRear, cm(18), rearZ(cm(18))),
-        cm(4.4), cm(4.2),
-        {
-            startNormal: new THREE.Vector3(1, 0, 0),
-            endNormal: new THREE.Vector3(-1, 0, 0)
-        }
-    ));
 }
 
-function addBack(chair: THREE.Group, oak: Workshop): void {
+function addBack(chair: THREE.Group, oak: Workshop, posts: ChairPosts): void {
     const inner = REAR_X - BACK_POST_SIZE / 2;
     const rake = (REAR_TOP_Z - REAR_FOOT_Z) / REAR_HEIGHT;
     const upright = new THREE.Vector3(0, 1, rake).normalize();
@@ -263,21 +279,21 @@ function addBack(chair: THREE.Group, oak: Workshop): void {
     );
     chair.add(backBoards);
 
-    // Lower bearer and raised crest trap the panel within the posts.
+    // The bearer meets the same inner faces as the lower stretchers.
     const lowerY = cm(54);
-    chair.add(oak.timber(
-        "LowerBackRail",
-        new THREE.Vector3(-inner, lowerY, rearZ(lowerY) + cm(1.3)),
-        new THREE.Vector3(inner, lowerY, rearZ(lowerY) + cm(1.3)),
-        cm(5.2), cm(4.1),
-        {
-            startNormal: new THREE.Vector3(1, 0, 0),
-            endNormal: new THREE.Vector3(-1, 0, 0)
-        }
-    ));
+    fittedRail(
+        chair, oak, "LowerBackRail",
+        posts.rear.get(-1)!, posts.rear.get(1)!,
+        new THREE.Vector3(-REAR_X, lowerY, rearZ(lowerY) + cm(1.3)),
+        new THREE.Vector3(REAR_X, lowerY, rearZ(lowerY) + cm(1.3)),
+        new THREE.Vector3(1, 0, 0),
+        new THREE.Vector3(-1, 0, 0),
+        new THREE.Vector3(1, 0, 0),
+        cm(5.2), cm(4.1)
+    );
 
     const crown = profiledBoard({
-        length: inner * 2 - mm(2),
+        length: inner * 2,
         thickness: cm(3),
         chamfer: mm(2.4),
         crown: mm(0.6),
@@ -306,39 +322,58 @@ function addBack(chair: THREE.Group, oak: Workshop): void {
     chair.add(crest);
 }
 
-function addDrawPegs(chair: THREE.Group, oak: Workshop): void {
+function addDrawPegs(
+    chair: THREE.Group,
+    oak: Workshop,
+    posts: ChairPosts
+): void {
     for (const sign of [-1, 1] as const) {
         const side = sign < 0 ? "Left" : "Right";
+        const outward = new THREE.Vector3(sign, 0, 0);
 
-        for (const [name, y, z] of [
-            ["Seat", APRON_Y, FRONT_Z],
-            ["Stretcher", cm(18), FRONT_Z]
-        ] as const) {
+        function drawpeg(
+            name: string,
+            support: THREE.Mesh,
+            height: number,
+            z: number,
+            radius: number
+        ): void {
+            const face = supportFacePlane(support, outward);
+            const point = pointOnContactPlane(
+                face,
+                new THREE.Vector3(0, height, z),
+                outward
+            );
             chair.add(oak.peg(
-                `${side}Front${name}Drawpeg`,
+                `${side}${name}Drawpeg`,
+                point,
                 new THREE.Vector3(
-                    sign * (FRONT_X + FRONT_POST_SIZE / 2), y, z
+                    face.normal.x, face.normal.y, face.normal.z
                 ),
-                new THREE.Vector3(sign, 0, 0),
-                mm(5)
+                radius
             ));
         }
 
         for (const [name, y] of [
             ["Seat", APRON_Y],
-            ["Stretcher", cm(18)],
-            ["LowerBack", cm(54)],
-            ["Crest", cm(89.0)]
+            ["Stretcher", cm(18)]
         ] as const) {
-            chair.add(oak.peg(
-                `${side}Back${name}Drawpeg`,
-                new THREE.Vector3(
-                    sign * (REAR_X + BACK_POST_SIZE / 2),
-                    y, rearZ(y)
-                ),
-                new THREE.Vector3(sign, 0, 0),
-                mm(5.5)
-            ));
+            drawpeg(
+                `Front${name}`, posts.front.get(sign)!,
+                y, FRONT_Z, mm(5)
+            );
+        }
+
+        for (const [name, y, offset] of [
+            ["Seat", APRON_Y, 0],
+            ["Stretcher", cm(18), 0],
+            ["LowerBack", cm(54), cm(1.3)],
+            ["Crest", cm(89), cm(1.3)]
+        ] as const) {
+            drawpeg(
+                `Back${name}`, posts.rear.get(sign)!,
+                y, rearZ(y) + offset, mm(5.5)
+            );
         }
     }
 }
