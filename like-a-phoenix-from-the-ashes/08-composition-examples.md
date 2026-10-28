@@ -285,13 +285,15 @@ const walls = loftSections([
 ], { ends: "open" });
 
 const bottom = fillSurfacePatch({
-  profile: sampleProfile(bottomFootprint, { outer: match.stations }),
+  // The bottom wall contour supplies the actual sampled footprint.
+  profile: sampledFootprintFromContour(match.first, bottomSurfaceChart),
   chart: bottomSurfaceChart,
   region: "underside"
 });
 
 const top = fillSurfacePatch({
-  profile: sampleProfile(topFootprint, { outer: match.stations }),
+  // The top wall contour supplies its own physical footprint.
+  profile: sampledFootprintFromContour(match.second, crownedTopSurfaceChart),
   chart: crownedTopSurfaceChart,
   region: "upper"
 });
@@ -300,6 +302,14 @@ const seat = joinGeometry([walls, bottom, top], {
   weld: matchingRimPairs
 });
 ```
+
+Here `sampledFootprintFromContour` denotes model-side preparation:
+project each already-resampled 3D wall contour into the corresponding
+chart, retain its ordered stations, and verify the round trip to 3D.
+It is not an additional toolbox API. Reusing `match.stations` with
+independently reparameterized `topFootprint` and `bottomFootprint`
+would not establish coincident vertices. The two profiles may have
+different 2D positions at corresponding stations.
 
 The walls inherit the slanted cheek profiles. The top patch can
 carry a crown while the underside remains simpler. Both surface
@@ -344,7 +354,7 @@ const headBoards = pieces.parts.map((footprint, index) => {
       parameters: seam.stations,
       closed: false
     },
-    ...headGrooveProfile(index) // model-authored widths, depths and regions
+    ...headGrooveProfile(index) // model-authored inward-only boundary relief
   }));
   const detailed = shapeSurfaceRelief(
     outer,
@@ -381,6 +391,12 @@ const headBoards = pieces.parts.map((footprint, index) => {
 `headCrownChart`, `headUndersideChart`, the groove profile
 and cut/outline stations are authored by the model. The actual
 geometry operations are shared toolbox functions.
+
+Relief on the cut edge has zero displacement at the preserved
+joining rim, with its shoulder/groove extending inward into the
+outer patch. Otherwise the newly sculpted outer boundary could no
+longer weld to the original sidewall. Groove paths that run on an
+interface are not permission to displace that interface.
 
 All seams are sampled and resolved together on the original
 surface chart. The resulting grooves have real shoulders and
