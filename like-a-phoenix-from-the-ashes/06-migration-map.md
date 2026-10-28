@@ -110,7 +110,7 @@ will call the shared system.
 | `construction/loftBoard.ts` | Extract independently sampled boundaries and mixed-resolution transitions into general loft/bridge |
 | `construction/loftAxialProfile.ts` | Generic section field, radial waves and axial sampler; its per-edge/per-interval face materials/smoothing move into the loft engine |
 | `construction/sweepSection.ts` | General path sweep with changing section, transported frames, and periodic-frame closure for closed paths |
-| `construction/latheMeridian.ts` | Core revolve implementation, including correct pole topology |
+| `construction/latheMeridian.ts` | Core revolve implementation, including correct pole topology and per-meridian region/smoothing assignments |
 | `shapes/operations/extrude.ts` | Authored contour extrusion with cap/side region outputs |
 | `shapes/operations/revolveShell.ts` | Composition of thickness profile and generic revolution; return authored geometry |
 | `construction/profiledMesh.ts` | Model/render composition; geometry construction delegates to section sampler and loft |
