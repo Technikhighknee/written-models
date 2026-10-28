@@ -228,7 +228,10 @@ real triangles, preserving per-corner UVs and correct winding.
 ### Curved faces and independent section layers
 
 `correspondContours` aligns landmarks between two differently
-shaped outlines and produces shared sample stations. Lofting
+shaped outlines and produces corresponding semantic stations between
+landmarks. These are not independent arc-length fractions: each
+3D contour is projected into its own patch chart to obtain exactly
+matching top/bottom fill-boundary positions. Lofting
 those resulting sections constructs actual sidewalls, including
 a wall that slopes between a notch's top and bottom position.
 
