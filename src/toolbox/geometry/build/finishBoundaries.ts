@@ -9,6 +9,7 @@ import {
     type SurfacePatchRef
 } from "../kernel/GeometryResult";
 import { topologyOf } from "../kernel/topology";
+import { triangulateProfile } from "./triangulateProfile";
 import {
     assertAffineTransform,
     lengthTolerance,
@@ -370,9 +371,9 @@ export function capSectionEnd(
 
     const triangles = isQuad
         ? [outer.vertices.slice()]
-        : THREE.ShapeUtils.triangulateShape(
-            contours[0]!, contours.slice(1)
-        ).map(face => face.map(index => ids[index]!));
+        : triangulateProfile(contours, precision).map(face =>
+            face.map(index => ids[index]!)
+        );
 
     if (triangles.length === 0) {
         fail(operation, "unsupported-topology", "Unable to triangulate cap");
