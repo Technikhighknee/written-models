@@ -196,7 +196,7 @@ may accelerate their implementation internally.
 
 | Current file | Destination / behavior |
 | --- | --- |
-| `geometry/materials/assignMaterialsByNormal.ts` | Classify authored face regions by normal, then render compiler maps materials |
+| `geometry/materials/assignMaterialsByNormal.ts` | Use `classifyAuthoredFaces` on authored normals and surfaces; render compiler then maps materials |
 | `geometry/materials/classifyExtrudedSurfaces.ts` | Fold into general face classification, remove extrusion draw-group assumption |
 | `geometry/materials/assignExtrudedTimberSurfaces.ts` | Model-specific wood grain/end-grain policy; shared geometric face classifier |
 | `geometry/materials/tintVertices.ts` | Expose per-piece tint in the rendering adapter; generate exportable vertex colors without coupling color to authored topology |
