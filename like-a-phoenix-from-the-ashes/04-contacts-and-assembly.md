@@ -209,6 +209,14 @@ in [11](11-numerics-and-query-fidelity.md).
 - **Future metalwork:** A diagonal metal brace uses the same
   contact and member-section algorithms as timber construction.
 
+## Full finite-surface clearance
+
+`surfaceClearance` measures the minimum distance of actual finite
+triangle surfaces, not enclosed solid volume. It reports surface
+contact or crossing separately from satisfaction of a nonnegative
+requested gap. A band must pass this finite-surface clearance check;
+checking only sampled hoop vertices is insufficient.
+
 ## Precision
 
 All positions, clearances, falloffs, and tolerances are in meters.
