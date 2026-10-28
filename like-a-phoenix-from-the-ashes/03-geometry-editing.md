@@ -138,14 +138,16 @@ foundation when applicable.
 
 A profile is a field over distance, curve parameter, or surface position.
 
-```ts
-type ScalarField = (position: number) => number;
+The supported operations are `bevelEdges` for eligible
+nonbranching edge chains, `shapeSurfaceRelief` for profile-driven
+surface grooves and shoulders, and `recessPatch` for inset
+regions with actual walls and floors. Rounded edge profiles,
+groove shapes and selected insets are compositions of those
+operations or explicit constructed sections—not three more
+uncontracted toolbox functions.
 
-bevelEdges(geometry, edges, widthField);
-roundEdges(geometry, edges, radiusField, segments);
-grooveAlong(geometry, path, crossSection);
-insetBoundary(geometry, boundary, widthField, depthField);
-```
+The precise inputs, output selections and supported domains
+are in [09](09-api-contracts.md) and [10](10-geometry-semantics.md).
 
 The relevant faces and edges are selected geometrically. Models
 supply profiles and detail parameters. The same tools shape wood,
