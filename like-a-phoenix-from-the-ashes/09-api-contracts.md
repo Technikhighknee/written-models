@@ -119,6 +119,39 @@ interface PartitionResult {
   parts: readonly GeometryResult[];
   interfaces: readonly PartitionInterface[];
 }
+
+interface HalfPlane2 {
+  normal: THREE.Vector2Like;
+  offset: number;
+}
+
+interface PlanarCut2 {
+  id: string;
+  /** The line or sampled curve used to cut the source profile. */
+  points: readonly THREE.Vector2Like[];
+}
+
+interface ContourPartition {
+  parts: readonly Profile2[];
+  interfaces: readonly {
+    firstPart: number;
+    secondPart: number;
+    cutId: string;
+    points: readonly THREE.Vector2Like[];
+    stations: readonly number[];
+  }[];
+}
+
+interface SurfaceChart {
+  at(uv: THREE.Vector2Like): THREE.Vector3;
+  parameterOf(point: THREE.Vector3Like): THREE.Vector2;
+  normalAt(uv: THREE.Vector2Like): THREE.Vector3;
+}
+
+interface SurfacePatchRef {
+  faces: readonly FaceRef[];
+  chart: SurfaceChart;
+}
 ```
 
 A shared seam is sampled once. Two adjacent pieces reference the same
@@ -221,15 +254,16 @@ bevelEdges(
 ): GeometryResult;
 ```
 
-`PlanarCut2` identifies an oriented line/curve in the profile's
-plane. `ContourPartition` returns planar pieces and shared sampled
-interfaces; extrusion can consume these directly.
+`PlanarCut2` identifies a named line or sampled curve in the profile's
+plane. `ContourPartition` returns planar pieces and their sampled
+interfaces, including the two piece indices. Extrusion can consume
+each profile directly. Cuts may produce more than one component.
 
-`SurfacePatchRef` identifies a connected patch plus a defined
-2D parameterization. The first patch-cut implementation handles
-planar patches; a later extension handles curved patches with
-usable parameterization. Arbitrary non-manifold surfaces have
-no implicit 2D chart.
+`SurfacePatchRef` selects a connected patch of actual authored
+faces and supplies an explicit two-way 2D chart. For a planar
+patch, this is a plane-oriented projection. A curved patch needs
+its own well-defined chart, with consistent mapping and normals.
+An arbitrary collection of faces has no implicit 2D chart.
 
 A 3D split produces cut loops for each result. General solid
 booleans use a distinct `booleanSolids` operation and may return
@@ -254,6 +288,26 @@ interface SurfaceHit {
   face: FaceRef;
   region: string;
   distance: number;
+}
+
+interface SurfaceAttachment {
+  target: SurfaceTarget;
+  near: THREE.Vector3Like; // world coordinates
+}
+
+interface FittedSections {
+  sections: readonly Section3[];
+  startContact: SurfaceHit;
+  endContact: SurfaceHit;
+}
+
+interface BoundaryFitOptions {
+  projection:
+    | { kind: "ray"; direction: THREE.Vector3Like; maxDistance: number }
+    | { kind: "closest"; maxDistance: number };
+  sourceLocalToWorld: THREE.Matrix4;
+  clearance: number; // signed offset in meters along hit normal
+  falloffRings: number;
 }
 
 raycastSurface(
@@ -283,9 +337,11 @@ fitBoundary(
 ```
 
 `SurfaceAttachment` contains a target and a near-contact point in
-world coordinates. `SurfacePatchHit` identifies actual faces,
-surface points, normal, and local frame. `FittedSections` returns
-placed 3D start/end sections, along with its contact patches.
+world coordinates. `SurfacePatchHit` identifies actual faces, surface
+points, normal and local frame. `FittedSections` returns placed 3D
+start/end sections, alongside the selected contact locations.
+The full fitting result can include the selected patch faces so the
+caller can inspect and reuse the actual footprint.
 
 Plane-fitting intersects the member's individual section corners
 along its axis and checks that their actual contact lies inside the
