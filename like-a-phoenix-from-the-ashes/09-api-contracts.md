@@ -60,11 +60,15 @@ selections and IDs. The tokens do not enter GLB.
 A `MeshData` is accepted directly by core operations that need no
 named selections. Operations involving named cuts, fits, or surfaces
 use `GeometryResult` when they need to retain those selections.
-Geometry edits deep-copy their authored vertex, face, UV and
-selection data. A builder may mutate while building, but a returned
-result is a snapshot. To integrate an existing `MeshData`, the
-`geometryResult` adapter constructs an owned result with empty
-named selections.
+Geometry edits deep-copy authored vertex, face, UV and selection
+data. A builder may mutate while building, but a returned result is
+an immutable-by-contract snapshot: callers must not mutate even
+nested THREE vector objects. Topology indexes and query caches are
+valid only while this contract holds. To integrate an existing
+`MeshData`, the `geometryResult` adapter deep-copies the source
+and constructs an owned result with empty named selections.
+`regions` is derived from the faces' `surface` values, not an
+independent classification that can contradict them.
 
 ## Geometry definitions
 
@@ -225,11 +229,18 @@ interface MeshRegionTarget {
   regions: readonly string[];
 }
 
+interface CavityRing {
+  /** World-space Y height, in meters. */
+  y: number;
+  /** World XZ polygon: x represents X, y represents Z. */
+  outline: readonly THREE.Vector2Like[];
+}
+
 interface CavitySectionsOptions extends PrecisionOptions {
   /** Open wall pieces whose combined sections enclose a single contour. */
   pieces: readonly MeshRegionTarget[];
   axis: "y";
-  heights: readonly number[];
+  heights: readonly number[]; // strictly increasing world-Y heights
 }
 
 interface ClearanceOptions extends PrecisionOptions {
@@ -237,8 +248,9 @@ interface ClearanceOptions extends PrecisionOptions {
 }
 
 interface ClearanceResult {
-  closestDistance: number; // meters, between actual finite surfaces
-  intersects: boolean;
+  closestDistance: number; // non-negative meters between finite triangle surfaces
+  intersects: boolean; // actual surface contact/crossing, not solid containment
+  meetsMinimum: boolean; // distance >= requested minimum, within precision
 }
 ```
 
@@ -261,6 +273,17 @@ sampleProfile(
 /** Gives an existing authored mesh its own result identity. */
 geometryResult(source: MeshData): GeometryResult;
 ```
+
+The phase-3 supported domain of `partitionContour` is one simple
+convex input footprint with noncrossing, boundary-to-boundary
+sampled cuts. The cuts may bend, and resulting parts may be concave;
+each must be a simple valid profile. Crossing cuts, input holes,
+multiple disconnected components and general concave-input
+partitioning belong to the later editing extension. A partition
+returns opposite interface traversals on its two pieces, but both
+derive from identical sampled coordinates and stations. The
+part indices in each interface refer to `parts`, not to authored
+face IDs.
 
 The `SampledProfile2` used for a filled patch contains exact
 ordered boundary stations, including each hole loop independently.
@@ -511,8 +534,10 @@ predictable named outputs:
 
 A `SurfacePatchRef` returned for a filled patch maps its authored
 chart to those exact faces. `shapeSurfaceRelief` takes that selection
-and returns updated face/region/boundary references. The chart remains
-available only if it correctly parameterizes the new geometry.
+and returns updated face/region/boundary references. A patch chart is
+retained only when its two-way mapping still describes the selected
+faces, including their new shape; unchanged face indices alone are
+not sufficient.
 
 Joining the crowned top, lower patch and profile-layer walls creates
 a connected solid with explicitly shared vertices.
@@ -846,17 +871,34 @@ cavitySectionsFromSurfaces(
 ): readonly CavityRing[];
 ```
 
-The cavity source may contain **separate** meshes. At every selected
-height, the requested regions intersect the plane to form segments
-which must connect into one ordered, simple, closed contour within
-the configured geometric precision. Missing, branching, doubled
-and disconnected loops fail clearly. Successive sections retain
-corresponding contour stations and winding for `ProfiledCavity`.
+The cavity source may contain **separate** meshes. Transforms
+place every region in world coordinates. At every requested world-Y
+height, the regions contribute edges/section segments that must
+form exactly one ordered, simple, closed XZ polygon. At authored
+horizontal row heights, coincident row edges are collected once;
+generic plane intersections instead apply a deterministic half-open
+vertex/edge rule to avoid duplicate segments at shared vertices.
+Missing, branching, doubled, self-intersecting and disconnected
+loops fail clearly. Cross-height correspondence uses the source
+wall's longitudinal edge/feature provenance to align stations and
+winding; all returned `CavityRing` outlines must have equal ordered
+vertex counts. If correspondence cannot be established or a section
+changes topology, the operation fails instead of resampling away a
+real feature. The resulting rings are compatible with
+`ProfiledCavity` without a model-specific circular approximation.
 
 `surfaceClearance` checks actual finite triangles, including their
 interiors and edges. It is usable after a circular-band sweep to
 verify that a band which clears a profile at its sampled vertices
 also clears the real faceted supporting surface between samples.
+
+`surfaceClearance` measures the closest points of the two finite
+triangle surfaces, not their volumes. `minimum` must be non-negative.
+Actual touching or crossing triangles report `intersects: true`
+and zero distance; nested but non-touching closed solids are not a
+surface intersection. `meetsMinimum` checks the requested threshold
+using operation precision. Callers wanting *solid* overlap
+classification must use a solid-specific query.
 
 The query and renderer share the triangulation of each authored face.
 A query triangle records its originating `FaceRef` and the three
