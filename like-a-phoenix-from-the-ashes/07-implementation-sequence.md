@@ -61,7 +61,9 @@ section, path and face-construction operations.
 - [ ] **2.6** Implement a section-varying path sweep with transport
       frames and a truly periodic, connected closed-path option.
 - [ ] **2.7** Consolidate authored extrusion, revolution and
-      profile-defined shells; keep primitives composed from these.
+      profile-defined shells, preserving per-meridian face regions,
+      smoothing groups, axis poles and partial-revolution seams;
+      keep primitives composed from these.
 - [ ] **2.8** Extract the general polar strip sampler with detailed
       outer and sparse inner section rows.
 - [ ] **2.9** Implement `correspondContours` and `sampleProfile`
