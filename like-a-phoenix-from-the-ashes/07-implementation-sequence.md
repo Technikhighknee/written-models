@@ -74,8 +74,11 @@ section, path and face-construction operations.
       authored triangle transitions and corresponding sample stations.
       Real aligned quads, unequal-density triangles, open/periodic seams,
       owned boundary selections: `c26a1db`, `583b8aa`, `93b4c32`.
-- [ ] **2.6** Implement a section-varying path sweep with transport
+- [x] **2.6** Implement a section-varying path sweep with transport
       frames and a truly periodic, connected closed-path option.
+      Authored transported sections, open-end caps and hollow profiles,
+      twist-corrected periodic faces with shared seam vertices:
+      `48039d9` and CI refinement.
 - [ ] **2.7** Consolidate authored extrusion, revolution and
       profile-defined shells, preserving per-meridian face regions,
       smoothing groups, axis poles and partial-revolution seams;

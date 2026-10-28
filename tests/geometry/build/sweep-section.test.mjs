@@ -179,6 +179,70 @@ test("closed sweep shares seam vertices and distributes transport twist", () => 
     }
 });
 
+test("closed hollow sweeps have no exposed edges or duplicated seam rings", () => {
+    const path = circle();
+    const stations = Array.from({ length: 12 }, (_, i) => i / 12);
+
+    const result = sweepSection({
+        path,
+        startingFrame: circleStart(path),
+        sectionAt: () => profile(0, true),
+        stations,
+        closedPath: true
+    });
+
+    assert.equal(result.geometry.vertices.length, 12 * 8);
+    assert.equal(result.geometry.quads.length, 12 * 8);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 2);
+    assert.equal(result.geometry.triangles?.length ?? 0, 0);
+});
+
+test("asymmetric spatial loops close after distributing residual roll", () => {
+    const radius = 2;
+    const heightAt = angle =>
+        0.31 * Math.sin(angle) +
+        0.18 * (Math.sin(2 * angle + 0.37) - Math.sin(0.37));
+
+    const path = {
+        at: t => {
+            const angle = t * Math.PI * 2;
+
+            return v3(
+                radius * Math.cos(angle),
+                radius * Math.sin(angle),
+                heightAt(angle)
+            );
+        },
+        tangent: t => {
+            const angle = t * Math.PI * 2;
+
+            return v3(
+                -radius * Math.sin(angle),
+                radius * Math.cos(angle),
+                0.31 * Math.cos(angle) +
+                    0.36 * Math.cos(2 * angle + 0.37)
+            );
+        }
+    };
+
+    const stations = Array.from({ length: 24 }, (_, i) => i / 24);
+    const result = sweepSection({
+        path,
+        startingFrame: circleStart(path),
+        sectionAt: () => ({
+            outer: { points: rectangle(0.23, 0.14), closed: true }
+        }),
+        stations,
+        closedPath: true
+    });
+
+    assert.equal(result.geometry.vertices.length, 24 * 4);
+    assert.equal(result.geometry.quads.length, 24 * 4);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+});
+
 test("inconsistent frame, reversed path and nonperiodic section fail", () => {
     assert.throws(
         () => sweepSection({

@@ -153,11 +153,11 @@ the loft. Callers control the stations and section correspondence.
 
 ### Sweeping
 
-`sweepSection()` already uses parallel-transport-like minimal rotation
-along a Catmull–Rom curve.
-
-Make the section an input function across the path so changing its
-width, depth, eccentricity, angle, or contour shape requires no new
+The existing `construction/sweepSection` retains its Catmull–Rom
+convenience API for current models. The Phoenix
+`build/sweepSection` accepts a general `Path3`, shared authored
+sampling stations and a `SectionField`, so a section may vary its
+width, depth, eccentricity, angle and contour shape without an
 object-specific constructor:
 
 ```ts
@@ -177,10 +177,15 @@ zero tangents fail explicitly. Frame transport avoids sudden flips.
 Sampling is shared with adaptive section geometry.
 
 A rectangular timber, bent pipe, dagger handle, and branch can
-all use this mechanism. For a periodic path (`closedPath: true`),
+all use this mechanism. Open sweeps reuse the shared loft walls and
+planar cap operations; hollow sections retain their inner walls and
+annular end caps. For a periodic path (`closedPath: true`),
 frame transport distributes residual twist over the loop. The
 construction stations occupy `[0, 1)` and the wrapping faces reuse
 the first ring's vertex IDs, producing a coherent closed seam.
+The section at `t = 1` must match the section at `t = 0`
+after transport; it supplies the end frame and physical UV distance
+but no new construction vertices. Periodic sweeps have no end caps.
 
 ### Revolution
 
