@@ -61,6 +61,21 @@ identity of loops remain constant across a loft interval. A hole
 appearing or disappearing requires a separately authored transition
 patch.
 
+`sampleProfile(profile, stations)` resolves a planar outer loop and
+each hole independently at explicit normalized perimeter stations.
+The input must retain every authored corner, including collinear
+features; a missing corner is an invalid request. Original corner
+coordinates are copied exactly, not approximated through interpolation.
+
+`correspondContours(first, second, landmarks)` aligns two 3D contours
+by explicitly named feature anchors. Each landmark-to-landmark
+interval merges the arc-length fractions required by both outlines.
+Both returned contours use identical ordered station arrays and keep
+every original input corner's 3D coordinates. A closed correspondence
+uses one authored landmark as the periodic seam, without duplicating
+its final vertex. Open correspondences preserve both endpoints.
+Conflicting landmark traversal orders are rejected.
+
 For matching contours, each interval creates genuine quad side faces.
 When boundaries have different subdivisions, `stitchPolylines`
 provides genuine transition triangles. Shared landmarks are kept at

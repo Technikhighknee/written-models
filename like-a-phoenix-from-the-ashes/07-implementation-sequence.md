@@ -93,10 +93,14 @@ section, path and face-construction operations.
       independent outer/inner stations. The existing stave layout is
       a thin adapter. Tested through loft, end caps and Quad View:
       `2cc72f5` and follow-up verification.
-- [ ] **2.9** Implement `correspondContours` and `sampleProfile`
+- [x] **2.9** Implement `correspondContours` and `sampleProfile`
       with exact ordered outline/landmark stations. Verify that
       mapped top/bottom coordinates, not just normalized station
       numbers, coincide with their independently filled patch rims.
+      Shared arc-length sampler, corner-preserving profile stations and
+      named landmark anchors: `9a51881`. Planar patch-rim proof and
+      shared cap triangulation preserving authored boundary edges:
+      `34dd166`, `0cad2f3`. General curved `fillSurfacePatch` is 3.3.
 - [ ] **2.10** Reproduce the plank's bend, the dagger's steel/wood
        transitions, the barrel stave cross-section and the mug's
        curved handle through the shared constructors.

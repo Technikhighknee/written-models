@@ -315,7 +315,19 @@ caller merges required stations and corner landmarks first, then
 passes the same resolved sampling to adjoining constructions.
 Shared boundaries are sampled before patch construction. The fill
 operation can refine the interior but does not silently add vertices
-to an interface already consumed by a neighboring part.
+to an interface already consumed by a neighboring part. The common
+planar triangulator temporarily skips collinear stations only while
+choosing triangles, then restores every authored boundary edge.
+Interior diagonals are not subdivided by unrelated contour points.
+
+`correspondContours` uses the first supplied landmark as a cyclic seam
+for closed contours and preserves the original traversal direction.
+Landmark-to-landmark intervals independently use each contour's
+arc-length fractions, then merge required corner stations. Returned
+landmark indices point into both equally sampled contours. The
+operation does not claim that distinct 3D contours coincide in space:
+it establishes exactly corresponding stations and retains their
+independently authored coordinates.
 
 A shared seam is sampled once. Each interface identifies the owner
 of both boundary references with part indices. The pieces reuse
