@@ -202,7 +202,7 @@ may accelerate their implementation internally.
 | `geometry/materials/tintVertices.ts` | Expose per-piece tint in the rendering adapter; generate exportable vertex colors without coupling color to authored topology |
 | `geometry/uv/boxUVsInMeters.ts` | General physical UV projection |
 | `geometry/uv/offsetMeshUvs.ts` | Pure authored-geometry UV edit returning new geometry; update model/component call sites formerly relying on mutation |
-| `construction/profiledCavity.ts` | Multi-mesh inner-region section stitching and stable contour correspondence; keep ProfiledCavity interpolation and exact section volume |
+| `construction/profiledCavity.ts` | Multi-mesh inner-region section stitching in a rigid local section frame and stable contour correspondence; keep ProfiledCavity interpolation and exact section volume |
 | `construction/fillableVolume.ts` | Separate geometry/volume operations from runtime morph-target controller |
 | `texturing/fields.ts` | Keep general scalar/vector field operations |
 | `texturing/flowedGrainField.ts` | Keep reusable texture field with material-independent core sampling |
