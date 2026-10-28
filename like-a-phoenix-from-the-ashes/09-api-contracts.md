@@ -435,9 +435,24 @@ pairs fail. The result remaps all face regions and still-meaningful
 boundaries into its new geometry indices.
 
 `boundaryContour` extracts the ordered 3D points of a selected
-authored boundary. Joining crowned top, lower patch and
-profile-layer walls creates a connected solid with explicitly
-shared vertices.
+authored boundary. The produced construction results have
+predictable named outputs:
+
+| Operation | Named output |
+| --- | --- |
+| `loftSections(..., { ends: "open" })` | `boundaries.start` and `boundaries.end` |
+| `fillSurfacePatch` | `boundaries.rim`, `patches.surface[0]`, `regions[region]` |
+| `bridgeBoundaries` | `boundaries.start` and `boundaries.end` |
+| `tipBoundary` | New triangular tip faces in the selected region |
+| `joinGeometry` | Remapped regions, surviving boundaries and valid patch selections |
+
+A `SurfacePatchRef` returned for a filled patch maps its authored
+chart to those exact faces. `shapeSurfaceRelief` takes that selection
+and returns updated face/region/boundary references. The chart remains
+available only if it correctly parameterizes the new geometry.
+
+Joining the crowned top, lower patch and profile-layer walls creates
+a connected solid with explicitly shared vertices.
 
 `samplePolarStripSections` returns radial strip cross-sections
 described by the same `Section3` type used by all lofts. Its
