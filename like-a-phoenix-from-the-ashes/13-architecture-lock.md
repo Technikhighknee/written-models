@@ -81,7 +81,12 @@ surface-boundary winding. It removes the paired open boundaries
 from the output selection and remaps remaining references.
 
 This supplies the chair seat, barrel heads, and table planks without
-requiring a general remeshing algorithm.
+requiring a general remeshing algorithm. Corresponding top and bottom
+chair-seat wall loops are projected into their own patch charts;
+reusing equal *parameter values* on unrelated 2D contour shapes
+is not sufficient to produce weldable physical vertices. Likewise,
+surface relief keeps its welded rim fixed, or explicitly requests
+reconstruction of all consumers of a changed interface.
 
 ## Geometric coordinate spaces
 
@@ -98,6 +103,12 @@ Both operands of `booleanSolids` occupy one common construction
 frame. Its region/UV callbacks receive positions in that frame.
 This prevents implicit dependence on a render mesh's world transform.
 The exact API table is in [09](09-api-contracts.md).
+
+Support contacts may be selected from actual authored faces or
+specified as a finite planar footprint in an authored world-space
+frame. Both use the same full-outline containment check and return
+discriminated contact information; neither is treated as an infinite
+plane.
 
 ## Execution has two dependency paths
 
