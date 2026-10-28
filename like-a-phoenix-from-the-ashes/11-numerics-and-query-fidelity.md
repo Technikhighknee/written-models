@@ -226,6 +226,14 @@ non-self-intersecting and the incident authored faces must
 remain valid. Geometry that would fold or invert returns a
 specific failure instead of a distorted mesh.
 
+## Clearance does not classify containment
+
+Finite triangle-surface distance is unsigned. It reports surface
+contact/crossing and whether a minimum separation is satisfied,
+not whether one closed volume is inside another. Hoops and fitted
+bands must also establish their intended exterior-side placement
+through their construction policy or a separate oriented solid query.
+
 ## Cavity section topology and coordinate frames
 
 Multi-piece cavity extraction intersects source wall faces with section
