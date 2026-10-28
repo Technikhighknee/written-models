@@ -192,7 +192,9 @@ and two real rivet heads.
 6. Create a single `SampledProfile2` for each head plank and use
    it for the outward patch, inward patch and sidewall boundaries.
    Combine every adjoining seam and its groove/shoulder/edge-wear
-   profile into **one** `shapeSurfaceRelief` call. This preserves
+   profile into **one** `shapeSurfaceRelief` call. The common welded
+   outer rim must stay fixed: seam relief extends inward from that
+   rim unless adjoining sidewalls are intentionally reconstructed. This preserves
    coherent sampling even for planks with two seams. Build the
    sparse inward surface separately and bridge the two boundary
    contours with actual sidewalls.
@@ -328,6 +330,9 @@ rail and several oriented draw-pegs.
    position through the 3.8 cm thickness to follow the raked
    rear stiles.
 5. Align matching contour landmarks between the two layers.
+   Project each resampled 3D wall contour into its own top/bottom
+   patch chart to derive *actual* matching patch-boundary positions.
+   Equal normalized parameter values alone are not sufficient.
    Give the upper/lower patches their shared sampled boundaries.
    Loft corresponding upper/lower boundary edges to produce
    slanted cheek walls. Construct a crowned upper patch and
