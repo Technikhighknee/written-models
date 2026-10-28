@@ -32,8 +32,11 @@ Surface classification by face normal, adjacency, or spatial
 selection works on authored faces. Today,
 `assignMaterialsByNormal()` and `classifyExtrudedSurfaces()`
 rearrange BufferGeometry triangles and render groups.
-The classification logic moves upstream to the authored geometry,
-then one compiler handles material groups.
+The classification logic moves upstream to `classifyAuthoredFaces`,
+which updates authored face labels and returns a new geometry result.
+One render compiler then handles material groups. A nonplanar quad's
+classification normal is a representative area-weighted authored
+normal; query hits retain their individual triangle normals.
 
 ## UV coordinates
 
