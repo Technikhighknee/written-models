@@ -41,9 +41,9 @@ Long-grain sides and end-grain caps have different materials.
 
 1. Keep the model's five rectangular `Section3` contours in their
    chosen coordinate frame, including the center lift.
-2. `loftSections(sections)` creates true quad strips between each
-   corresponding perimeter edge.
-3. `capBoundary` closes each planar four-corner end with a quad.
+2. `loftSections(sections, { ends: "cap" })` creates true quad side
+   strips and directly caps each planar four-corner end with a quad.
+3. No second `capBoundary` call is made on the already closed ends.
 4. `surfaceAt` identifies side regions; the two ends have explicit
    end-grain regions.
 5. Render using the model's oak palette and physical UVs.
