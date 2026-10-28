@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import type { MeshData } from "./MeshData";
+import type { GeometryResult } from "../kernel/GeometryResult";
 import { toBufferGeometry } from "./toBufferGeometry";
 
 export interface SurfaceMeshOptions {
     name: string;
-    geometry: MeshData;
+    geometry: MeshData | GeometryResult;
     /** A uniform material, or an explicit map from surface to material. */
     materials: THREE.Material | Readonly<Record<string, THREE.Material>>;
     /** Fallback for loft cap-start / cap-end only. */
@@ -19,12 +20,13 @@ export interface SurfaceMeshOptions {
 export function surfaceMesh({
     name, geometry, materials, capMaterial
 }: SurfaceMeshOptions): THREE.Mesh {
+    const authored = "geometry" in geometry ? geometry.geometry : geometry;
     const palette: THREE.Material[] = [];
     const indices: Record<string, number> = {};
     const bySurface = materials instanceof THREE.Material
         ? undefined : materials;
 
-    for (const face of [...geometry.quads, ...(geometry.triangles ?? [])]) {
+    for (const face of [...authored.quads, ...(authored.triangles ?? [])]) {
         const material = bySurface === undefined
             ? materials as THREE.Material
             : bySurface[face.surface] ??
@@ -43,7 +45,7 @@ export function surfaceMesh({
     }
 
     const result = new THREE.Mesh(
-        toBufferGeometry(geometry, indices),
+        toBufferGeometry(authored, indices),
         palette.length === 1 ? palette[0]! : palette
     );
     result.name = name;
