@@ -10,6 +10,9 @@ const { revolveProfile } = await toolbox(
 const { latheMeridian } = await toolbox(
     "geometry/construction/latheMeridian.ts"
 );
+const { turnedVessel } = await toolbox(
+    "geometry/construction/turnedVessel.ts"
+);
 const { topologyOf } = await toolbox("geometry/kernel/topology.ts");
 const { surfaceMesh } = await toolbox("geometry/mesh/surfaceMesh.ts");
 const { getControlOutline } = await toolbox(
@@ -106,6 +109,19 @@ test("partial solid revolution exposes real angular caps with shared vertices", 
     assert.equal(result.regions["end-angular-end"].length, 2);
 });
 
+test("partial shell closes its angular cross-sections into a solid", () => {
+    const result = revolveProfile(shell, options({
+        angle: Math.PI * 1.3,
+        segments: 10,
+        caps: true
+    }));
+
+    assert.equal(result.geometry.quads.length, 40);
+    assert.equal(result.geometry.triangles.length, 4);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+});
+
 test("uncapped partial shell and solid keep their explicit open loops", () => {
     for (const meridian of [solid, shell]) {
         const result = revolveProfile(meridian, options({
@@ -115,6 +131,49 @@ test("uncapped partial shell and solid keep their explicit open loops", () => {
 
         assert.ok(topologyOf(result).openBoundaries().length > 0);
         assert.ok(Object.keys(result.boundaries).length > 0);
+    }
+});
+
+test("a positive-radius meridian keeps two open rims without caps", () => {
+    const openMeridian = {
+        closed: false,
+        points: [
+            vector(0.9, 0),
+            vector(1.1, 0.5),
+            vector(0.9, 1)
+        ]
+    };
+    const result = revolveProfile(openMeridian, options());
+
+    assert.equal(result.geometry.vertices.length, 3 * 12);
+    assert.equal(result.geometry.quads.length, 2 * 12);
+    assert.equal(topologyOf(result).openBoundaries().length, 2);
+});
+
+test("meridian end caps close a positive-radius profile without fake rim vertices", () => {
+    const meridian = {
+        closed: false,
+        points: [
+            vector(0.9, 0),
+            vector(1.1, 0.5),
+            vector(0.9, 1)
+        ]
+    };
+
+    for (const angle of [Math.PI * 2, Math.PI]) {
+        const result = revolveProfile(meridian, options({
+            angle,
+            caps: true,
+            capRegionAt: end => `surface-${end}`,
+            surfaceAt: ({ meridianInterval }) =>
+                meridianInterval === 0 ? "lower-wall" : "upper-wall"
+        }));
+
+        assert.equal(topologyOf(result).openBoundaries().length, 0);
+        assert.equal(result.regions["surface-meridian-start"].length, 12);
+        assert.equal(result.regions["surface-meridian-end"].length, 12);
+        assert.ok(result.regions["lower-wall"].length > 0);
+        assert.ok(result.regions["upper-wall"].length > 0);
     }
 });
 
@@ -158,6 +217,35 @@ test("old lathe and shell continue using real geometry with radial waves", () =>
     } finally {
         geometry.dispose();
     }
+});
+
+test("turned vessel retains floor, inner wall, rim and outer regions", () => {
+    const mesh = turnedVessel({
+        outline: [
+            { y: 0, radius: 0.5 },
+            { y: 0.2, radius: 0.55 },
+            { y: 0.5, radius: 0.52 }
+        ],
+        wallThickness: 0.05,
+        floorThickness: 0.08,
+        radialSegments: 12,
+        samplesPerSpan: 2,
+        rolledRim: true,
+        footImpressions: { count: 6, depth: 0.02, height: 0.06 }
+    });
+
+    const regions = new Set([
+        ...mesh.quads,
+        ...(mesh.triangles ?? [])
+    ].map(face => face.surface));
+
+    for (const region of ["base", "outer", "rim", "inner", "floor"]) {
+        assert.ok(regions.has(region), `Missing region: ${region}`);
+    }
+
+    assert.ok(mesh.vertices.some(vertex =>
+        Math.abs(vertex.y) < 1e-8 && Math.hypot(vertex.x, vertex.z) < 0.5
+    ));
 });
 
 test("invalid axis, meridian and collapsed radial modulation are rejected", () => {

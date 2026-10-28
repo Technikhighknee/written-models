@@ -138,12 +138,8 @@ function validate(
             ) <= precision.absoluteLength) {
             fail("invalid-input", "Cyclic meridian must have distinct positive-radius stations");
         }
-    } else if (
-        points[0]!.radius !== 0 ||
-        points.at(-1)!.radius !== 0 ||
-        points.slice(1, -1).some(point => point.radius <= 0)
-    ) {
-        fail("unsupported-topology", "Open meridian requires two axis poles");
+    } else if (points.slice(1, -1).some(point => point.radius <= 0)) {
+        fail("unsupported-topology", "Only meridian endpoints may lie on the axis");
     }
 }
 
@@ -328,15 +324,53 @@ export function revolveProfile(
         fail("invalid-input", "Missing revolution meridian");
     }
 
-    const points: MeridianStation[] = meridian.points.map(p => ({
+    const original: MeridianStation[] = meridian.points.map(p => ({
         radius: p.x,
         height: p.y
     }));
+    const first = original[0]!;
+    const last = original.at(-1)!;
+    const extendStart = !!options.caps && !meridian.closed && first.radius > 0;
+    const extendEnd = !!options.caps && !meridian.closed && last.radius > 0;
+    const points = [...original];
+
+    if (extendStart) {
+        points.unshift({ radius: 0, height: first.height });
+    }
+    if (extendEnd) {
+        points.push({ radius: 0, height: last.height });
+    }
+
+    // Added radial closing segments have their own regions. Original
+    // meridian intervals retain exactly their authored callback indices.
+    const initialInterval = extendStart ? 1 : 0;
+    const outgoing = original.length - 1;
+    const surfaceAt = ({ meridianInterval, angularInterval }: RevolveFaceContext) => {
+        if (extendStart && meridianInterval === 0) {
+            return options.capRegionAt?.("meridian-start") ?? "meridian-start";
+        }
+        if (extendEnd && meridianInterval === initialInterval + outgoing) {
+            return options.capRegionAt?.("meridian-end") ?? "meridian-end";
+        }
+
+        return options.surfaceAt?.({
+            meridianInterval: meridianInterval - initialInterval,
+            angularInterval
+        }) ?? "side";
+    };
+    const smoothingGroupAt = (context: RevolveFaceContext) =>
+        options.smoothingGroupAt?.({
+            ...context,
+            meridianInterval: context.meridianInterval - initialInterval
+        });
+
     let mesh: MeshData;
 
     try {
         mesh = revolveMeridianMesh(points, {
             ...options,
+            surfaceAt,
+            smoothingGroupAt,
             closedMeridian: meridian.closed
         });
     } catch (error) {

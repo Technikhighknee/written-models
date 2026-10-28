@@ -12,16 +12,19 @@ export interface MeridianPoint {
 }
 
 /**
- * Y-axis convenience constructor. Models retain their existing meridian,
- * material and radial-modulation contracts while sharing the same rotational
- * topology engine with revolveProfile.
+ * Revolve meridian stations about the Y axis with authored poles, quads,
+ * per-interval materials, UVs and optional radial modulation.
  */
 export function latheMeridian(
     points: readonly MeridianPoint[],
     radialSegments = 40,
     { closed = false }: { closed?: boolean } = {}
 ): MeshData {
-    if (points.length < (closed ? 3 : 4)) {
+    if (
+        points.length < (closed ? 3 : 4) ||
+        (!closed &&
+            (points[0]?.radius !== 0 || points.at(-1)?.radius !== 0))
+    ) {
         throw new RangeError("Invalid meridian or radial segments");
     }
 
