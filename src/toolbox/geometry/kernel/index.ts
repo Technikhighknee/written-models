@@ -25,3 +25,5 @@ export type {
     RevolveOptions, RevolveFaceContext, MeridianStation
 } from "../build/revolveProfile";
 export { triangulateProfile } from "../build/triangulateProfile";
+export { extrudeContour } from "../build/extrudeContour";
+export type { ExtrudeOptions, ExtrudeLayer } from "../build/extrudeContour";
