@@ -43,6 +43,25 @@ interface GeometryResult {
   /** Valid parameterized patch selections owned by this exact result. */
   patches?: Readonly<Record<string, readonly SurfacePatchRef[]>>;
 }
+
+interface EdgeUse {
+  face: FaceRef;
+  from: number;
+  to: number;
+}
+
+interface TopologyIndex {
+  /** The exact authored result from which this read-only index derives. */
+  owner: symbol;
+  edgeUses(from: number, to: number): readonly EdgeUse[];
+  faceNeighbors(face: FaceRef): readonly FaceRef[];
+  openBoundaries(): readonly BoundaryRef[];
+  regionBoundaries(region: string): readonly BoundaryRef[];
+  connectedComponents(): readonly (readonly FaceRef[])[];
+}
+
+/** Builds or retrieves a read-only topology index for this snapshot. */
+topologyOf(source: GeometryResult): TopologyIndex;
 ```
 
 A boundary name resolves to **a list** of loops or chains. A single
