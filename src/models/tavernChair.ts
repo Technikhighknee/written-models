@@ -129,8 +129,8 @@ function addPosts(chair: THREE.Group, oak: Workshop): void {
             }
         ));
 
-        // Each rear leg and back upright is a SINGLE continuous timber.
-        // Its rake also moves the back clear of the rear seat edge.
+        // Each rear stile passes through a fitted opening in the rear
+        // seat board and continues into the backrest as one timber.
         chair.add(oak.timber(
             `${side}BackStile`,
             new THREE.Vector3(sign * REAR_X, 0, REAR_FOOT_Z),
