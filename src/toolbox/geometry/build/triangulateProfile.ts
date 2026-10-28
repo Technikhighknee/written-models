@@ -206,7 +206,7 @@ export function triangulateProfile(
             fail("degenerate-geometry", "Collapsed planar cap triangle");
         }
 
-        for (const [from, to] of [[a, b], [b, c], [c, a]]) {
+        for (const [from, to] of [[a, b], [b, c], [c, a]] as const) {
             const key = edgeKey(from, to);
             const uses = edgeUses.get(key) ?? [];
             uses.push([from, to]);
