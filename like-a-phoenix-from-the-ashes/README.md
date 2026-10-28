@@ -28,7 +28,7 @@ building, shaping, cutting, and connecting parts.
 **A new geometric capability should have a useful life far beyond the
 model that first needed it.**
 
-## Capabilities we want
+## Geometric capabilities
 
 ### Shape construction
 
@@ -100,32 +100,24 @@ Our geometry representation should make composition natural.
 We should be able to sweep a profile, deform the result, cut into it,
 and fit it against another surface while keeping its topology useful.
 
-## Existing capabilities to develop further
+## How the toolbox is organized
 
-There is already substantial geometric work in the repository.
-The next step is to identify the general operations within it and
-make them available across the entire toolbox.
+Every reusable operation is defined through geometric inputs and outputs.
+Profiles, paths, surfaces, boundaries, and meshes can pass between operations
+without depending on the object that originally motivated them.
 
-| Current functions | Geometric capabilities to develop |
-| --- | --- |
-| `straightBoard`, `profiledBoard`, `loftBoard` | Arbitrary sections, lofting, edge shaping, changing profiles |
-| `boardPanel`, `circularPlankPanel` | Shape partitioning, shared boundaries, cooperating pieces |
-| `cutBoard`, `seamedPlankExtrusion` | Cuts, openings, grooves, recesses, surface transitions |
-| `radialStaves`, `radialStripLayout`, `bandAroundProfile` | Radial layouts, curved strips, offsets, surface-following forms |
-| `timber`, `beams`, `beamBetweenPlanes` | Profile-based members and precisely fitted ends |
-| `supportFacePlane`, `fitBetweenSupports`, `fitBoundaryToSurface` | Surface queries, contacts, boundary fitting |
-| `turnedVessel`, `profiledCavity`, `fillableVolume` | Shells, enclosed volumes, interior contours, geometric changes |
-| `attachByAnchors`, `attachByFrames` | Transformations, positioning, attachments |
+Construction specific to a barrel, board, chair, or dagger lives with that
+model. The geometric operations used to construct those parts belong to
+the shared toolbox.
 
-This is an initial set of candidates. The same examination should extend
-to the rest of the toolbox.
+For example, splitting a shape into parts with matching boundaries is a
+toolbox capability. The number, placement, shape, and appearance of the
+planks in a tabletop are decisions made by the table model.
 
-For each function, identify the geometric work it performs, the inputs
-it truly needs, and the other kinds of geometry that could benefit.
-Extract shared operations and compose them wherever they are used.
-
-Object-specific construction remains in the models, built from the
-toolbox's capabilities.
+Functions such as `boardPanel`, `cutBoard`, and `seamedPlankExtrusion`
+currently combine these concerns. Their geometric mechanisms will be
+reused through general operations, and their model-specific choices
+will stay with the models.
 
 ## What success looks like
 
@@ -145,27 +137,28 @@ stays accurate, and GLB export works.
 As the toolbox grows, entirely new categories of models become
 approachable with an increasingly powerful set of familiar operations.
 
-## Progress
+## Implementation progress
 
-Check off an item when its changes are working in the repository.
-Record the relevant commit alongside completed items.
+Each checked item represents a working result. Completed items carry
+the commit that delivered them.
 
-- [ ] Examine every toolbox function and identify its reusable
-      geometric capabilities.
-- [ ] Establish a consistent, composable representation for geometry,
-      faces, boundaries, surface regions, and topology.
-- [ ] Consolidate contour, profile, cross-section, path, loft, sweep,
-      extrusion, and revolution operations.
-- [ ] Extract general-purpose cutting, splitting, partitioning,
-      openings, grooves, and surface editing.
-- [ ] Make deformation and controlled variation reusable across
-      different forms of geometry.
-- [ ] Consolidate surface queries, contact fitting, and assembly.
-- [ ] Support separate pieces with precisely matching boundaries
-      and subdivisions.
-- [ ] Keep authored quads, UVs, surface regions, materials, Quad View,
-      and export working through composed operations.
-- [ ] Rebuild existing models using the shared capabilities and relocate
-      object-specific construction to model code.
-- [ ] Demonstrate reuse across genuinely different geometries.
-- [ ] Remove superseded algorithms and update the toolbox capability guide.
+- [ ] A shared geometry representation preserves authored faces, edges,
+      boundaries, regions, and topology across operations.
+- [ ] Contours, profiles, cross-sections, and paths compose with general
+      extrusion, loft, sweep, and revolution operations.
+- [ ] Cutting, splitting, partitioning, openings, grooves, and surface
+      editing work across different geometric forms.
+- [ ] Deformation and controlled variation work on geometry constructed
+      by other tools.
+- [ ] Surface queries, contact fitting, and assembly are reusable across
+      different object types.
+- [ ] Separate pieces can be constructed with precisely matching
+      boundaries and subdivisions.
+- [ ] Authored quads, UVs, surface regions, materials, Quad View, and GLB
+      export survive composed operations.
+- [ ] The existing models use shared geometric capabilities, with their
+      object-specific construction alongside the models.
+- [ ] Reuse has been demonstrated across substantially different models,
+      including different profiles, materials, and contact geometries.
+- [ ] Superseded specialized algorithms are gone and the toolbox's
+      available capabilities are documented.
