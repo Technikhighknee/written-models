@@ -40,6 +40,7 @@ consume the same face tessellation.
 | Surface patch outline | `fillSurfacePatch` takes a sampled profile containing the explicit outer and inner boundary loops. Interior refinement keeps its boundary fixed. | Crowned tops, sparse undersides and lofted sidewalls can actually join. |
 | Loft surfaces | Material and smoothing assignments are independent callbacks on contour edge and section interval. | The dagger's ricasso and the iron–wood–iron grip need no specialized loft. |
 | Triangulation | One authored-face tessellator supplies renderer and surface queries, retaining face/corner provenance. | Quad View, ray hits, normals and UV interpolation refer to the same faces. |
+| Face classification | `classifyAuthoredFaces` assigns semantic surfaces/smoothing per authored face before rendering. | End-grain and other material decisions never depend on reordered GPU triangle groups. |
 | Geometry validity | Unsupported inputs produce structured geometry failures. Numerics and observed sampling error are explicit. | Algorithms do not silently invent topology or report an approximation as exact. |
 | Assembly | Shape generation happens in explicit construction space; scene parenting and export are downstream. | Contact fitting can be checked before a model is attached to a scene. |
 | Runtime assets | Preserve existing static batching and the specialized instance, skin and morph paths; morphs remain their own runtime data. | The beer mug's fill controller and GLB shapes continue working. |
