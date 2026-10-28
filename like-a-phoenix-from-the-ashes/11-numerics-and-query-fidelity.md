@@ -86,12 +86,13 @@ geometry is the relevant promise.
 
 ## Adaptive sampling reports what it achieved
 
-The current `adaptiveStations()` samples quarter, half and
-three-quarter points and stops after `maxDepth`. Reaching that
-limit currently returns stations even if the requested deviation
-is still exceeded.
+The sampling engine probes quarter, half and three-quarter
+points in each interval. `sampleAdaptiveStations()` reports the
+observed error and the intervals where `maxDepth` prevented
+further refinement; `adaptiveStations()` remains the
+station-array adapter for unmigrated callers.
 
-The target sampler returns an explicit result:
+The full sampling result is:
 
 ```ts
 interface StationSamplingResult {
@@ -134,7 +135,7 @@ duplicate coincident seam loop.
 
 ## Query triangles and source-face mapping
 
-The query adapter and the renderer use **the same tessellation
+The authored ray query and renderer use **the same tessellation
 of authored faces**. The triangle generation stage records
 provenance before any sorting by material:
 
