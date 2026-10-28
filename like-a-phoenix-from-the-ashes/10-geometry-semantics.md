@@ -82,7 +82,7 @@ at each station along the loft.
   with quad strips when their correspondence permits it.
 - Different boundary sampling densities use explicitly constructed
   transition triangles.
-- A tip at a single point is represented by true fan triangles.
+- A tip at a single point is represented by true fan triangles. The source end remains open until the tip operation closes it; already capped ends are rejected.
 - An open end exposes its outer and inner boundary chains.
 - For a periodic sweep, the final contours reconnect to the
   initial contours with matching frames and vertices.
