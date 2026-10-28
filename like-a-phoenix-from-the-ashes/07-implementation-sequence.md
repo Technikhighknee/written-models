@@ -81,9 +81,9 @@ that can make an iron plate, a stone surface or separate solid parts.
       shared edge stations, holes and deliberate clearance offsets.
 - [ ] **3.3** Extend contour clipping to concave regions and multiple
       components, returning actual planar loops.
-- [ ] **3.4** Implement plane-splitting of authored solids with
-      shared intersection points, named cut faces, and explicit
-      paired interfaces identifying the owning output pieces.
+- [ ] **3.4** Implement plane-splitting of authored solids, including
+      multiple disconnected output pieces per half-space, with
+      shared intersections, cut faces and paired part interfaces.
 - [ ] **3.5** Implement `openPatch` and `recessPatch` on connected
       planar patches, with explicit rims, walls and optional floors.
 - [ ] **3.6** Implement `cutThrough` for compatible entry/exit

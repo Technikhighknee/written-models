@@ -60,7 +60,9 @@ splitByPlane(geometry, plane, {
 The plane intersects each source edge once. The resulting pieces
 reuse the intersection points and agree on the entire cut contour.
 Each interface records **both owning part indices** and the matching
-boundary loops. Source-face UVs are interpolated; cap UVs use a
+boundary loops. Every connected output component is labeled with its
+positive/negative plane side; one plane can produce several separate
+pieces on either side. Source-face UVs are interpolated; cap UVs use a
 plane-aligned chart.
 
 Multiple connected components and holes remain distinct loops.

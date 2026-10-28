@@ -135,6 +135,8 @@ interface PartitionInterface {
 
 interface PartitionResult {
   parts: readonly GeometryResult[];
+  /** One label per part, matching the parts array. */
+  sideOfPart: readonly ("negative" | "positive")[];
   interfaces: readonly PartitionInterface[];
 }
 
@@ -173,9 +175,11 @@ interface SurfacePatchRef {
 ```
 
 A shared seam is sampled once. Each interface identifies the owner
-of both boundary references with part indices. The two pieces reuse
+of both boundary references with part indices. The pieces reuse
 the source stations; gaps or relief are deliberate offsets from that
-common seam. The references are local to their owning parts.
+common seam. A 3D split may yield multiple disconnected parts on
+either side; `sideOfPart` identifies their half-space. Paired cut
+interfaces refer to exact indices in `parts`.
 
 `adaptiveStations` returns `StationSamplingResult`. A non-empty
 `saturated` set signals that recursion stopped while a requested
@@ -247,6 +251,7 @@ sweepSection(options: {
   stations: readonly number[];
   closedPath?: boolean;
   ends?: "open" | "cap";
+  precision?: GeometryPrecision;
 }): GeometryResult;
 
 revolveProfile(
@@ -348,7 +353,8 @@ splitByPlane(
 openPatch(
   source: GeometryResult,
   patch: SurfacePatchRef,
-  outline: Contour2
+  outline: Contour2,
+  precision?: GeometryPrecision
 ): GeometryResult;
 
 recessPatch(
@@ -378,7 +384,8 @@ transformGeometry(
 bevelEdges(
   source: GeometryResult,
   edges: readonly EdgeRef[],
-  width: ScalarField
+  width: ScalarField,
+  precision?: GeometryPrecision
 ): GeometryResult;
 ```
 
@@ -399,10 +406,12 @@ two compatible openings across an existing solid with actual
 interior walls; its two patches must admit a consistent correspondence.
 Other through-cuts use an explicit solid boolean.
 
-A 3D split produces cut loops for each result. Solid booleans use
-a separate `booleanSolids` operation that returns actual generated
-triangles and explicit surface/UV assignments. General automatic
-quad retopology is outside that operation.
+A 3D split assigns every resulting connected component to its
+negative or positive half-space and returns the cut interface
+between individual parts. Solid booleans use a separate
+`booleanSolids` operation that returns actual generated triangles
+and explicit surface/UV assignments. General automatic quad
+retopology is outside that operation.
 
 `DeformationField` takes position, vertex ID, and optional region
 weights, and returns displacement. It acts on construction

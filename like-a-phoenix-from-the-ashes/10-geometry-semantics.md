@@ -108,19 +108,21 @@ A closed manifold source is split by an oriented plane.
 4. Trace the resulting cut edges into oriented loops. Multiple
    disconnected loops and loops around existing holes are supported.
 5. Cap those loops as oriented planar patches when `cap` is enabled.
-6. Return the two generated solids and their paired cut interfaces.
+6. Separate each half-space into connected components. Return every
+   part, its negative/positive half-space label and paired interfaces.
 
 A face cut across one of its edges may require triangle topology.
 Complete surviving quads retain their original face structure
 where geometrically valid. Cut caps may contain genuine triangles.
 
-The paired interface identifies its owning pieces by index:
-`firstPart`, `secondPart`, and the two selected boundary chains.
-Both sides share the exact 3D intersection positions; their ordered
-loops wind in opposite directions for outward-facing closed solids.
+Each paired interface identifies the two owning part indices,
+their matching boundary chains and the shared sample positions.
+Multiple disconnected components on one side are separate parts.
+A cut loop on either half-space has the opposite orientation to
+its mate in the other half-space for outward-facing solids.
 
 A tangent split that produces no actual two-sided division returns
-the source as one piece with an explicit empty interface set.
+the unchanged side as one piece with an explicit empty interface set.
 A cap request is valid only for closed intersection loops.
 Open input shells may be cut without automatically becoming solids.
 
