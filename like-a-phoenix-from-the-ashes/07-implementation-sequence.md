@@ -95,6 +95,8 @@ independent pieces with precise adjoining geometry.
       shared boundary stations.
 - [ ] **3.4** Implement `joinGeometry` with declared matching
       boundary pairs, validated winding and explicit vertex welding.
+      Reject multiple welds of one edge, inconsistent matching cycles,
+      duplicate faces and nonmanifold vertex fans.
 - [ ] **3.5** Implement batched `shapeSurfaceRelief`, combining
       all grooves, shoulders, crown/wear features and overlaps for
       a surface in one coherent reconstruction. Preserve boundary
