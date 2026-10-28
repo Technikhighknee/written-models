@@ -21,7 +21,7 @@ const SEAT_UNDERSIDE = SEAT_HEIGHT - SEAT_THICKNESS;
 const APRON_Y = SEAT_UNDERSIDE - cm(8.3) / 2;
 const SEAT_WIDTH = cm(46);
 const SEAT_DEPTH = cm(41.6);
-const SEAT_CENTER_Z = mm(5);
+const SEAT_CENTER_Z = mm(8);
 
 const FRONT_X = cm(18.5);
 const FRONT_Z = cm(16.0);
