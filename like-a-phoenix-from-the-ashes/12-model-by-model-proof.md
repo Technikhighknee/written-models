@@ -97,6 +97,8 @@ policies for wood and metal.
 2. Convert each modeled station to a placed `Section3` contour,
    including radial variation fields and station-specific offsets.
 3. `loftSections` constructs the blade, guard and grip surfaces.
+   Any end subsequently passed to `tipBoundary` uses
+   `{ ends: "open" }` until its explicit apex closes it.
 4. **Assign surface names per contour edge and loft interval.**
    The blade uses `edge` on selected profile segments and `blade`
    elsewhere; the ricasso is its own longitudinal region.
