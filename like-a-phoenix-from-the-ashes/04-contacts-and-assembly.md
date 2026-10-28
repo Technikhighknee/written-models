@@ -29,11 +29,12 @@ geometry before creating a Three.js scene object.
 
 `MeshSurfaceQuery` currently builds a temporary double-sided
 Three.js mesh from BufferGeometry and raycasts its triangles in
-world space. The shared query can retain that acceleration technique internally.
-The triangulation used for intersection queries records the source
-`FaceRef` for each generated triangle. A ray hit is therefore mapped
-back to its authored face and surface region. The chosen quad
-diagonal matches the renderer's triangulation.
+world space. The shared query can retain that acceleration technique.
+The renderer and geometric query share one triangulation of authored
+faces. Each triangle records its original `FaceRef` and corner offsets;
+hits return barycentrics and the geometric world-space normal derived
+from authored winding. The normal does not flip toward the ray.
+`frontFacing` reports the ray's side of the triangle separately.
 `supportFacePlane` already queries authored quads and recovers
 a face plane. Both become implementations of this common query API.
 Planar-face queries also support genuine triangles and connected
@@ -82,8 +83,9 @@ rejects a parallel/zero reference direction and returns positioned
 
 Each section corner intersects the support plane *along the member
 axis*, producing a properly slanted end across the whole profile.
-Every resulting point is checked against the finite support patch,
-including its holes. The model can transform the fitted result into
+The resulting **entire polygonal outline** must lie inside the finite
+support patch and outside its holes, including the segments between
+corners. The model can transform the fitted result into
 its assembly-local coordinates before rendering.
 
 The return value identifies selected surfaces, contact normals,

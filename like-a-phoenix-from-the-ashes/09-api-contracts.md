@@ -125,6 +125,12 @@ interface StationSamplingResult {
   saturated: readonly [from: number, to: number][];
 }
 
+interface AdaptiveStationsOptions extends PrecisionOptions {
+  maxDeviation: number; // meters
+  maxDepth?: number;
+  knots?: readonly number[];
+}
+
 interface PartitionInterface {
   firstPart: number;
   first: BoundaryRef;
@@ -172,6 +178,13 @@ interface SurfacePatchRef {
   faces: readonly FaceRef[];
   chart: SurfaceChart; // coordinates valid within this patch
 }
+```
+
+```ts
+adaptiveStations(
+  sample: (t: number) => readonly THREE.Vector3Like[],
+  options: AdaptiveStationsOptions
+): StationSamplingResult;
 ```
 
 A shared seam is sampled once. Each interface identifies the owner
@@ -329,6 +342,19 @@ interface Ray3 {
   direction: THREE.Vector3Like;
   maxDistance: number;
 }
+
+type BooleanOperation = "union" | "intersection" | "difference";
+
+interface BooleanOptions extends PrecisionOptions {
+  /** Explicit source-independent classification of output triangles. */
+  regionAt(point: THREE.Vector3Like, normal: THREE.Vector3Like): string;
+  /** UV coordinates for each generated face corner. */
+  uvAt(
+    point: THREE.Vector3Like,
+    normal: THREE.Vector3Like,
+    region: string
+  ): THREE.Vector2Like;
+}
 ```
 
 ```ts
@@ -387,6 +413,13 @@ bevelEdges(
   width: ScalarField,
   precision?: GeometryPrecision
 ): GeometryResult;
+
+booleanSolids(
+  first: MeshData,
+  second: MeshData,
+  operation: BooleanOperation,
+  options: BooleanOptions
+): GeometryResult;
 ```
 
 `PlanarCut2` identifies a named line or sampled curve in the profile's
@@ -406,12 +439,14 @@ two compatible openings across an existing solid with actual
 interior walls; its two patches must admit a consistent correspondence.
 Other through-cuts use an explicit solid boolean.
 
-A 3D split assigns every resulting connected component to its
-negative or positive half-space and returns the cut interface
-between individual parts. Solid booleans use a separate
-`booleanSolids` operation that returns actual generated triangles
-and explicit surface/UV assignments. General automatic quad
-retopology is outside that operation.
+A 3D split assigns every connected output component to its
+negative or positive half-space and pairs the relevant cut loops.
+`booleanSolids` accepts two oriented manifold solids and returns
+the actual generated triangle faces. Its output surface names
+and UVs come from explicit caller-provided functions: the boolean
+kernel does not magically recover authored faces or their
+original UV seams. General automatic quad retopology is outside
+this operation.
 
 `DeformationField` takes position, vertex ID, and optional region
 weights, and returns displacement. It acts on construction

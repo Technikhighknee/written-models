@@ -221,8 +221,25 @@ with no duplicate special-case algorithm families.
 | Numerical fidelity | Saturated sampling, contact precision and Float32 precision loss are reported instead of silently accepted |
 | Deterministic geometry | Same input and seed yield the same shape and sample stations |
 
-The visual quality of the model is checked directly; the tests focus
-on reusable geometric behavior.
+The visual quality of the model is checked directly. A few focused
+checks capture the geometric failures most likely to force a
+second architectural rewrite:
+
+| Example geometry | Required outcome |
+| --- | --- |
+| A seam whose two neighboring parts request different refinement stations | One merged station set; no hanging vertices or holes |
+| An annular pipe swept around a closed loop | Correct inner/outer walls, no duplicated closure ring or twisting seam |
+| A concave quad cap and a cap with a hole | Genuine face triangulation that respects the exact contour |
+| A plane through a multi-lobed connected solid | All resulting components labeled by half-space; paired cut boundaries |
+| A recess cut next to an existing face edge | Valid wall and floor geometry; neighboring topology updated without T-junctions |
+| A ray hitting the back face of a transformed quad | Original `FaceRef`, usable barycentrics and geometric normal independent of ray direction |
+| A cross-section with all corners inside a concave support but an edge crossing outside | Rejected as an invalid finite-patch fit |
+| A high-curvature curve hitting max subdivision depth | Measured residual and saturation reported; hard tolerance fails |
+| A small authored detail losing separation after Float32 export conversion | Precision-loss report rather than a silently collapsed asset |
+| Exported beer mug with nonzero fill, plus an instanced and a skinned example | Runtime properties survive the applicable export path |
+
+The checks protect reusable geometry rules. Asset proportions and
+appearance remain visually authored and reviewed.
 
 ## Dependency order
 

@@ -173,7 +173,9 @@ authored face and semantic region.
 
 The query normal follows actual triangle winding, transformed to
 world coordinates, and never flips merely to face an incoming ray.
-`frontFacing` reports the ray relationship separately. Surface
+`frontFacing` reports the ray relationship separately. Barycentric
+coordinates refer to the emitted triangle's source face corners,
+allowing exact UV interpolation from authored data. Surface
 selection can also consult authored face normals or connected
 planar patches.
 
