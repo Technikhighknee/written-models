@@ -60,15 +60,3 @@ export interface SampledBoundary {
     points: readonly THREE.Vector3Like[];
     closed: boolean;
 }
-
-export interface ContourCorrespondence {
-    stations: readonly number[];
-    first: Contour3;
-    second: Contour3;
-    /** Stable feature IDs establish correspondence independently of distance. */
-    landmarks: readonly {
-        id: string;
-        first: number;
-        second: number;
-    }[];
-}
