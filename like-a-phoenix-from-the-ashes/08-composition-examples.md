@@ -284,16 +284,25 @@ const walls = loftSections([
   { outer: match.second }
 ], { ends: "open" });
 
+// Project the already matched physical vertices into each chart.
 const bottom = fillSurfacePatch({
-  // The bottom wall contour supplies the actual sampled footprint.
-  profile: sampledFootprintFromContour(match.first, bottomSurfaceChart),
+  profile: {
+    outer: {
+      points: match.first.points.map(p => bottomSurfaceChart.parameterOf(p)),
+      parameters: match.stations
+    }
+  },
   chart: bottomSurfaceChart,
   region: "underside"
 });
 
 const top = fillSurfacePatch({
-  // The top wall contour supplies its own physical footprint.
-  profile: sampledFootprintFromContour(match.second, crownedTopSurfaceChart),
+  profile: {
+    outer: {
+      points: match.second.points.map(p => crownedTopSurfaceChart.parameterOf(p)),
+      parameters: match.stations
+    }
+  },
   chart: crownedTopSurfaceChart,
   region: "upper"
 });
@@ -303,13 +312,11 @@ const seat = joinGeometry([walls, bottom, top], {
 });
 ```
 
-Here `sampledFootprintFromContour` denotes model-side preparation:
-project each already-resampled 3D wall contour into the corresponding
-chart, retain its ordered stations, and verify the round trip to 3D.
-It is not an additional toolbox API. Reusing `match.stations` with
-independently reparameterized `topFootprint` and `bottomFootprint`
-would not establish coincident vertices. The two profiles may have
-different 2D positions at corresponding stations.
+Both projections must round-trip through their charts to the
+corresponding physical wall vertices within the shared geometric
+precision. Equal station values on independently sampled source
+profiles would not establish coincident vertices. The two profiles
+may have different 2D positions at corresponding stations.
 
 The walls inherit the slanted cheek profiles. The top patch can
 carry a crown while the underside remains simpler. Both surface
@@ -420,8 +427,8 @@ const rings = cavitySectionsFromSurfaces({
     localToWorld: stave.transform,
     regions: ["inner"]
   })),
-  axis: "y",
-  heights: mugSectionHeights
+  sectionFrame: mugSectionFrame, // local XZ/Y frame placed in world
+  heights: mugSectionHeights // local Y positions
 });
 
 const physicalCavity = new ProfiledCavity(rings).between(
@@ -438,10 +445,12 @@ const liquid = createFillableVolume(
 );
 ```
 
-The extractor intersects each supplied wall region at each
-requested height and stitches the segments into one ordered
-closed contour. Correspondence across heights retains the
-actual stave-internal silhouette.
+The extractor transforms each supplied wall region into the
+mug's explicit section frame, intersects it at each requested
+local height, and stitches the segments into one ordered closed
+contour. Correspondence across heights retains the actual
+stave-internal silhouette. The section frame is also used to
+place the resulting liquid assembly.
 
 `ProfiledCavity` retains its volume integration and inverse
 height mapping. `createFillableVolume` remains a runtime
