@@ -18,6 +18,7 @@ import {
     type GeometryPrecision
 } from "../kernel/precision";
 import { topologyOf } from "../kernel/topology";
+import { triangulateAuthoredFaces } from "../kernel/triangulation";
 
 export interface SurfaceReliefFeature {
     path: SampledBoundary;
@@ -179,6 +180,7 @@ interface Contribution {
     height: number;
     region?: string;
     strength: number;
+    profileRatio: number;
 }
 
 function contribution(
@@ -251,7 +253,8 @@ function contribution(
     return {
         height,
         ...(region === undefined ? {} : { region }),
-        strength: Math.abs(height)
+        strength: Math.abs(height),
+        profileRatio: Math.abs(u)
     };
 }
 
@@ -261,13 +264,20 @@ function field(
     chart: SurfaceChart,
     overlap: SurfaceReliefOptions["overlap"],
     tolerance: number
-): { height: number; region?: string; strength: number } {
+): {
+    height: number;
+    region?: string;
+    strength: number;
+    profileRatio: number;
+} {
     const values = paths.flatMap(path => {
         const value = contribution(path, uv, chart, tolerance);
         return value === undefined ? [] : [value];
     });
 
-    if (!values.length) return { height: 0, strength: 0 };
+    if (!values.length) return {
+        height: 0, strength: 0, profileRatio: 1
+    };
     const chosen = values.reduce((best, candidate) =>
         candidate.strength > best.strength ? candidate : best
     );
@@ -278,7 +288,8 @@ function field(
     return {
         height,
         ...(chosen.region === undefined ? {} : { region: chosen.region }),
-        strength: chosen.strength
+        strength: chosen.strength,
+        profileRatio: chosen.profileRatio
     };
 }
 
@@ -566,6 +577,96 @@ function regularizeTriangles(
     }
 }
 
+function belongsToPatch(
+    point: THREE.Vector2,
+    uv: readonly THREE.Vector2[],
+    triangles: readonly Triangle[],
+    tolerance: number
+): boolean {
+    for (const triangle of triangles) {
+        const [a, b, c] = triangle;
+        const x = uv[a]!;
+        const y = uv[b]!;
+        const z = uv[c]!;
+        const area = orientedArea(uv, triangle);
+
+        if (Math.abs(area) <= tolerance * tolerance) continue;
+
+        const cross = (p: THREE.Vector2, q: THREE.Vector2, r: THREE.Vector2) =>
+            (q.x - p.x) * (r.y - p.y) -
+            (q.y - p.y) * (r.x - p.x);
+        const weights = [
+            cross(point, y, z) / area,
+            cross(x, point, z) / area,
+            cross(x, y, point) / area
+        ];
+        const threshold = tolerance / Math.max(
+            x.distanceTo(y), y.distanceTo(z), z.distanceTo(x)
+        );
+
+        if (weights.every(weight => weight >= -threshold)) return true;
+    }
+
+    return false;
+}
+
+function assertNoBreakthrough(
+    source: GeometryResult,
+    selected: ReadonlySet<string>,
+    uv: readonly THREE.Vector2[],
+    changed: readonly THREE.Vector3[],
+    original: SurfaceChart,
+    tolerance: number
+): void {
+    const opposite = triangulateAuthoredFaces(source.geometry).filter(face =>
+        !selected.has(faceKey(face.face))
+    );
+
+    if (!opposite.length) return;
+
+    for (let id = 0; id < uv.length; id++) {
+        const parameter = uv[id];
+        if (!parameter || !finite2(parameter)) continue;
+
+        const initial = vector3(original.at(parameter));
+        const final = changed[id]!;
+
+        if (!finite3(initial) || !finite3(final)) {
+            fail("degenerate-geometry", "Non-finite relief thickness sample");
+        }
+
+        const offset = final.clone().sub(initial);
+        const distance = offset.length();
+
+        if (distance <= tolerance * 2) continue;
+
+        const direction = offset.normalize();
+        const ray = new THREE.Ray(
+            initial.clone().addScaledVector(direction, tolerance * 2),
+            direction
+        );
+        const hit = new THREE.Vector3();
+
+        for (const face of opposite) {
+            const [a, b, c] = face.vertices.map(index =>
+                source.geometry.vertices[index]!
+            );
+
+            if (ray.intersectTriangle(a!, b!, c!, false, hit)) {
+                const contact = hit.distanceTo(initial);
+
+                if (contact > tolerance * 2 &&
+                    contact < distance - tolerance) {
+                    fail(
+                        "unsupported-topology",
+                        "Relief penetrates an existing mating surface"
+                    );
+                }
+            }
+        }
+    }
+}
+
 /**
  * Rebuild selected charted faces once from every requested relief feature.
  * Existing seams are preserved vertex-for-vertex. Features use signed
@@ -635,6 +736,13 @@ export function shapeSurfaceRelief(
         }
     }
 
+    if (new Set(originalSurfaces).size !== 1) {
+        fail(
+            "unsupported-topology",
+            "Batched relief requires one original patch surface region"
+        );
+    }
+
     const uses = new Map<string, number>();
     for (const triangle of triangles) {
         for (let i = 0; i < 3; i++) {
@@ -662,6 +770,26 @@ export function shapeSurfaceRelief(
     }
 
     const paths = validateFeatures(features, patch.chart, tolerance);
+
+    for (const path of paths) {
+        const count = path.closed ? path.uv.length : path.uv.length - 1;
+
+        for (let i = 0; i < count; i++) {
+            const a = path.uv[i]!;
+            const b = path.uv[(i + 1) % path.uv.length]!;
+
+            for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+                if (!belongsToPatch(
+                    a.clone().lerp(b, t), uv, triangles, tolerance
+                )) {
+                    fail(
+                        "unsupported-topology",
+                        "Relief path leaves the selected surface"
+                    );
+                }
+            }
+        }
+    }
 
     const originalPositions = positions.map(p => p.clone());
     const displacement = (point: THREE.Vector2) =>
@@ -872,6 +1000,10 @@ export function shapeSurfaceRelief(
         }
     }
 
+    assertNoBreakthrough(
+        source, selected, uv, positions, patch.chart, tolerance
+    );
+
     for (const triangle of triangles) {
         const [a, b, c] = triangle;
         if (!triangleQuality(
@@ -909,7 +1041,7 @@ export function shapeSurfaceRelief(
         const region = Math.abs(active.height) <= tolerance
             ? originalRegion
             : active.region ?? (
-                active.strength > tolerance
+                active.profileRatio < 0.55
                     ? "relief-floor" : "relief-shoulder"
             );
 
