@@ -1096,6 +1096,55 @@ interiors and edges. It is usable after a circular-band sweep to
 verify that a band which clears a profile at its sampled vertices
 also clears the real faceted supporting surface between samples.
 
+The implemented surface queries expose these complementary contracts:
+
+```ts
+interface ClearanceOptions extends PrecisionOptions {
+  minimum: number; // finite, nonnegative world metres
+}
+
+interface ClearanceResult {
+  closestDistance: number;
+  intersects: boolean;
+  meetsMinimum: boolean;
+}
+
+surfaceClearance(
+  first: SurfaceTarget,
+  second: SurfaceTarget,
+  options: ClearanceOptions
+): ClearanceResult;
+
+interface ExteriorPlacementResult {
+  exterior: boolean;
+  intersects: boolean;
+  ambiguous: boolean;
+  minimumSignedDistance: number;
+}
+
+verifyExteriorPlacement(
+  candidate: SurfaceTarget,
+  support: SurfaceTarget,
+  options: ClearanceOptions
+): ExteriorPlacementResult;
+```
+
+`surfaceClearance` checks the triangle interiors and edges as well
+as their vertices. This catches a circular band whose sampled outer
+stations clear a faceted barrel but whose straight segments cross
+the barrel between stations. Coplanar overlaps, skew edge distances,
+and actual intersection between two triangle interiors are included.
+The overlap test uses the same authored triangulation as rendering.
+
+`verifyExteriorPlacement` makes the separate orientation check:
+it rejects surface intersections, measures the side of the nearest
+oriented support triangles for all candidate vertices, edge
+midpoints and face centroids, and rejects ambiguous nearest
+normals. This is an outward-side placement diagnostic for the
+authored surface; for an open or nonmanifold support it cannot
+prove solid containment. The query does not silently interpret
+a positive unsigned distance as evidence of an exterior band.
+
 `surfaceClearance` measures the closest points of the two finite
 triangle surfaces, not their volumes. `minimum` must be non-negative.
 Actual touching or crossing triangles report `intersects: true`
