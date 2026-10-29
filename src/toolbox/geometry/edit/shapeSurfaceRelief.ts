@@ -638,6 +638,24 @@ export function shapeSurfaceRelief(
             }
             if (centroidError > maxDeviation) {
                 marked.add(i);
+
+                // A centroid fan alone would retain long parent edges.
+                // Split the longest eligible interior edge so that
+                // triangles shrink geometrically, not just in area.
+                const longest = ([
+                    [a, b], [b, c], [c, a]
+                ] as const).filter(([from, to]) =>
+                    !boundary.has(edgeKey(from, to))
+                ).sort((first, second) =>
+                    uv[second[0]]!.distanceToSquared(uv[second[1]]!) -
+                    uv[first[0]]!.distanceToSquared(uv[first[1]]!)
+                )[0];
+
+                if (longest) {
+                    split.set(edgeKey(longest[0], longest[1]), [
+                        longest[0], longest[1]
+                    ]);
+                }
             }
 
             for (const [from, to] of [
