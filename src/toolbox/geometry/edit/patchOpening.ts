@@ -19,6 +19,7 @@ import {
 import { topologyOf } from "../kernel/topology";
 import { patchChartMatches, transferBoundary } from "../kernel/selectionLifecycle";
 import { triangulateProfile } from "../build/triangulateProfile";
+import { fillSurfacePatch } from "../build/fillSurfacePatch";
 import { raycastSurface } from "../queries/raycastSurface";
 
 export interface RecessOptions {
@@ -240,56 +241,75 @@ function boundaries(
     return [outer[0]!, ...holes];
 }
 
-function planar(
+function validateChart(
     source: GeometryResult,
     patch: SurfacePatchRef,
     loops: readonly Loop[],
     outline: readonly THREE.Vector2[],
     tolerance: number
-): { normal: THREE.Vector3; positions: THREE.Vector3[] } {
-    const point = source.geometry.vertices[loops[0]!.ids[0]!]!;
-    const uv = loops[0]!.uv[0]!;
-    const normalAt = patch.chart.normalAt(uv);
-    if (!normalAt || ![normalAt.x, normalAt.y, normalAt.z].every(Number.isFinite)) {
+): THREE.Vector3 {
+    const uv = outline[0]!;
+    const direction = patch.chart.normalAt(uv);
+    if (!direction || ![direction.x, direction.y, direction.z]
+        .every(Number.isFinite)) {
         fail("invalid-input", "Invalid patch normal");
     }
-    const normal = new THREE.Vector3().copy(normalAt).normalize();
-    if (!(normal.length() > 0)) fail("invalid-input", "Invalid patch normal");
+    const normal = new THREE.Vector3().copy(direction);
+    if (!(normal.length() > tolerance)) {
+        fail("invalid-input", "Invalid patch normal");
+    }
 
-    const samples = [
+    // A charted edit must represent every selected source vertex, not
+    // merely its perimeter. Curvature is allowed, chart folds are not.
+    const chartPoints = [
         ...Array.from(new Set(patch.faces.flatMap(ref => {
             const face = ref.kind === "quad"
                 ? source.geometry.quads[ref.index]!
                 : source.geometry.triangles![ref.index]!;
             return face.corners;
-        }))).map(id =>
-            patch.chart.parameterOf(source.geometry.vertices[id]!)
-        ),
+        }))).map(id => patch.chart.parameterOf(source.geometry.vertices[id]!)),
         ...loops.flatMap(loop => loop.uv),
         ...outline,
         ...outline.map((from, i) => from.clone()
-            .lerp(outline[(i + 1) % outline.length]!, 0.5)),
-        outline.reduce((sum, v) => sum.add(v), new THREE.Vector2())
-            .divideScalar(outline.length)
+            .lerp(outline[(i + 1) % outline.length]!, 0.5))
     ];
-
-    const positions = samples.map(parameter => {
-        const result = patch.chart.at(parameter);
-        const inverse = result && patch.chart.parameterOf(result);
-        const oriented = patch.chart.normalAt(parameter);
-        if (!result || !inverse || !oriented ||
-            ![result.x, result.y, result.z, inverse.x, inverse.y,
-                oriented.x, oriented.y, oriented.z].every(Number.isFinite) ||
-            new THREE.Vector2(inverse.x, inverse.y)
-                .distanceTo(parameter) > tolerance ||
-            Math.abs(new THREE.Vector3().copy(result).sub(point).dot(normal)) > tolerance ||
-            new THREE.Vector3().copy(oriented).normalize().dot(normal) <
-                1 - 1e-7) {
-            fail("unsupported-topology", "Patch chart is not planar at the opening");
+    for (const parameter of chartPoints) {
+        if (!parameter || ![parameter.x, parameter.y].every(Number.isFinite)) {
+            fail("unsupported-topology", "Patch chart has no finite inverse");
         }
-        return new THREE.Vector3().copy(result);
-    });
-    return {normal, positions};
+        const point = patch.chart.at(parameter);
+        const inverse = point && patch.chart.parameterOf(point);
+        const directionAt = patch.chart.normalAt(parameter);
+        if (!point || !inverse || !directionAt ||
+            ![point.x, point.y, point.z, inverse.x, inverse.y,
+                directionAt.x, directionAt.y, directionAt.z].every(Number.isFinite) ||
+            new THREE.Vector2(inverse.x, inverse.y)
+                .distanceTo(new THREE.Vector2(parameter.x, parameter.y)) > tolerance ||
+            new THREE.Vector3().copy(directionAt).length() <= tolerance) {
+            fail("unsupported-topology", "Patch chart is not regular at the opening");
+        }
+    }
+    return normal.normalize();
+}
+
+function sampled(
+    points: readonly THREE.Vector2[],
+    chart: SurfacePatchRef["chart"]
+): {points: THREE.Vector2[]; parameters: number[]} {
+    const positions = points.map(point => chart.at(point));
+    const distances = [0];
+    for (let i = 0; i < points.length; i++) {
+        distances.push(distances.at(-1)! + new THREE.Vector3()
+            .copy(positions[i]!).distanceTo(positions[(i + 1) % points.length]!));
+    }
+    const total = distances.at(-1)!;
+    if (!(total > 0) || !Number.isFinite(total)) {
+        fail("degenerate-geometry", "Collapsed sampled patch boundary");
+    }
+    return {
+        points: points.map(point => point.clone()),
+        parameters: distances.slice(0, -1).map(value => value / total)
+    };
 }
 
 function uvMap(
@@ -370,16 +390,36 @@ function edited(
         .getSize(new THREE.Vector2()).length();
     const tolerance = lengthTolerance(policy, bounds);
     const opening = validateOutline(outline, loops, tolerance);
-    const {normal} = planar(source, patch, loops, opening, tolerance);
+    const normal = validateChart(source, patch, loops, opening, tolerance);
     const mapUv = uvMap(source, patch, tolerance);
     const original = source.geometry;
     const vertices = original.vertices.map(v => v.clone());
     const newIds = opening.map(uv => vertices.push(
         new THREE.Vector3().copy(patch.chart.at(uv))
     ) - 1);
-    const contours = [...loops.map(loop => loop.uv), opening];
-    const ids = [...loops.map(loop => loop.ids), newIds].flat();
-    const triangles = triangulateProfile(contours, policy);
+
+    // Both open and recessed patches share one charted roof construction.
+    // The fill operation owns adaptive interior refinement while preserving
+    // every prescribed outer, old-hole and new-opening boundary station.
+    const oriented = [
+        ...loops.map(loop => ({
+            ids: [...loop.ids].reverse(),
+            uv: [...loop.uv].reverse()
+        })),
+        {ids: [...newIds].reverse(), uv: [...opening].reverse()}
+    ];
+    const profile = {
+        outer: sampled(oriented[0]!.uv, patch.chart),
+        holes: oriented.slice(1).map(loop => sampled(loop.uv, patch.chart))
+    };
+    const rebuilt = fillSurfacePatch({
+        profile, chart: patch.chart, region: selectedFaces[0]!.surface,
+        maxDeviation: 0.005, precision: policy
+    });
+    const mapped = oriented.flatMap(loop => loop.ids);
+    for (let i = mapped.length; i < rebuilt.geometry.vertices.length; i++) {
+        mapped.push(vertices.push(rebuilt.geometry.vertices[i]!.clone()) - 1);
+    }
 
     const quads: QuadFace[] = [];
     const faces: TriangleFace[] = [];
@@ -399,33 +439,20 @@ function edited(
     const roofStart = faces.length;
     const mainRegion = selectedFaces[0]!.surface;
     const smooth = selectedFaces[0]!.smoothingGroup;
-    const addTriangle = (
-        corners: readonly number[],
-        region: string,
-        project: (id: number) => THREE.Vector2
-    ): void => {
-        const [a, b, c] = corners.map(id => vertices[id]!);
-        const directed = b!.clone().sub(a!).cross(c!.clone().sub(a!));
-        const ordered = directed.dot(normal) > 0
-            ? [...corners] : [corners[0]!, corners[2]!, corners[1]!];
+    for (const face of rebuilt.geometry.triangles ?? []) {
+        const corners = face.corners.map(id => mapped[id]!)
+            as TriangleFace["corners"];
         faces.push({
-            corners: ordered as TriangleFace["corners"],
-            uvs: ordered.map(project) as TriangleFace["uvs"],
-            surface: region,
-            ...(region === mainRegion && smooth !== undefined
-                ? {smoothingGroup: smooth} : {})
+            corners,
+            uvs: face.corners.map(id => mapUv(
+                new THREE.Vector2().copy(patch.chart.parameterOf(
+                    rebuilt.geometry.vertices[id]!
+                ))
+            )) as TriangleFace["uvs"],
+            surface: mainRegion,
+            ...(smooth === undefined ? {} : {smoothingGroup: smooth})
         });
-    };
-    const chartUv = new Map<number, THREE.Vector2>();
-    loops.forEach(loop => loop.ids.forEach((id, i) =>
-        chartUv.set(id, loop.uv[i]!)
-    ));
-    newIds.forEach((id, i) => chartUv.set(id, opening[i]!));
-    for (const triangle of triangles) {
-        addTriangle(triangle.map(i => ids[i]!), mainRegion,
-            id => mapUv(chartUv.get(id)!));
     }
-
     const roofCount = faces.length - roofStart;
     let floorIds: number[] = [];
     let floorStart = -1;
@@ -489,8 +516,14 @@ function edited(
         }
         floorStart = faces.length;
         for (const triangle of triangulateProfile([opening], policy)) {
-            addTriangle(triangle.map(i => floorIds[i]!), floorRegion,
-                id => opening[floorIds.indexOf(id)]!.clone());
+            const corners = triangle.map(i => floorIds[i]!)
+                as TriangleFace["corners"];
+            faces.push({
+                corners,
+                uvs: triangle.map(i => opening[i]!.clone())
+                    as TriangleFace["uvs"],
+                surface: floorRegion
+            });
         }
         floorCount = faces.length - floorStart;
     }
