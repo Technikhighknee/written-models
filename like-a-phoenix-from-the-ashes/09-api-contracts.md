@@ -1109,9 +1109,10 @@ selection without a renderer dependency.
 ```ts
 surfaceMesh(options: {
   name: string;
-  geometry: MeshData;
+  geometry: MeshData | GeometryResult;
   materials: THREE.Material | Readonly<Record<string, THREE.Material>>;
-  tint?: THREE.ColorRepresentation; // GPU vertex color tint, if requested
+  capMaterial?: THREE.Material;
+  tint?: THREE.ColorRepresentation; // materials must enable vertexColors
 }): THREE.Mesh;
 
 offsetMeshUvs(
@@ -1119,6 +1120,29 @@ offsetMeshUvs(
   u: number,
   v: number
 ): GeometryResult;
+
+type AuthoredUvProjector = (
+  position: THREE.Vector3Like,
+  face: FaceRef,
+  corner: number
+) => THREE.Vector2Like;
+
+interface AuthoredUvProjectionOptions extends PrecisionOptions {
+  faces?: readonly FaceRef[];
+  surfaces?: readonly string[];
+}
+
+projectAuthoredUvs(
+  source: MeshData | GeometryResult,
+  project: AuthoredUvProjector,
+  options?: AuthoredUvProjectionOptions
+): GeometryResult;
+
+planarUvProjector(
+  frame: THREE.Matrix4,
+  offset?: THREE.Vector2Like,
+  precision?: GeometryPrecision
+): AuthoredUvProjector;
 
 attachAtFrames(options: {
   parent: THREE.Object3D;
@@ -1128,6 +1152,13 @@ attachAtFrames(options: {
   matingTransform?: THREE.Matrix4;
 }): THREE.Object3D;
 ```
+
+UV projection acts on authored face corners. Select exactly one of
+`faces` or `surfaces`, or omit both to project all faces.
+A rigid `planarUvProjector` frame produces physical meter coordinates
+and snapshots its inverse; the offset is expressed in the same
+physical units. Source meshes and unrelated face UVs remain unchanged.
+New results keep valid owned boundary and patch selections.
 
 `parentFrame` is expressed in the parent's local coordinates;
 `childFrame` is expressed in the child's local coordinates.
