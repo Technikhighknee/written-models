@@ -975,6 +975,19 @@ fitBoundary(
 ): GeometryResult;
 ```
 
+For `findFacingPatch`, `direction` is the desired outward
+world-space face orientation, not a raycast direction. The
+function selects the nearest actual point on a matching planar
+triangle and expands across connected, coplanar authored faces.
+It does not follow nonplanar edges or join disconnected islands.
+The returned frame has an orthonormal basis and local +Z along
+the winding-based face normal. The contact distance is the
+Euclidean distance from `point` to the nearest finite triangle,
+including when the nearest point lies on the footprint boundary.
+This is selection, not yet proof that a full member section fits.
+That proof must also check its projected edges and interior
+against concavities and holes.
+
 A `SurfaceAttachment` selects either actual authored target faces
 or an explicitly authored **finite** planar support, and supplies
 a near-contact point in world coordinates. `SurfacePatchHit`
