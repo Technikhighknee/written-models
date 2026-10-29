@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import { mm, cm } from "../../toolbox/units/length";
+import { mm } from "../../toolbox/units/length";
 import { bandAroundProfileData } from "../../toolbox/geometry/construction/bandAroundProfile";
 import { cylinderMesh } from "../../toolbox/geometry/construction/cylinderMesh";
 import {
