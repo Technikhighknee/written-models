@@ -457,6 +457,20 @@ export function cavitySectionsFromSurfaces({
         fail("invalid-input", "No selected longitudinal wall surfaces");
     }
 
+    // The returned rings feed a piecewise-linear cavity. Omitting a real
+    // source row would change the volume and erase authored bulges.
+    const bottom = heights[0]!;
+    const top = heights[heights.length - 1]!;
+    for (const cell of cells) {
+        for (const y of [cell.bottom, cell.top]) {
+            if (y > bottom + tolerance && y < top - tolerance &&
+                !heights.some(sample => Math.abs(sample - y) <= tolerance)) {
+                fail("invalid-input",
+                    "Requested cavity heights skip an authored wall row");
+            }
+        }
+    }
+
     // Independent parts can share a seam without sharing vertex indices.
     // Merge their longitudinal provenance only at coincident row points.
     const authored = [...used].sort((a, b) => a - b);
