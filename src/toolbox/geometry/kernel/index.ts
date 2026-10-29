@@ -14,6 +14,8 @@ export { finiteFootprintContains } from "../queries/finiteFootprint";
 export type { FootprintTriangle } from "../queries/finiteFootprint";
 export { fitBetweenSurfaces } from "../queries/fitBetweenSurfaces";
 export type { AuthoredPlanarSupport, SurfaceAttachment, FittedContact, FittedSections, FitBetweenSurfacesOptions } from "../queries/fitBetweenSurfaces";
+export { fitBoundary } from "../queries/fitBoundary";
+export type { BoundaryFitOptions } from "../queries/fitBoundary";
 export {
     DEFAULT_GEOMETRY_PRECISION,
     resolvePrecision,
