@@ -7,7 +7,7 @@ import {
     type GeometryResult
 } from "../../toolbox/geometry/kernel/GeometryResult";
 
-export interface CooperedBodyOptions {
+export interface CooperedStavesOptions {
     count: number;
     thickness: number;
     edgeRoundover: number;
@@ -16,11 +16,11 @@ export interface CooperedBodyOptions {
 }
 
 /**
- * Sample the cooper's stave profiles independently on the worked exterior
+ * Sample independently authored stave profiles on the worked exterior
  * and the simple interior. Their differing densities are joined by the
  * shared contour loft, with genuine triangles only at the end transitions.
  */
-export function cooperedBody(
+export function cooperedStaves(
     profile: readonly THREE.Vector2Like[],
     {
         count,
@@ -28,7 +28,7 @@ export function cooperedBody(
         edgeRoundover,
         seamGap = 0,
         angleOffset = 0
-    }: CooperedBodyOptions
+    }: CooperedStavesOptions
 ): GeometryResult[] {
     if (
         ![thickness, edgeRoundover].every(Number.isFinite) ||

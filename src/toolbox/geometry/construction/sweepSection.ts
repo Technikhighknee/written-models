@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { MeshData } from "../mesh/MeshData";
+import type { GeometryResult } from "../kernel/GeometryResult";
 import { sweepSection as sweepPath } from "../build/sweepSection";
 import { cleanClosedContour } from "../../shapes/operations/cleanClosedContour";
 
@@ -14,13 +15,13 @@ export interface SweepSectionOptions {
 }
 
 /** Sweep a closed section along a smooth open spine with transported frames. */
-export function sweepSection({
+export function sweepSectionResult({
     path,
     section,
     referenceAxis,
     segments = 24,
     endFlare = 0
-}: SweepSectionOptions): MeshData {
+}: SweepSectionOptions): GeometryResult {
     if (
         path.length < 2 ||
         section.length < 3 ||
@@ -114,5 +115,10 @@ export function sweepSection({
         }
     });
 
-    return result.geometry;
+    return result;
+}
+
+/** Compatibility convenience for consumers that need only authored faces. */
+export function sweepSection(options: SweepSectionOptions): MeshData {
+    return sweepSectionResult(options).geometry;
 }

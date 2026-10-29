@@ -5,8 +5,8 @@ import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
 import { sourceModule, toolbox } from "../../support/toolbox.mjs";
 
-const { cooperedBody } = await sourceModule(
-    "models/components/barrelBody.ts"
+const { cooperedStaves } = await sourceModule(
+    "models/components/cooperedStaves.ts"
 );
 const { cooperedHead } = await sourceModule(
     "models/components/cooperedHead.ts"
@@ -93,7 +93,7 @@ function sameAuthoredShape(actual, original) {
 }
 
 test("all 24 staves retain the actual low-density interior and bevel geometry", () => {
-    const newStaves = cooperedBody(profile, {
+    const newStaves = cooperedStaves(profile, {
         count: 24,
         thickness: 0.024,
         edgeRoundover: 0.0022
@@ -190,7 +190,7 @@ test("barrel's four bands, four forged laps and eight rivets export with the woo
     const body = new THREE.Group();
     body.name = "Body";
     scene.add(body);
-    cooperedBody(profile, {
+    cooperedStaves(profile, {
         count: 24, thickness: 0.024, edgeRoundover: 0.0022
     }).forEach((stave, index) => {
         add(body, `Stave${String(index + 1).padStart(2, "0")}`,

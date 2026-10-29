@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { mm, cm } from "../toolbox/units/length";
 import { positionsFromEnds } from "../toolbox/spatial/layout/positionsFromEnds";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
-import { cooperedBody } from "./components/barrelBody";
+import { cooperedStaves } from "./components/cooperedStaves";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { offsetMeshUvs as offsetAuthoredUvs } from "../toolbox/geometry/edit/geometryEdits";
 import { cooperedHead } from "./components/cooperedHead";
@@ -75,7 +75,7 @@ function createBody(
     const body = new THREE.Group();
     body.name = "Body";
 
-    const staves = cooperedBody(profile, {
+    const staves = cooperedStaves(profile, {
         count: staveCount,
         thickness: staveThickness,
         edgeRoundover: mm(2.2)
