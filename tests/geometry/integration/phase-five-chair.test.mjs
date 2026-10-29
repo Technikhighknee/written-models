@@ -65,7 +65,7 @@ test("chair frame's 13 timbers and 12 pins use authored finite surfaces", () => 
             `Open ${name}`);
         assert.equal(topologyOf(part.geometry).connectedComponents().length, 1);
         assert.equal(part.geometry.geometry.quads.length, 6);
-        assert.equal(part.geometry.geometry.triangles.length, 0);
+        assert.equal(part.geometry.geometry.triangles?.length ?? 0, 0);
         assert.ok(part.geometry.geometry.vertices.every(point =>
             point.toArray().every(Number.isFinite)
         ));
