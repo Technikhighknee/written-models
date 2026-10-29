@@ -431,8 +431,32 @@ while keeping its visual and runtime behavior.
       Commits: `03766f1`, `29a2a91`, `e5d1430`, `ba2c4f2`,
       `64e7dec`, `7897fd1`, `38c4a32`, `18d2d13`,
       `3eef5d7`.
-- [ ] **5.4** Migrate `barrel.ts`, preserving the 24 staves, five
+- [x] **5.4** Migrate `barrel.ts`, preserving the 24 staves, five
       head planks per end, four hoops, laps and rivets.
+      The model-owned `cooperedBody` uses `samplePolarStripSections`
+      and the shared mixed-density `loftBoard`, preserving all 24
+      original stave vertex positions, faces and UVs. Both five-board
+      heads now use the model-owned `cooperedHead` recipe: weighted
+      convex cuts, shared seam wander and coordinated adaptive stations.
+      The generic `seamedPlankExtrusionData` exposes the existing
+      authored geometry before GPU compilation; the original
+      `seamedPlankExtrusion` renderer remains compatible with older
+      callers. All ten finished head meshes are exact geometric matches
+      for the previous control meshes, including their actual quads,
+      transition triangles, cut/recess regions, UVs and fitted wear.
+      `buildBarrelHoopGeometry` owns the four hoop placements, raised
+      lap straps and eight rivets. Their shapes and transforms are
+      consumed by the live model and the integration proof alike.
+      `surfaceMesh` compiles every barrel part, preserving wood/iron
+      materials, UV offsets, vertex tints and the authored Quad View.
+      The `phase-five-barrel.test.mjs` regression verifies the full
+      50-mesh assembly, closed topology and binary GLB export
+      (196 repository tests passing). Legacy construction adapters
+      remain for other callers; this step does not claim that every
+      historical toolbox helper has already been retired. Native Godot
+      visual inspection stays in 5.11.
+      Commits: `80cd049`, `b7793ca`, `ed5c6d2`, `d60916e`,
+      `963e1f1`, `2e28e62`, `812313c`, `618d3bf`, `50a8d31`.
 - [ ] **5.5** Migrate `beerMug.ts`, preserving twelve staves,
       bands, fitted handle and fill morphs.
 - [ ] **5.6** Migrate `tavernBench.ts` with its trestles, seat
