@@ -308,8 +308,6 @@ export function bevelEdges(
     }
     for (let i = 0; i < ring.length; i++) {
         const j = (i + 1) % ring.length;
-        const id = ring[i]!;
-        const next = ring[j]!;
         quads.push({
             corners: [topIds[j]!, topIds[i]!, bottomIds[i]!, bottomIds[j]!],
             uvs: [
