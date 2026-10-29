@@ -89,12 +89,12 @@ test("twelve separate stave surfaces reconstruct one volume without a circle gue
         pieces.slice().reverse(), heights
     ));
     for (let row = 0; row < heights.length; row++) {
-        const first = rings[row]!.outline;
-        const second = later[row]!.outline;
+        const first = rings[row].outline;
+        const second = later[row].outline;
 
         assert.equal(second.length, first.length);
         first.forEach((point, index) =>
-            assert.ok(pointClose(point, second[index]!, 1e-12))
+            assert.ok(pointClose(point, second[index], 1e-12))
         );
     }
 });
