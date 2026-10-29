@@ -283,3 +283,64 @@ test("uncut named chains and charts receive new owners; cut selections do not", 
     assert.equal(negative.boundaries.cut.length, 1);
     closed(positive);
 });
+
+test("touching coplanar faces belong only to their respective solid", () => {
+    const cube = boxMesh({width: 1, height: 1, depth: 1});
+    const combined = {vertices: [], quads: [], triangles: []};
+
+    for (const offset of [-0.5, 0.5]) {
+        const base = combined.vertices.length;
+        combined.vertices.push(...cube.vertices.map(v =>
+            v.clone().add(new THREE.Vector3(offset, 0, 0))
+        ));
+        combined.quads.push(...cube.quads.map(face => ({
+            ...face,
+            corners: face.corners.map(id => id + base),
+            uvs: face.uvs.map(uv => uv.clone())
+        })));
+    }
+
+    const split = splitByPlane(geometryResult(combined),
+        plane([1, 0, 0]), options(true));
+    assert.deepEqual(split.sideOfPart, ["negative", "positive"]);
+    assert.equal(split.interfaces.length, 0);
+    assert.equal(split.parts.length, 2);
+
+    for (const part of split.parts) {
+        closed(part);
+        assert.equal(part.geometry.quads.length, 6);
+        assert.equal(part.regions["fresh-cut"], undefined);
+    }
+});
+
+test("cut caps face out of each half and paired edges run in opposite directions", () => {
+    const result = splitByPlane(
+        geometryResult(boxMesh({width: 2, height: 2, depth: 2})),
+        plane([0, 1, 0]), options(true)
+    );
+    const seam = result.interfaces[0];
+    const direction = (part, ref) => {
+        const points = ref.vertices.map(id => part.geometry.vertices[id]);
+        const forward = points.map((point, i) => [
+            point, points[(i + 1) % points.length]
+        ]);
+        return forward;
+    };
+    const first = direction(result.parts[seam.firstPart], seam.first);
+    const second = direction(result.parts[seam.secondPart], seam.second);
+
+    assert.ok(first.every(([a, b]) => second.some(([c, d]) =>
+        a.equals(d) && b.equals(c)
+    )));
+
+    result.parts.forEach((part, index) => {
+        const faces = [...part.geometry.quads, ...(part.geometry.triangles ?? [])]
+            .filter(face => face.surface === "fresh-cut");
+        assert.ok(faces.length > 0);
+        for (const face of faces) {
+            const [a, b, c] = face.corners.map(id => part.geometry.vertices[id]);
+            const normal = b.clone().sub(a).cross(c.clone().sub(a));
+            assert.ok(normal.y * (index === 0 ? 1 : -1) > 0);
+        }
+    });
+});
