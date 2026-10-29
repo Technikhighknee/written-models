@@ -253,6 +253,32 @@ patch selection if the updated chart is valid. Otherwise that
 selection is absent and a new chart must be explicitly supplied. This prevents stale
 parametric mappings from being treated as valid geometry.
 
+## 7. Boolean output identity and classification
+
+`booleanSolids` accepts two closed, outward-oriented manifold
+operands. Each input region/smoothing combination receives a
+distinct kernel origin ID; the original per-face-corner UVs travel
+as separate properties from the physical construction-vertex merge
+mapping. The Boolean kernel supplies new actual triangulated
+faces. Their output run origins determine material/smoothing
+classification by default, and the output merge mapping
+reconstructs shared physical vertices without erasing UV seams.
+
+An explicit `regionAt` callback classifies new triangle centroids
+using the output-facing geometric normal; `uvAt` projects every
+generated face corner. These overrides are independent and
+optional. No generated face is misrepresented as an authored quad.
+Result regions refer to its newly generated faces only. Old
+patch/boundary selections do not retain meaning after arbitrary
+Boolean remeshing and are not reissued. Source operands are not
+mutated. The empty result of a disjoint intersection is a valid
+owned snapshot, not a failed or fabricated mesh.
+
+Unsupported or inconsistent input topology fails instead of
+welding coincident-but-independent pieces by position. Float32
+quantization that reverses or collapses input triangles is
+rejected before the kernel operates.
+
 ## 7. Selection survival through geometry edits
 
 All geometry-producing operations allocate a new result ID. Returned

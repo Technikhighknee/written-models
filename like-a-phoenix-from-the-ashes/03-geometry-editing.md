@@ -264,22 +264,40 @@ a metal slot, a rivet seat and surface damage.
 
 ## Solid booleans
 
-`manifold-3d` is already a repository dependency. It is an available
-kernel for union, intersection, and difference of closed solids.
+`booleanSolids(first, second, operation, options?)` performs
+`"union"`, `"intersection"` or `"difference"` on closed,
+outward-oriented, manifold volumes. Inputs may be authored
+`MeshData` or owned `GeometryResult`. The operation is
+asynchronous because the `manifold-3d` WASM kernel is initialized
+on first use.
 
-The wrapper explicitly assigns surface classifications, UVs and
-connected components to the result. The boolean kernel cannot
-recover authored quads or original semantic regions automatically.
+The adapter retains physical connectivity and surface properties
+separately. Every input triangle supplies face-corner position and
+UV attributes. Explicit merge indices connect the property vertices
+that share one authored construction vertex, including UV seams.
+Unique Manifold run IDs carry the source material region and
+smoothing group through Boolean triangulation.
 
-Boolean results are represented by their **actual generated faces**.
-A triangulated result contains authored triangles. A separate
-patch-reconstruction operation can produce quads on a selected
-surface with a suitable parameterization. Other boolean surfaces
-remain genuine triangles.
+By default, output faces receive `first:<source-region>`,
+`second:<source-region>`, or (on the subtracted operand's
+newly exposed surface) `cut:<source-region>`. Their UVs are
+interpolated by the kernel. `options.regionAt(point, normal)`
+and `options.uvAt(point, normal, region)` optionally override
+those assignments on every generated triangle or face corner.
+Each output face is an **actual authored triangle**. Authored
+quads are not reconstructed or claimed by this operation.
 
-The simpler contour/patch/plane operations preserve a greater amount
-of existing topology and therefore remain the preferred geometric
-foundation when applicable.
+A result is a fresh `GeometryResult`, with new vertices and
+triangles, valid region references, but no obsolete source
+face/patch/boundary selections. Multiple closed components and
+fully enclosed cavities remain supported. A disjoint intersection
+returns a valid owned empty result. Open, inconsistent or
+nonmanifold sources and Float32-collapse errors are rejected.
+
+Use the local contour, patch and plane operations when preserving
+original face topology or interface station IDs is essential.
+The separate patch reconstruction operation can later establish
+new useful quads where its supported domain permits.
 
 ## Edge and surface shaping
 

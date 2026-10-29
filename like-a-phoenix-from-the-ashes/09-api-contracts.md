@@ -751,11 +751,12 @@ interface Ray3 {
 
 type BooleanOperation = "union" | "intersection" | "difference";
 
-interface BooleanOptions extends PrecisionOptions {
-  /** Explicit source-independent classification of output triangles. */
-  regionAt(point: THREE.Vector3Like, normal: THREE.Vector3Like): string;
-  /** UV coordinates for each generated face corner. */
-  uvAt(
+interface BooleanOptions {
+  precision?: GeometryPrecision;
+  /** Override the source-derived material region of every generated triangle. */
+  regionAt?(point: THREE.Vector3Like, normal: THREE.Vector3Like): string;
+  /** Override the interpolated source UV of every generated face corner. */
+  uvAt?(
     point: THREE.Vector3Like,
     normal: THREE.Vector3Like,
     region: string
@@ -827,11 +828,11 @@ bevelEdges(
 ): GeometryResult;
 
 booleanSolids(
-  first: MeshData,
-  second: MeshData,
+  first: MeshData | GeometryResult,
+  second: MeshData | GeometryResult,
   operation: BooleanOperation,
-  options: BooleanOptions
-): GeometryResult;
+  options?: BooleanOptions
+): Promise<GeometryResult>;
 
 /** Surface-local groove while retaining the underlying part contact. */
 shapeSurfaceRelief(
@@ -908,6 +909,20 @@ normalized arc length along the complete open chain or separately
 around each ring. Higher-valence/branched or ambiguous corner
 junctions, nonmatching third-edge offsets, concave face domains
 and excessive widths are explicitly unsupported.
+
+`booleanSolids` initializes its WASM kernel asynchronously.
+It requires closed, consistently oriented manifold solids and
+returns true output triangles with new owned connectivity.
+By default, source material and smoothing assignments travel
+through per-run original IDs; names are prefixed `first:`,
+`second:` or `cut:` for difference-cutter surfaces. Input
+face-corner UVs are interpolated through the kernel's property
+channels, while explicit merge vectors preserve physical
+connectivity across UV seams. The two optional callbacks replace
+those surface-region and UV assignments. Source patch and edge
+selections do not survive arbitrary Boolean remeshing. Disjoint
+intersections produce a valid empty result. Invalid topology and
+Float32 precision loss are rejected.
 
 `DeformationField` takes position and vertex ID, and returns a
 displacement. Region-aware weights may be composed into that field

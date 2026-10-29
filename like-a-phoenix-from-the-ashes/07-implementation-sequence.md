@@ -743,9 +743,28 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       closed loops, concave/warped face domains and invalid widths
       explicitly fail; the operation does not promise unrestricted
       filleting or automatic retopology.
-- [ ] **6.7** Implement solid boolean operations using the
-      available `manifold-3d` kernel; return actual triangles
-      with explicitly assigned surface regions and UVs.
+- [x] **6.7** Implement `booleanSolids()` with the
+      `manifold-3d` WASM kernel for union, intersection and difference.
+      Inputs are closed, consistently oriented authored solids;
+      `MeshData` or owned `GeometryResult` are accepted.
+      Source quads/triangles become actual triangulated input faces,
+      with separate per-corner UV attributes and exact merge indices
+      for shared physical construction vertices. Each source
+      material/smoothing group has a unique Manifold original ID.
+      Result runs recover those names, plus `first:`, `second:`
+      and difference-`cut:` provenance; optional `regionAt` and
+      `uvAt` callbacks can override all output triangle regions and
+      UVs. No invented control quads or stale face selections.
+      An empty intersection is an owned empty result. Float32
+      input precision loss and invalid manifold operands fail
+      explicitly. Source operands remain unchanged; WASM geometry
+      objects are disposed after evaluation. The module initializes
+      asynchronously, so the public operation returns a Promise.
+      CI checks overlap union/intersection/difference volumes,
+      fully enclosed cavities, disjoint components, mixed rotated
+      solids, chained Booleans, UV/material/smoothing provenance,
+      custom classification/projection, Quad View representation,
+      and actual multi-material GLB serialization.
 - [ ] **6.8** Provide an explicitly scoped patch-reconstruction
       operation for selected surfaces with useful quad layout.
 - [ ] **6.9** Demonstrate planar and curved openings, split solids,
