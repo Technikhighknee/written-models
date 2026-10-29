@@ -217,3 +217,90 @@ test("invalid thresholds and empty surfaces produce typed errors", () => {
         minimum: NaN
     }), error => error.reason === "invalid-input");
 });
+
+function cylindricalSides(radius, segments, phase = 0) {
+    const lower = Array.from({ length: segments }, (_, i) => {
+        const angle = phase + i * 2 * Math.PI / segments;
+        return v(radius * Math.cos(angle), 0, radius * Math.sin(angle));
+    });
+    const upper = lower.map(point => v(point.x, 1, point.z));
+    const quads = Array.from({ length: segments }, (_, i) => {
+        const next = (i + 1) % segments;
+        return {
+            corners: [i, i + segments, next + segments, next],
+            uvs: quadUvs(),
+            surface: "side"
+        };
+    });
+    return {
+        geometry: geometryResult({
+            vertices: [...lower, ...upper],
+            quads
+        }).geometry,
+        localToWorld: identity()
+    };
+}
+
+test("faceted barrel bands need both clearance and outward-side verification", () => {
+    const barrel = cylindricalSides(1, 12);
+    const outside = cylindricalSides(1.12, 12, Math.PI / 12);
+    const inside = cylindricalSides(0.84, 12, Math.PI / 12);
+    const crossing = cylindricalSides(1.02, 12, Math.PI / 12);
+
+    const clear = surfaceClearance(outside, barrel, {
+        minimum: 0.01
+    });
+    assert.equal(clear.intersects, false);
+    assert.ok(clear.closestDistance > 0.01);
+    assert.equal(clear.meetsMinimum, true);
+
+    const outward = verifyExteriorPlacement(outside, barrel, {
+        minimum: 0.01
+    });
+    assert.equal(outward.exterior, true);
+    assert.equal(outward.intersects, false);
+
+    const inner = verifyExteriorPlacement(inside, barrel, {
+        minimum: 0.01
+    });
+    assert.equal(inner.exterior, false);
+    assert.equal(inner.intersects, false);
+    assert.ok(inner.minimumSignedDistance < 0);
+
+    assert.equal(surfaceClearance(crossing, barrel, {
+        minimum: 0.01
+    }).intersects, true);
+    assert.equal(verifyExteriorPlacement(crossing, barrel, {
+        minimum: 0.01
+    }).exterior, false);
+});
+
+test("translated and mirrored target geometry retains its signed exterior side", () => {
+    const base = triangle(
+        v(-1, -1, 0), v(1, -1, 0), v(0, 1, 0),
+        new THREE.Matrix4().makeTranslation(5, 7, -2)
+    );
+    const candidate = triangle(
+        v(-0.2, -0.2, 0.5),
+        v(0.2, -0.2, 0.5),
+        v(0, 0.2, 0.5),
+        new THREE.Matrix4().makeTranslation(5, 7, -2)
+    );
+    const above = verifyExteriorPlacement(candidate, base, {
+        minimum: 0.3
+    });
+    assert.equal(above.exterior, true);
+    nearly(above.minimumSignedDistance, 0.5);
+
+    const mirror = new THREE.Matrix4()
+        .makeScale(-1, 1, -1);
+    const mirrored = verifyExteriorPlacement(
+        { ...candidate, localToWorld: mirror },
+        { ...base, localToWorld: mirror },
+        { minimum: 0.3 }
+    );
+    // The same authored winding is mirrored through an orientation-preserving
+    // 180-degree transform; its outward normal follows the transformed mesh.
+    assert.equal(mirrored.exterior, true);
+    nearly(mirrored.minimumSignedDistance, 0.5);
+});
