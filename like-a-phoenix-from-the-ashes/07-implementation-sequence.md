@@ -513,8 +513,37 @@ while keeping its visual and runtime behavior.
       Commits: `fec590a`, `3ecab0b`, `eaaa5a3`,
       `6cf5082`, `c470e9c`, `82ead75`,
       `959b503`, `0837102`.
-- [ ] **5.7** Migrate `tavernChair.ts`, preserving raked back,
+- [x] **5.7** Migrate `tavernChair.ts`, preserving raked back,
       fitted rails, angled housings, crest and pegs.
+      `chairGeometry` now owns the dimensions and material-free recipes:
+      four raked/mitered posts, nine full-section rails fitted against
+      their real finite contact patches, twelve oriented draw-pegs
+      selected from actual post faces, two front seat boards, three
+      back-infill boards, the raked corner-housed rear seat and its
+      asymmetrically crowned crest. `tavernChair.ts` only assembles
+      those results through the shared oak material workshop, retaining
+      board transforms, wood variation, end-grain and Quad View.
+      The 54 cm lower back rail's roll follows the post rake, and its
+      support contact is recessed 2 mm for a valid full footprint.
+      The general `findFacingPatch` query now scores nearest suitable
+      faces by distance along the approach direction, avoiding grazing
+      sidewall selection when a joint hint lies inside a support.
+      The rear seat's different upper/lower housing contours are
+      built by the new general `layeredGridSolid` operation: sampled
+      corresponding layers, filled cells, separate face profiles,
+      honest sloping cut walls and uniform edge bevels. The old
+      `cutBoard` entry point delegates to that reusable geometry
+      operation rather than maintaining its own mesh construction.
+      `phase-five-chair.test.mjs` checks the full authored frame,
+      real peg normals, seat-board shape preservation, closed topology,
+      UVs, Quad View and the complete 32-mesh binary GLB export.
+      An independent layered-grid test proves that upper and lower
+      cut outlines can differ without opening the resulting solid.
+      All 204 repository tests, typecheck and build pass.
+      Native Godot/editor visual acceptance remains part of 5.11.
+      Commits: `f99c761`, `2589c4f`, `97b6dc8`,
+      `296df32`, `ff95153`, `6666c43`, `7ce19ee`,
+      `5205720`, `21f4244`, `64d9fd5`, `3880ccd`.
 - [ ] **5.8** Keep `models/components/oakSeating.ts` and
       `trestleSupport.ts` as model-owned recipes built from
       the common geometric operations.
