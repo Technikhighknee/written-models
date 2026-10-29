@@ -38,7 +38,20 @@ export interface TrestleSupportOptions {
  *
  * No world-space attachment assumptions and no model-specific materials.
  */
-export function createTrestleSupport(
+export interface TrestleTimber {
+    name: string;
+    start: THREE.Vector3;
+    end: THREE.Vector3;
+    width: number;
+    depth: number;
+    contacts?: TimberContactNormals;
+}
+
+/**
+ * The timber cut list is authored independently from rendering.
+ * Both the model and its renderer consume these exact member positions.
+ */
+export function trestleTimbers(
     {
         height,
         footLength,
@@ -49,9 +62,8 @@ export function createTrestleSupport(
         footHeight,
         headHeight,
         braceSize
-    }: TrestleSupportOptions,
-    makeTimber: TrestleTimberFactory
-): THREE.Group {
+    }: TrestleSupportOptions
+): readonly TrestleTimber[] {
     const dimensions = [
         height, footLength, headLength, postWidth, postDepth, crossWidth,
         footHeight, headHeight, braceSize
@@ -63,14 +75,12 @@ export function createTrestleSupport(
         headLength <= postDepth ||
         height <= footHeight + headHeight + braceSize * 3 ||
         braceSize >= postDepth ||
-        footLength <= postDepth + braceSize * 4 ||
-        typeof makeTimber !== "function"
+        footLength <= postDepth + braceSize * 4
     ) {
         throw new RangeError("Invalid trestle dimensions or timber factory");
     }
 
-    const trestle = new THREE.Group();
-    trestle.name = "TrestleSupport";
+    const members: TrestleTimber[] = [];
 
     const add = (
         name: string,
@@ -80,9 +90,10 @@ export function createTrestleSupport(
         depth: number,
         contacts?: TimberContactNormals
     ): void => {
-        const timber = makeTimber(name, start, end, width, depth, contacts);
-        timber.name = name;
-        trestle.add(timber);
+        members.push({
+            name, start, end, width, depth,
+            ...(contacts ? {contacts} : {})
+        });
     };
 
     // createTimberBetween() aligns the long axis with the endpoints.
@@ -129,6 +140,33 @@ export function createTrestleSupport(
                 endNormal: new THREE.Vector3(0, 0, side)
             }
         );
+    }
+
+    return members;
+}
+
+/** Build the rendered trestle from its authored five-member cut list. */
+export function createTrestleSupport(
+    options: TrestleSupportOptions,
+    makeTimber: TrestleTimberFactory
+): THREE.Group {
+    if (typeof makeTimber !== "function") {
+        throw new RangeError("Invalid trestle timber factory");
+    }
+    const trestle = new THREE.Group();
+    trestle.name = "TrestleSupport";
+
+    for (const member of trestleTimbers(options)) {
+        const wood = makeTimber(
+            member.name,
+            member.start,
+            member.end,
+            member.width,
+            member.depth,
+            member.contacts
+        );
+        wood.name = member.name;
+        trestle.add(wood);
     }
 
     return trestle;
