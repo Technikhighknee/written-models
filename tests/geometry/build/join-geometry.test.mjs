@@ -392,3 +392,57 @@ test("a welded edge cannot belong to three faces", () => {
         error => error.reason === "invalid-topology"
     );
 });
+
+test("a partial weld preserves the unwelded runs of a named closed rim", () => {
+    const quad = (points, corners) => geometryResult({
+        vertices: points,
+        quads: [{
+            corners,
+            uvs: [
+                new THREE.Vector2(0, 0),
+                new THREE.Vector2(1, 0),
+                new THREE.Vector2(1, 1),
+                new THREE.Vector2(0, 1)
+            ],
+            surface: "face"
+        }]
+    });
+
+    const first = quad([
+        p(-1, 0, 0), p(0, 0, 0),
+        p(0, 1, 0), p(-1, 1, 0)
+    ], [0, 1, 2, 3]);
+    const second = quad([
+        p(0, 0, 0), p(1, 0, 0),
+        p(1, 1, 0), p(0, 1, 0)
+    ], [0, 1, 2, 3]);
+
+    const left = {
+        ...first,
+        boundaries: {
+            all: [{
+                owner: first.id,
+                vertices: [0, 1, 2, 3],
+                closed: true
+            }]
+        }
+    };
+    const result = joinGeometry([left, second], {
+        weld: [{
+            firstPart: 0,
+            first: { owner: left.id, vertices: [1, 2], closed: false },
+            secondPart: 1,
+            second: { owner: second.id, vertices: [3, 0], closed: false }
+        }]
+    });
+
+    assert.deepEqual(result.boundaries.all.map(ref => ({
+        vertices: ref.vertices,
+        closed: ref.closed
+    })), [{
+        vertices: [2, 3, 0, 1],
+        closed: false
+    }]);
+    assertSelectionOwner(result, result.boundaries.all[0]);
+    assert.equal(topologyOf(result).openBoundaries().length, 1);
+});
