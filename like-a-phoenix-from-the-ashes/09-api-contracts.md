@@ -1214,6 +1214,16 @@ The child-in-parent transform is
 Mating rotation is explicit. The attachment operation applies the
 result to the scene object and checks for hierarchy cycles.
 
+`attachAtFrames` is the only scene attachment equation. Existing
+`attachByFrames` delegates with identity mating; `attachByAnchors`
+converts its nested source anchor to the child's local frame and
+delegates with an explicit half-turn mating rotation. New
+`frameFromAncestor`, `frameToWorld` and `frameToLocal` convert
+frames without changing parentage. Frame input, invertibility,
+cycle and scene-TRS representability are checked before mutating
+the hierarchy; a general sheared matrix cannot be silently
+decomposed into Object3D's position/quaternion/scale fields.
+
 Geometry fitting remains independent of scene parenting.
 
 Rendering can apply a model-wide tint after converting authored
