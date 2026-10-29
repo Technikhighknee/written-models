@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import {AuthoredMeshBuilder} from "../mesh/AuthoredMeshBuilder";
+import { layeredGridSolid } from "../build/layeredGridSolid";
 import type {MeshData} from "../mesh/MeshData";
 
 export interface BoardCut {
@@ -106,99 +106,33 @@ export function cutBoard({
         i >= 0 && i < nx - 1 && j >= 0 && j < nz - 1 &&
         filled[i]![j]!;
 
-    // The outward half-plane normals of each exposed edge determine the
-    // chamfer inset of its top/bottom vertices. No artificial overlay:
-    // the face and the edge walls share exactly the same control vertices.
-    const insets = Array.from({length: nx}, () =>
-        Array.from({length: nz}, () => new THREE.Vector2()));
-    type Side = "left" | "right" | "back" | "front";
-    const boundary: {a: readonly [number, number]; b: readonly [number, number]; side: Side}[] = [];
-    for (let i = 0; i < nx - 1; i++) {
-        for (let j = 0; j < nz - 1; j++) {
-            if (!filled[i]![j]) continue;
-            const add = (a: readonly [number, number], b: readonly [number, number],
-                side: Side, dx: number, dz: number) => {
-                boundary.push({a, b, side});
-                insets[a[0]]![a[1]]!.add(new THREE.Vector2(dx, dz));
-                insets[b[0]]![b[1]]!.add(new THREE.Vector2(dx, dz));
-            };
-            if (!occupied(i - 1, j)) add([i, j], [i, j + 1], "left", 1, 0);
-            if (!occupied(i + 1, j)) add([i + 1, j + 1], [i + 1, j], "right", -1, 0);
-            if (!occupied(i, j - 1)) add([i + 1, j], [i, j], "back", 0, 1);
-            if (!occupied(i, j + 1)) add([i, j + 1], [i + 1, j + 1], "front", 0, -1);
-        }
-    }
-
-    const builder = new AuthoredMeshBuilder();
-    const topY = (x: number) =>
-        thickness / 2 + crown * (1 - (x / halfWidth) ** 2);
-    const position = (i: number, j: number, upper: boolean, chamfered: boolean) => {
-        const x = xs[i]!;
-        const z = upper ? zs[j]!.top : zs[j]!.bottom;
-        const inset = insets[i]![j]!;
-        const amount = chamfered ? bevel : 0;
-        const shiftedX = x + Math.sign(inset.x) * amount;
-        return new THREE.Vector3(
-            shiftedX,
-            upper ? topY(shiftedX) - (chamfered ? 0 : bevel) :
-                -thickness / 2 + (chamfered ? 0 : bevel),
-            z + Math.sign(inset.y) * amount
-        );
-    };
-    const face = (
-        corners: readonly THREE.Vector3[],
-        surface: string, uv: (p: THREE.Vector3) => THREE.Vector2
-    ) => {
-        builder.addFace(corners, corners.map(uv), surface);
-    };
-    const flatUv = (p: THREE.Vector3) => new THREE.Vector2(
-        p.z - rear, p.x + halfWidth
-    );
-    for (let i = 0; i < nx - 1; i++) {
-        for (let j = 0; j < nz - 1; j++) {
-            if (!filled[i]![j]) continue;
-            // Counter-clockwise from above (+Y), and reverse below.
-            face([
-                position(i, j, true, true),
-                position(i, j + 1, true, true),
-                position(i + 1, j + 1, true, true),
-                position(i + 1, j, true, true)
-            ], "outer", flatUv);
-            face([
-                position(i, j, false, true),
-                position(i + 1, j, false, true),
-                position(i + 1, j + 1, false, true),
-                position(i, j + 1, false, true)
-            ], "inner", flatUv);
-        }
-    }
-
-    for (const {a, b, side} of boundary) {
-        const [ai, aj] = a;
-        const [bi, bj] = b;
-        const topA = position(ai, aj, true, true);
-        const topB = position(bi, bj, true, true);
-        const upperA = position(ai, aj, true, false);
-        const upperB = position(bi, bj, true, false);
-        const lowerA = position(ai, aj, false, false);
-        const lowerB = position(bi, bj, false, false);
-        const bottomA = position(ai, aj, false, true);
-        const bottomB = position(bi, bj, false, true);
-
-        // Face normal follows the outward direction for each boundary.
-        const surface = side === "left" || side === "right"
-            ? "cap-start" : "edge-left";
-        const wallUv = (p: THREE.Vector3) => new THREE.Vector2(
-            side === "left" || side === "right" ? p.z - rear : p.x + halfWidth,
-            p.y + thickness / 2
-        );
-        if (bevel > 0) {
-            face([topA, upperA, upperB, topB], surface, wallUv);
-        }
-        face([upperA, lowerA, lowerB, upperB], surface, wallUv);
-        if (bevel > 0) {
-            face([lowerA, bottomA, bottomB, lowerB], surface, wallUv);
-        }
-    }
-    return builder.build();
+    // The cut sketch determines which layered cells exist; the shared
+    // grid operation owns the corresponding patches and exposed walls.
+    return layeredGridSolid({
+        columns: xs,
+        rows: zs.map(row => ({
+            upper: row.top,
+            lower: row.bottom
+        })),
+        filled,
+        upperY: x =>
+            thickness / 2 + crown * (1 - (x / halfWidth) ** 2),
+        lowerY: () => -thickness / 2,
+        bevel,
+        surfaceAt: side => {
+            if (side === "upper") return "outer";
+            if (side === "lower") return "inner";
+            if (side === "left" || side === "right") return "cap-start";
+            return "edge-left";
+        },
+        faceUv: point => new THREE.Vector2(
+            point.z - rear,
+            point.x + halfWidth
+        ),
+        wallUv: (point, side) => new THREE.Vector2(
+            side === "left" || side === "right"
+                ? point.z - rear : point.x + halfWidth,
+            point.y + thickness / 2
+        )
+    });
 }
