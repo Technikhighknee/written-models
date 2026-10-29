@@ -204,6 +204,77 @@ test("relief reaching a shared boundary is refused, rather than moving it", () =
     assert.equal(source.geometry.vertices.length, 4);
 });
 
+test("positive crown and wear can share one authored surface", () => {
+    const source = cap();
+    const raised = feature(
+        p(-0.35, -0.65, 1),
+        p(-0.35, 0, 1),
+        p(-0.35, 0.65, 1),
+        -0.06, 0.18
+    );
+    const worn = feature(
+        p(0.35, -0.65, 1),
+        p(0.35, 0, 1),
+        p(0.35, 0.65, 1),
+        0.025, 0.17
+    );
+
+    const result = shapeSurfaceRelief(
+        source,
+        source.patches["wood-top"][0],
+        [raised, worn],
+        { overlap: "sum", maxDeviation: 0.005 }
+    );
+
+    assert.ok(vertexAt(result, -0.35, 0).z > 1.05);
+    assert.ok(vertexAt(result, 0.35, 0).z < 0.98);
+    assert.deepEqual(edgeSet(result), edgeSet(source));
+    assert.equal(topologyOf(result).openBoundaries().length, 1);
+});
+
+test("relief on an annular patch preserves both shared rims", () => {
+    const sample = {
+        outer: profile().outer,
+        holes: [{
+            points: [
+                new THREE.Vector2(-0.35, -0.35),
+                new THREE.Vector2(0.35, -0.35),
+                new THREE.Vector2(0.35, 0.35),
+                new THREE.Vector2(-0.35, 0.35)
+            ],
+            parameters: [0, 0.25, 0.5, 0.75]
+        }]
+    };
+    const source = fillSurfacePatch({
+        profile: sample,
+        chart,
+        region: "annulus"
+    });
+    const outer = source.boundaries.outer[0].vertices.map(id =>
+        source.geometry.vertices[id].toArray()
+    );
+    const hole = source.boundaries["hole-0"][0].vertices.map(id =>
+        source.geometry.vertices[id].toArray()
+    );
+
+    const relief = shapeSurfaceRelief(
+        source, source.patches.annulus[0],
+        [feature(
+            p(-0.7, -0.55, 1), p(-0.7, 0, 1),
+            p(-0.7, 0.55, 1), 0.05, 0.13
+        )],
+        { overlap: "minimum", maxDeviation: 0.005 }
+    );
+
+    assert.equal(topologyOf(relief).openBoundaries().length, 2);
+    assert.deepEqual(relief.boundaries.outer[0].vertices.map(id =>
+        relief.geometry.vertices[id].toArray()
+    ), outer);
+    assert.deepEqual(relief.boundaries["hole-0"][0].vertices.map(id =>
+        relief.geometry.vertices[id].toArray()
+    ), hole);
+});
+
 test("a relief path must belong to the selected patch", () => {
     const source = cap();
     const outside = feature(
