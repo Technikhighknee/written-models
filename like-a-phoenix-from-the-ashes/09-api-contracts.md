@@ -813,6 +813,12 @@ transformGeometry(
   precision?: GeometryPrecision
 ): GeometryResult;
 
+subdivideEdges(
+  source: GeometryResult,
+  splits: readonly { edge: EdgeRef; t: number }[],
+  precision?: GeometryPrecision
+): GeometryResult;
+
 bevelEdges(
   source: GeometryResult,
   edges: readonly EdgeRef[],
@@ -885,11 +891,19 @@ kernel does not magically recover authored faces or their
 original UV seams. General automatic quad retopology is outside
 this operation.
 
-`bevelEdges` accepts one or more ordered nonbranching manifold edge
-chains owned by the source result. A `ScalarField` is evaluated at
-normalized arc length `t` along each chain (separately for each
-chain). Invalid ordering, branching, nonmanifold edges, excessive
-widths, and ambiguous corner intersections fail explicitly.
+`subdivideEdges` accepts oriented owned edge selections and strict
+interior parameters, merged by undirected source edge. Every
+incident face receives the same new position and its own
+interpolated UVs, with no hanging vertices.
+
+The implemented `bevelEdges` currently accepts one complete,
+ordered 3/4-edge convex cap boundary on an explicitly supported
+prismatic manifold section with aligned side quads. A `ScalarField`
+is evaluated at normalized arc length `t` along that ring.
+Other open/partial or branched edge chains are rejected, rather
+than pretending to be complete. The broader target is one or
+more ordered nonbranching manifold chains with explicit supported
+corner joins; that broader domain is still pending.
 
 `DeformationField` takes position and vertex ID, and returns a
 displacement. Region-aware weights may be composed into that field

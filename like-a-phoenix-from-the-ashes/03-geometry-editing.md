@@ -353,15 +353,27 @@ face orientation before they can be welded.
 
 The edge/corner work in `profiledBoard`,
 `seamedPlankExtrusion`, and `circularPlankPanel` first becomes
-construction-time section shaping plus patch relief. General
-post-hoc `bevelEdges` is implemented only after local edge splitting
-and adjacent-face reconstruction are available. Initially it accepts
-well-formed manifold chains with unambiguous corner joins; the
-input edges must describe ordered nonbranching chains in their
-source result, and the width field's `t` is normalized arc length
-along each chain. Unordered/branched selections, excessive widths,
-nonmanifold, intersecting or otherwise unsupported bevel junctions
-fail explicitly instead of silently corrupting the mesh.
+construction-time section shaping plus patch relief. The implemented `subdivideEdges(source, [{edge, t}, ...])`
+propagates each strictly interior station to every incident face.
+All affected faces use the same construction vertex; UV interpolation
+remains face-local. Intact quads remain authored quads, while affected
+planar convex quads and triangles use real conforming triangles.
+Named edge chains inherit their stations, and charted patch selections
+survive only when valid on the resulting topology. Warped or concave
+quad splitting needs a separate supported reconstruction operation.
+
+`bevelEdges` currently supports one complete, closed convex
+triangular/quad cap rim with matching manifold quad side faces,
+aligned along the negative cap normal (for example, a box top or
+triangular-prism end). The width field's `t` is normalized
+arc length around the caller's ordered ring. It rebuilds the inset
+cap, side faces and chamfer panels with shared physical construction
+vertices; the two new seams are `bevel-upper` and `bevel-lower`.
+Unsupported partial/open chains, branched selections, ambiguous
+junctions, warped sides and excessive widths fail explicitly.
+General post-hoc beveling of other nonbranching edge chains is
+still outstanding; this domain is not claimed by the current
+implementation.
 
 ## Deformation and variation
 
