@@ -239,9 +239,11 @@ test("barrel's four bands, four forged laps and eight rivets export with the woo
             rivet.position.copy(fastener.position);
             rivet.quaternion.copy(fastener.quaternion);
 
-            const length = rivet.position.length();
-            assert.ok(length > profile[0].x);
-            assert.ok(length < profile[4].x + 0.02);
+            const radius = Math.hypot(
+                rivet.position.x, rivet.position.z
+            );
+            assert.ok(radius > profile[0].x);
+            assert.ok(radius < profile[4].x + 0.02);
         }
 
         for (const part of [
