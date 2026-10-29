@@ -344,3 +344,33 @@ test("cut caps face out of each half and paired edges run in opposite directions
         }
     });
 });
+
+test("a warped quad splits on its real render diagonal, without a false planar face", () => {
+    const source = geometryResult({
+        vertices: [
+            new THREE.Vector3(-1, 0, -1),
+            new THREE.Vector3(1, 0, -1),
+            new THREE.Vector3(1, 0, 1),
+            new THREE.Vector3(-1, 0.15, 1)
+        ],
+        quads: [{
+            corners: [0, 1, 2, 3],
+            surface: "warped",
+            uvs: [p(0, 0), p(2, 0), p(2, 2), p(0, 2)]
+        }]
+    });
+    const result = splitByPlane(source,
+        plane([1, 0, 0]), options(false));
+
+    assert.equal(result.parts.length, 2);
+    assert.equal(result.interfaces.length, 1);
+    assert.equal(result.interfaces[0].source.closed, false);
+    assert.equal(result.interfaces[0].source.points.length, 3);
+
+    for (const part of result.parts) {
+        assert.equal(part.geometry.quads.length, 1);
+        assert.equal(part.geometry.triangles.length, 1);
+        assert.equal(topologyOf(part).connectedComponents().length, 1);
+        assert.equal(topologyOf(part).openBoundaries().length, 1);
+    }
+});
