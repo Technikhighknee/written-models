@@ -240,15 +240,24 @@ through their construction policy or a separate oriented solid query.
 
 ## Cavity section topology and coordinate frames
 
-Multi-piece cavity extraction intersects source wall faces with section
-planes in one rigid section-local frame. At coincident horizontal
-source rows, shared edges are collected once. At other heights, a
-deterministic half-open plane-intersection rule avoids duplicate hits
-at existing vertices and edges. Each section produces exactly one
-simple closed loop; successive loops need common winding, equal
-vertex counts and correspondence derived from source longitudinal
-edges. Missing, branching, self-intersecting, ambiguous or changing
-contours fail explicitly.
+Multi-piece cavity extraction intersects row-structured authored
+planar wall strips with height planes in a rigid section-local frame.
+It accepts authored quads or uniquely matched planar triangle pairs.
+At coincident horizontal source rows, the two adjacent height
+intervals of a piece produce one deduplicated section edge.
+At intermediate heights, the same longitudinal edges locate the
+actual section endpoints; this avoids ambiguous vertex/edge hits
+and preserves the originally authored stations. Unstructured
+triangle intersections without unique longitudinal provenance
+are rejected instead of guessed.
+
+Every height section produces one simple closed loop. The first
+ring determines the seam, station order and winding; all subsequent
+rings must preserve them exactly. Every authored row in the requested
+height interval must be sampled so volume interpolation cannot erase
+a bulge. The continuous interpolation is checked using quadratic
+orientation event heights, catching collapses or crossings that
+an endpoint/midpoint sampling test would miss.
 
 `CavityRing` positions and heights are local to that frame. Moving or
 rotating the finished vessel cannot change its volume calculation.
