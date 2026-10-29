@@ -54,6 +54,33 @@ test("a rectangular extrusion has four true side quads and two quad caps", () =>
     assert.equal(result.regions["cap-start"].length, 1);
     assert.equal(result.regions["cap-end"].length, 1);
 
+    const normal = face => {
+        const points = face.corners.slice(0, 3).map(id =>
+            result.geometry.vertices[id]
+        );
+        return new THREE.Vector3().subVectors(points[1], points[0])
+            .cross(new THREE.Vector3().subVectors(points[2], points[0]))
+            .normalize();
+    };
+    const start = result.regions["cap-start"][0];
+    const end = result.regions["cap-end"][0];
+    const selected = ref => ref.kind === "quad"
+        ? result.geometry.quads[ref.index]
+        : result.geometry.triangles[ref.index];
+
+    assert.ok(normal(selected(start)).z < -0.999);
+    assert.ok(normal(selected(end)).z > 0.999);
+
+    const outerAtRight = result.geometry.quads.find(face => {
+        if (face.surface !== "outer") return false;
+        const centroid = face.corners.reduce(
+            (sum, id) => sum + result.geometry.vertices[id].x, 0
+        ) / face.corners.length;
+        return Math.abs(centroid - 1) < 1e-12;
+    });
+    assert.ok(outerAtRight);
+    assert.ok(normal(outerAtRight).x > 0.999);
+
     const material = new THREE.MeshBasicMaterial();
     const mesh = surfaceMesh({
         name: "ExtrudedProfile",
