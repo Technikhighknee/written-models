@@ -363,40 +363,41 @@ their stations, and charted patch selections survive only when
 valid on the resulting topology. Warped/concave quad splitting
 needs a separate supported reconstruction operation.
 
-`bevelEdges` supports one or more disjoint, ordered, closed
-3/4-edge convex cap rings on prismatic sections with matching
-manifold side quads. Each ring is processed with the same normalized
-arc-length width field. The result has a physical inset cap,
-lowered side edges, chamfer panels and `bevel-upper` /
-`bevel-lower` closed seam selections. Rings may be combined
-when no source vertex belongs to more than one ring.
+`bevelEdges` accepts three explicitly reconstructed domains:
 
-A **single open manifold edge** between two convex planar faces
-(triangles or quads) also supports beveling. The selected edge is
-removed from both faces; their new planar outlines are triangulated
-with their original UVs. One chamfer quad connects the interior
-rails and two terminal triangles taper them toward the untouched
-source endpoints. The taper is fitted within both incident face
-footprints, including acute angles. The upper/lower selections are
-open chains. Existing unrelated boundary edges are not resampled.
+- One isolated manifold edge between two planar convex faces,
+  closed with a chamfer quad and two terminal triangles.
+- One or more independent convex 3/4-edge prismatic cap rings,
+  with inset caps, shortened side walls and physical chamfer quads.
+- An ordered **open nonbranching chain** of two or more selected
+  edges with convex planar incident faces and trihedral corners.
+  The incident face pair may change along the chain.
 
-Two or three **consecutive open edges of one planar convex cap**
-also support shared-corner reconstruction. At each intermediate
-vertex, the two side faces must meet at exactly one third edge
-and form a trihedral corner. The cap's inward offset lines meet at
-one miter point; the two side offsets must agree on one point
-of the third edge. The adjacent chamfer quads share the resulting
-miter edge and therefore need no artificial terminal triangles
-between segments. Only the two actual chain endpoints taper back
-to their source vertices. Widths are sampled at normalized arc
-length along the whole ordered chain, and the cap/side UVs remain
-independent. All reconstructed faces retain real shared topology.
+Every inner corner of an open chain has exactly three incident
+faces. Consecutive edges share one of these faces; their
+face-local offset lines intersect at one miter vertex. The
+other two incident faces must share a third unselected edge
+whose offset point agrees on both faces. This supplies one
+shared geometric chamfer-junction edge. Every affected source
+face is reconstructed as one polygon before triangulation,
+rather than repeatedly applying single-edge bevels.
+The only terminal triangles occur at the true endpoints.
 
-There is no unrestricted corner solver here: open chains passing
-through a junction without one common cap, higher-valence or
-branched vertices, and larger multi-face bevel loops remain
-unsupported. These require a more general corner reconstruction,
-not repeated single-edge chamfers.
+`ScalarField` samples normalized arc length along each entire
+open chain or separately around each closed ring. Independent
+face-corner UVs, region assignments, and still-valid named
+selections are carried through reconstruction. Continuous
+`bevel-upper` / `bevel-lower` boundary selections retain
+their physical construction vertices even when the associated
+face names change. `bevel-rails` exposes individual panel
+edges where further per-panel selection is needed.
+
+The supported domain is intentionally bounded: branched
+vertices, corners of valence other than three, unresolvable
+third-edge intersections, concave or nonplanar faces and
+unrelated multi-face closed loops fail explicitly. Their
+correct solution requires a separate generalized corner
+or retopology operation, not silent mesh approximation.
 
 ## Deformation and variation
 
