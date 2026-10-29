@@ -1,6 +1,9 @@
 import * as THREE from "three";
 
-import { boardPanel } from "../toolbox/geometry/construction/boardPanel";
+import { boardedSurface } from "./components/boardedSurface";
+import { offsetMeshUvs as offsetAuthoredUvs } from "../toolbox/geometry/edit/geometryEdits";
+import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
+import type { GeometryResult } from "../toolbox/geometry/kernel/GeometryResult";
 import {
     createTimberBetween,
     createTimberBetweenContacts
@@ -62,25 +65,35 @@ function create(): THREE.Group {
     return table;
 }
 
-function buildTop(parent: THREE.Group, spec: TopSpec): void {
-    const boards = boardPanel({
+/** The tabletop is authored before material or render geometry creation. */
+export function buildTabletopGeometry(spec: TopSpec = {
+    length: m(1.8),
+    depth: cm(90),
+    thickness: cm(5),
+    surfaceHeight: cm(76),
+    boardWeights: [1.07, 0.94, 1.03, 0.96],
+    chamfer: mm(3),
+    crown: mm(0.6)
+}): GeometryResult[] {
+    return boardedSurface({
         length: spec.length,
         width: spec.depth,
         thickness: spec.thickness,
-        count: spec.boardWeights.length,
-        widthWeights: spec.boardWeights,
+        weights: spec.boardWeights,
         gap: mm(2.5),
         chamfer: spec.chamfer,
         crown: spec.crown,
-        handWorked: {
-            seed: 1400,
-            edgeWander: mm(4.2),
-            endStagger: mm(12),
-            cornerWear: mm(7),
-            thicknessVariation: mm(1.4),
-            chamferVariation: 0.33
-        }
+        seed: 1400,
+        edgeWander: mm(4.2),
+        endStagger: mm(12),
+        cornerWear: mm(7),
+        thicknessVariation: mm(1.4),
+        chamferVariation: 0.33
     });
+}
+
+function buildTop(parent: THREE.Group, spec: TopSpec): void {
+    const boards = buildTabletopGeometry(spec);
 
     const tones = coherentVariation({
         count: boards.length,
@@ -88,37 +101,28 @@ function buildTop(parent: THREE.Group, spec: TopSpec): void {
         radius: 2
     });
 
-    // All long surfaces are the same planed oak cut; only sawed ends show
-    // transverse grain. The loft uses actual meter UVs on every quad.
-    const surfaceMaterials = {
-        outer: 0,
-        inner: 0,
-        "edge-left": 0,
-        "edge-right": 0,
-        "cap-start": 1,
-        "cap-end": 1
-    };
-
     for (let i = 0; i < boards.length; i++) {
         const seed = (i * 3 + 2) % 8;
         const wood = oakVariant(seed);
-        const meshData = offsetMeshUvs(
+        const meshData = offsetAuthoredUvs(
             boards[i]!,
             cm(1.5) + i * cm(3.2),
             cm(9) + i * cm(7)
         );
         const tone = 0.967 + 0.023 * tones[i]!;
-        const geometry = tintVertices(
-            toBufferGeometry(meshData, surfaceMaterials),
-            new THREE.Color(tone, tone, tone)
-        );
-
-        const board = new THREE.Mesh(geometry, [
-            oakBoardFace(seed),
-            wood.tinted.endGrain
-        ]);
-        board.name = `Plank${i + 1}`;
-        parent.add(board);
+        parent.add(surfaceMesh({
+            name: `Plank${i + 1}`,
+            geometry: meshData,
+            materials: {
+                outer: oakBoardFace(seed),
+                inner: oakBoardFace(seed),
+                "edge-left": oakBoardFace(seed),
+                "edge-right": oakBoardFace(seed),
+                "cap-start": wood.tinted.endGrain,
+                "cap-end": wood.tinted.endGrain
+            },
+            tint: new THREE.Color(tone, tone, tone)
+        }));
     }
 }
 
