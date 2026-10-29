@@ -163,12 +163,18 @@ export function buildChairFrameGeometry(): ChairFrameGeometry {
         depth: number,
         roll: THREE.Vector3
     ): void {
-        rails.push({
-            name,
-            timber: fittedRail(
-                first, last, firstHint, lastHint, width, depth, roll
-            )
-        });
+        try {
+            rails.push({
+                name,
+                timber: fittedRail(
+                    first, last, firstHint, lastHint, width, depth, roll
+                )
+            });
+        } catch (error) {
+            throw new Error(`Chair joint ${name} does not fit its supports`, {
+                cause: error
+            });
+        }
     }
 
     for (const [name, height, width, depth] of [
