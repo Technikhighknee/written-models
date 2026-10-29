@@ -76,7 +76,7 @@ function worldVector(value: THREE.Vector3Like): THREE.Vector3 {
 }
 
 function selectedSurface(
-    attachment: SurfaceAttachment,
+    target: SurfaceTarget,
     patch: SurfacePatchHit,
     precision: GeometryPrecision
 ): FootprintTriangle[] {
@@ -86,7 +86,7 @@ function selectedSurface(
     ));
 
     return surfaceTriangles(
-        attachment.target, precision, "fitBetweenSurfaces"
+        target, precision, "fitBetweenSurfaces"
     ).filter(triangle =>
         selected.has(`${triangle.face.kind}:${triangle.face.index}`)
     ).map(triangle => triangle.points.map(point => {
@@ -128,7 +128,7 @@ function resolveSupport(
             point: patch.contact.point,
             normal: patch.contact.normal,
             frame: patch.frame,
-            footprint: selectedSurface(attachment, patch, precision),
+            footprint: selectedSurface(attachment.target!, patch, precision),
             contact: { kind: "surface", patch }
         };
     }
