@@ -679,7 +679,7 @@ export function shapeSurfaceRelief(
     options: SurfaceReliefOptions
 ): GeometryResult {
     const policy = resolvePrecision(options?.precision);
-    const maxDeviation = options?.maxDeviation ?? 0.002;
+    const maxDeviation = options?.maxDeviation ?? 0.005;
 
     if (
         !source?.geometry || !patch ||
@@ -843,7 +843,6 @@ export function shapeSurfaceRelief(
         const split = new Map<string, [number, number]>();
         let maxError = 0;
         let worstPoint = new THREE.Vector2();
-        let worstFace: Triangle | undefined;
 
         for (let i = 0; i < triangles.length; i++) {
             const [a, b, c] = triangles[i]!;
@@ -857,7 +856,6 @@ export function shapeSurfaceRelief(
             if (centroidError > maxError) {
                 maxError = centroidError;
                 worstPoint = center;
-                worstFace = [a, b, c];
             }
             if (centroidError > maxDeviation) {
                 marked.add(i);
@@ -909,7 +907,7 @@ export function shapeSurfaceRelief(
             triangles.length * 4 > 60000) {
             fail(
                 "sampling-limit",
-                `Relief refinement stalled at pass ${iteration}: ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} split edges, worst=${maxError} at (${worstPoint.x},${worstPoint.y}); vertices=${worstFace?.map(id => [uv[id]!.x, uv[id]!.y, displacement(uv[id]!).height])}`
+                `Relief refinement stalled at pass ${iteration}: ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} split edges, worst=${maxError} at (${worstPoint.x},${worstPoint.y})`
             );
         }
 
