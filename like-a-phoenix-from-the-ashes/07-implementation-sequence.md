@@ -347,11 +347,31 @@ dynamic cavity behavior.
       All eight named morph targets, neutral full mesh, 0–1 controller,
       90% serving calibration, runtime clone and binary glTF target
       names/weights are covered by the integrated tankard test.
-      Godot consumes the exported blend shapes; engine-side inspection
-      remains part of the 4.9 complete-mug proof.
+      Godot consumes the exported blend shapes; native editor/runtime
+      inspection remains a manual model-acceptance check in 5.11.
       Commits: `5876f20`, `4aa0346`.
-- [ ] **4.9** Demonstrate fitted chair rails, trestle braces, mug
+- [x] **4.9** Demonstrate fitted chair rails, trestle braces, mug
       handle contact, barrel bands and the complete filled mug.
+      `phase-four-fitted-assemblies.test.mjs` now fits the chair's two
+      front rails against the finite faces of its leaning legs, including
+      a rejected oversized rail. The two actual table-trestle brace
+      locations resolve against authored foot and post contact patches.
+      Both build closed quad meshes with retained UVs and end grains.
+      The chair apron was lowered 2 mm to keep its full profile within
+      the finite post face.
+      A barrel hoop exposes its actual authored quads through
+      `bandAroundProfileData`, and the 48-segment band is checked
+      for clearance and outward placement against 24 real radial
+      staves, not an idealized cylinder. The wooden tankard's two
+      fitted handle rims meet the actual first stave. A complete
+      geometric tankard, with twelve staves, bottom, handle, two
+      iron bands and eight named fill morphs, exports together to
+      binary GLB while static geometry batches independently.
+      The integrated proofs use production construction functions,
+      but are not a claim that every live model recipe has already
+      migrated; that is Phase 5. Native Godot blend-shape behavior
+      still requires the manual 5.11 inspection.
+      Commits: `fa3d43b`, `c15c5fd`, `151e84c`, `1f4a1e8`.
 
 **Gate:** Real finite contacts work on both planar and curved
 surfaces; the mug's editor/runtime fill still works.
