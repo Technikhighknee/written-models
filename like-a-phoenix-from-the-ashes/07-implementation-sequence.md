@@ -617,10 +617,30 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       Independent results have been extruded as closed solids,
       including an enclosed hole and two distinct concave islands.
       Commits: `d028b24` and follow-up validation.
-- [ ] **6.2** Implement plane-splitting of authored surfaces/solids,
+- [x] **6.2** Implement plane-splitting of authored surfaces/solids,
       pairing cut interfaces and labeling every resulting component
       by half-space. Handle coincident source faces without duplicating
       geometry into both halves.
+      `splitByPlane` accepts authored `MeshData` or `GeometryResult`
+      and an oriented plane. Shared undirected-edge intersections are
+      evaluated once; surviving faces retain their region, smoothing
+      policy and interpolated corner UVs. Fully retained quads stay quads;
+      a crossed warped quad follows its actual render diagonal instead
+      of claiming to be planar. Each connected half-space component
+      receives its own result and side label. Closed manifold solids
+      can be capped with the existing `capSectionEnd` construction,
+      including annular cuts; open shells keep paired open cut chains.
+      `PartitionInterface` connects opposite ordered cut boundaries
+      through one sampled boundary. Unchanged named edge runs and
+      verified charted patches are reissued with new owners; interrupted
+      references do not survive on unrelated faces. Coplanar source
+      faces are assigned to their volume side once, and tangent
+      planes create no artificial cap or interface.
+      Integration checks cover orthogonal and skew cuts, existing
+      corners, warped quads, holes, multiple independent solids,
+      touching coplanar solid faces, open shells, material regions,
+      UVs, Quad View, oriented caps and selection ownership.
+      Commits: `bdbe63f` through `00077a5`.
 - [ ] **6.3** Implement planar `openPatch` and `recessPatch` with
       explicit connected patches, new walls/floors and usable rims.
 - [ ] **6.4** Implement `cutThrough` for matching entry/exit

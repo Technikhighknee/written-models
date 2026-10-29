@@ -131,13 +131,34 @@ splitByPlane(geometry, plane, {
 });
 ```
 
-The plane intersects each source edge once. The resulting pieces
-reuse the intersection points and agree on the entire cut contour.
-Each interface records **both owning part indices** and the matching
-boundary loops. Every connected output component is labeled with its
-positive/negative plane side; one plane can produce several separate
-pieces on either side. Source-face UVs are interpolated; cap UVs use a
-plane-aligned chart.
+`splitByPlane(source, plane, {cap, cutRegion, precision})`
+evaluates each intersected undirected source edge once. The resulting
+pieces reuse these exact positions and agree on the cut contour.
+Each interface records **both owning part indices**, a common ordered
+sampled boundary and the matching output boundary references. Every
+connected output component is labeled with its positive/negative plane
+side; one plane can produce several separate pieces on either side.
+Source-face UVs are interpolated per face corner while regions and
+smoothing groups remain model-owned. Intact quads survive unchanged.
+A warped quad crossed by the plane is cut through its actual renderer
+triangles, not approximated as one flat polygon.
+
+Capped cuts require a closed manifold source. Cut loops are grouped
+per connected output component, including inner loops around holes,
+then filled through the existing cap operation with physical
+plane-aligned UVs. An uncapped cut leaves paired, ordered open or
+closed edge chains. An open sheet can therefore be split without
+inventing a solid thickness or cap. A source boundary lying on the
+plane without a cut counterpart is not reported as an interface.
+Entirely coplanar source faces are assigned according to their
+outward winding and appear only on their owning volume side.
+Tangential contacts produce no fabricated second component.
+
+Named edge selections are preserved only where the original
+construction edges still exist in a resulting component. Interrupted
+chains are split into surviving runs. A selected charted surface
+survives only if all its original faces remain and its chart
+validates on the returned geometry.
 
 Multiple connected components and holes remain distinct loops.
 A tangential cut that does not divide the input produces one part
