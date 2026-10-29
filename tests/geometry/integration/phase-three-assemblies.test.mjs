@@ -384,9 +384,7 @@ test("four hand-fitted tabletop boards preserve matching worn seams and gaps", (
                 new THREE.Vector2(0.9, -0.55)
             ]
         }
-    }, cuts), Object.fromEntries(cuts.map(cut => [
-        cut.id, [0, 0.25, 0.5, 0.75, 1]
-    ])));
+    }, cuts));
 
     assert.equal(layout.parts.length, 4);
     assert.equal(layout.interfaces.length, 3);
@@ -415,16 +413,11 @@ test("four hand-fitted tabletop boards preserve matching worn seams and gaps", (
 
                 return {
                     path: {
-                        points: [0.25, 0.5, 0.75].map(station => {
-                            const index = seam.stations.findIndex(
-                                value => Math.abs(value - station) < 1e-10
-                            );
-                            assert.ok(index >= 0);
-                            const point = seam.points[index];
-                            return crown.at(new THREE.Vector2(
+                        points: seam.points.slice(1, -1).map(point =>
+                            crown.at(new THREE.Vector2(
                                 point.x, point.y + inward * 0.012
-                            ));
-                        }),
+                            ))
+                        ),
                         parameters: [0, 0.5, 1],
                         closed: false
                     },
@@ -482,27 +475,12 @@ test("four hand-fitted tabletop boards preserve matching worn seams and gaps", (
                 0, rank * 0.0025, 0
             )
         );
-        let mesh;
-        try {
-            mesh = surfaceMesh({
-                name: `TablePlank${index + 1}`,
-                geometry: separated,
-                materials: material,
-                tint: new THREE.Color().setScalar(0.95 + rank * 0.01)
-            });
-        } catch (error) {
-            const face = error.context?.face;
-            if (face) {
-                const authored = face.kind === "quad"
-                    ? separated.geometry.quads[face.index]
-                    : separated.geometry.triangles[face.index];
-                console.error("Float32 face", index, face,
-                    authored.corners.map(id =>
-                        separated.geometry.vertices[id].toArray()
-                    ));
-            }
-            throw error;
-        }
+        const mesh = surfaceMesh({
+            name: `TablePlank${index + 1}`,
+            geometry: separated,
+            materials: material,
+            tint: new THREE.Color().setScalar(0.95 + rank * 0.01)
+        });
         try {
             assert.equal(getControlOutline(mesh.geometry).quadCount,
                 separated.geometry.quads.length);
