@@ -789,9 +789,29 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       an explicitly selected Boolean surface, seams, warped
       surfaces, partial reconstruction, genuine authored Quad
       View topology and selection invalidation.
-- [ ] **6.9** Demonstrate planar and curved openings, split solids,
+- [x] **6.9** Demonstrate planar and curved openings, split solids,
       boolean faces, seams and topology transitions on geometrically
       different constructions.
+      The cross-operation integration suite
+      `tests/geometry/integration/phase-six-complex-edits.test.mjs`
+      exercises four deliberately different geometry pipelines:
+      a planar pocket on a segmented box followed by a capped plane
+      split and exact floor-quad reconstruction; a straight through-bore
+      followed by an annular two-interface plane cut and a material-aware
+      Boolean difference; an analytic crowned surface with both an
+      actual opening and a normal-offset recessed floor; and a
+      hexagonal extrusion followed by a plane split, Boolean cut,
+      Quad View inspection and real runtime GLB serialization alongside
+      a separately constructed bored solid.
+      Checks include input immutability, connected components and open
+      boundaries, physically matching named seam edges, reissued
+      selection owners, retained material/smoothing/UV regions, UV
+      seam survival, preserved contour stations, local offset-chart
+      inverse round-trips, signed volume conservation across planar
+      splits, actual cut volume reduction, genuine control quad counts,
+      and UV/material attributes in the exported GLB.
+      This verifies the explicit Phase 6 domains, not unrestricted
+      remeshing or arbitrary curved through-tunnels.
 
 **Gate:** Complex edits preserve valid source/target selections,
 face regions, UVs and the real resulting topology. Valid domains
