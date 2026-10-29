@@ -234,6 +234,101 @@ test("stale selections, mismatched geometry and duplicate welds fail explicitly"
     );
 });
 
+test("a selected open edge chain joins neighboring quads without filling their rims", () => {
+    function quad(vertices, corners) {
+        return geometryResult({
+            vertices,
+            quads: [{
+                corners,
+                uvs: [
+                    new THREE.Vector2(0, 0),
+                    new THREE.Vector2(1, 0),
+                    new THREE.Vector2(1, 1),
+                    new THREE.Vector2(0, 1)
+                ],
+                surface: "face"
+            }]
+        });
+    }
+
+    const left = quad([
+        p(-1, 0, 0), p(0, 0, 0),
+        p(0, 1, 0), p(-1, 1, 0)
+    ], [0, 1, 2, 3]);
+    const right = quad([
+        p(0, 0, 0), p(1, 0, 0),
+        p(1, 1, 0), p(0, 1, 0)
+    ], [0, 1, 2, 3]);
+    const first = {
+        owner: left.id, vertices: [1, 2], closed: false
+    };
+    const second = {
+        owner: right.id, vertices: [3, 0], closed: false
+    };
+
+    const combined = joinGeometry([left, right], {
+        weld: [{
+            firstPart: 0, first,
+            secondPart: 1, second
+        }]
+    });
+
+    assert.equal(combined.geometry.vertices.length, 6);
+    assert.equal(combined.geometry.quads.length, 2);
+    assert.equal(topologyOf(combined).connectedComponents().length, 1);
+    assert.equal(topologyOf(combined).openBoundaries().length, 1);
+    assert.equal(topologyOf(combined).openBoundaries()[0].vertices.length, 6);
+
+    const flipped = quad(right.geometry.vertices, [0, 3, 2, 1]);
+
+    assert.throws(
+        () => joinGeometry([left, flipped], {
+            weld: [{
+                firstPart: 0, first,
+                secondPart: 1,
+                second: {
+                    owner: flipped.id, vertices: [3, 0], closed: false
+                }
+            }]
+        }),
+        error => error.reason === "invalid-topology"
+    );
+});
+
+test("pinched closed shells fail the vertex-fan check despite valid edges", () => {
+    const vertices = [
+        p(0, 0, 0), p(1, 0, 0), p(0, 1, 0), p(0, 0, 1),
+        p(-1, 0, 0), p(0, -1, 0), p(0, 0, -1)
+    ];
+    const face = corners => ({
+        corners,
+        uvs: [
+            new THREE.Vector2(0, 0),
+            new THREE.Vector2(1, 0),
+            new THREE.Vector2(0, 1)
+        ],
+        surface: "shell"
+    });
+    const pinched = geometryResult({
+        vertices,
+        quads: [],
+        triangles: [
+            face([0, 2, 1]), face([0, 1, 3]),
+            face([0, 3, 2]), face([1, 2, 3]),
+            face([0, 5, 4]), face([0, 4, 6]),
+            face([0, 6, 5]), face([4, 5, 6])
+        ]
+    });
+    const separate = tube(3, 4);
+
+    assert.equal(topologyOf(pinched).openBoundaries().length, 0);
+    assert.throws(
+        () => joinGeometry([pinched, separate], { weld: [] }),
+        error => error.reason === "invalid-topology" &&
+            /face fans/.test(error.message)
+    );
+});
+
 test("duplicate coincident surfaces are rejected even without a weld", () => {
     const a = tube(0, 1);
     const b = tube(0, 1);
