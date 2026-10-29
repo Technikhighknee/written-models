@@ -251,10 +251,51 @@ test("five barrel head planks keep exact seams and independently detailed faces"
     const head = [];
     const { outer, inner } = headCharts(radius, 0.02);
 
-    for (const sampled of layout.parts) {
-        const piece = weldLayered(layeredPiece(
-            sampled, outer, inner, "outer"
-        ));
+    let detailedPart = -1;
+
+    for (const [index, sampled] of layout.parts.entries()) {
+        const assembly = layeredPiece(sampled, outer, inner, "outer");
+        const seams = layout.interfaces.filter(seam =>
+            seam.firstPart === index || seam.secondPart === index
+        );
+
+        if (detailedPart === -1 && seams.length === 2) {
+            const centerX = sampled.outer.points.reduce(
+                (sum, point) => sum + point.x, 0
+            ) / sampled.outer.points.length;
+
+            const features = seams.map(seam => {
+                const middleX = seam.points[0].x;
+                const inward = centerX > middleX ? 1 : -1;
+
+                return {
+                    path: {
+                        points: seam.points.slice(1, -1).map(point =>
+                            outer.at(new THREE.Vector2(
+                                point.x + inward * 0.018, point.y
+                            ))
+                        ),
+                        parameters: [0, 0.5, 1],
+                        closed: false
+                    },
+                    halfWidthAt: () => 0.008,
+                    displacementAt: (u, t) =>
+                        -0.0024 * (1 - u * u) * Math.sin(Math.PI * t),
+                    regionAt: u => Math.abs(u) < 0.5
+                        ? "groove-floor" : "groove-shoulder"
+                };
+            });
+
+            assembly.top = shapeSurfaceRelief(
+                assembly.top, assembly.top.patches.outer[0],
+                features, { overlap: "minimum", maxDeviation: 0.001 }
+            );
+            assert.ok(assembly.top.geometry.triangles.length >
+                assembly.bottom.geometry.triangles.length);
+            detailedPart = index;
+        }
+
+        const piece = weldLayered(assembly);
         const topology = topologyOf(piece);
 
         assert.equal(topology.openBoundaries().length, 0);
@@ -264,6 +305,10 @@ test("five barrel head planks keep exact seams and independently detailed faces"
         assert.ok(piece.regions["end-grain"].length > 0);
         head.push(piece);
     }
+
+    assert.notEqual(detailedPart, -1);
+    assert.ok(head[detailedPart].regions["groove-floor"].length > 0);
+    assert.ok(head[detailedPart].regions["groove-shoulder"].length > 0);
 
     for (const seam of layout.interfaces) {
         const first = layout.parts[seam.firstPart].outer.points;
