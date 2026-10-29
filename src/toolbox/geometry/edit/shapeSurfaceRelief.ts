@@ -600,7 +600,7 @@ export function shapeSurfaceRelief(
         }
 
         insertPoint(uv, triangles, point, boundary, tolerance);
-        if (triangles.length > 25000) {
+        if (triangles.length > 60000) {
             fail("sampling-limit", "Relief exceeded its topology budget");
         }
     }
@@ -613,7 +613,7 @@ export function shapeSurfaceRelief(
         return base.addScaledVector(normal, displacement(point).height);
     };
 
-    for (let iteration = 0; iteration < 7; iteration++) {
+    for (let iteration = 0; iteration < 13; iteration++) {
         const pending: number[] = [];
 
         for (let i = 0; i < triangles.length; i++) {
@@ -630,7 +630,7 @@ export function shapeSurfaceRelief(
         }
 
         if (!pending.length) break;
-        if (iteration === 6 || triangles.length + pending.length * 2 > 25000) {
+        if (iteration === 12 || triangles.length + pending.length * 2 > 60000) {
             fail("sampling-limit", "Relief detail exceeds the interior sampling budget");
         }
 
