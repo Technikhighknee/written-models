@@ -89,6 +89,27 @@ authored face provenance through the regular mesh/render compiler.
 Subsequent topology-changing edits must return refreshed patch owners
 or invalidate the chart; this lifecycle is addressed explicitly in 3.7.
 
+`joinGeometry(parts, { weld })` merges only explicitly matched open
+boundary chains (full loops or contiguous open subchains). A pair must
+have the same sampled vertices and coordinates within the geometric
+precision, but its source selection may start at another periodic seam
+or traverse in either direction. The join checks the **authored face
+edge uses** after mapping; they must oppose each other. Vertex groups
+are welded through a shared union-find identity, with no automatic
+vertex welding outside the declared boundaries.
+
+A source edge cannot be welded twice. Matching cycles cannot identify
+two distinct vertices of the same part or accumulate incompatible
+positions. Duplicate coincident authored triangles, inconsistent
+edge orientation, three-face edges, and disconnected vertex face fans
+are rejected. The output owns new vertex/face IDs, preserving original
+authored quads, triangles, regions and per-face UVs. Consumed named
+open rims disappear; remaining named chains get fresh owners, with
+part-index prefixes where source names collide. Patch charts survive
+only if their referenced faces retain unchanged positions; others
+must be reconstructed. `joinGeometry` does not replace a general
+arbitrary surface-intersection or Boolean operation.
+
 A concave clipping result may have multiple components and holes.
 The `Profile2` result contains the boundary and any hole contours;
 `clipContour()` returns an array of profiles. The convex fast path

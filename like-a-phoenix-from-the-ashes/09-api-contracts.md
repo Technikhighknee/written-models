@@ -439,7 +439,10 @@ interface SurfaceFillOptions extends PrecisionOptions {
 }
 
 interface GeometryJoinOptions extends PrecisionOptions {
-  /** Matching boundary pairs to share topology between input meshes. */
+  /** Identical sampled positions, opposite authored edge directions.
+   *  Supports closed periodic loops or open boundary chains.
+   *  All other vertices remain separate.
+   */
   weld: readonly {
     firstPart: number;
     first: BoundaryRef;

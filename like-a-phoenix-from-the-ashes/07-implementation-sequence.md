@@ -143,10 +143,15 @@ independent pieces with precise adjoining geometry.
       boundary sampling limits: `8a1cc12`, `3650b03`.
       Tested with hole loops, curved shared interfaces, independent
       extrusion rims and the render-control-mesh pipeline.
-- [ ] **3.4** Implement `joinGeometry` with declared matching
+- [x] **3.4** Implement `joinGeometry` with declared matching
       boundary pairs, validated winding and explicit vertex welding.
       Reject multiple welds of one edge, inconsistent matching cycles,
       duplicate faces and nonmanifold vertex fans.
+      Union-find vertex identities, matching oriented face-edge uses,
+      open-chain/periodic-seam correspondence, typed failures, selection
+      remapping, and surviving patch charts: `5827ff4` through `19b3bf2`.
+      Verified on tubes, charted caps, partial edge joins, competing
+      welds, duplicate faces and pinched closed shells.
 - [ ] **3.5** Implement batched `shapeSurfaceRelief`, combining
       all grooves, shoulders, crown/wear features and overlaps for
       a surface in one coherent reconstruction. Preserve boundary
