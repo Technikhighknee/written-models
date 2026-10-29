@@ -415,11 +415,16 @@ test("four hand-fitted tabletop boards preserve matching worn seams and gaps", (
 
                 return {
                     path: {
-                        points: seam.points.slice(1, -1).map(point =>
-                            crown.at(new THREE.Vector2(
+                        points: [0.25, 0.5, 0.75].map(station => {
+                            const index = seam.stations.findIndex(
+                                value => Math.abs(value - station) < 1e-10
+                            );
+                            assert.ok(index >= 0);
+                            const point = seam.points[index];
+                            return crown.at(new THREE.Vector2(
                                 point.x, point.y + inward * 0.012
-                            ))
-                        ),
+                            ));
+                        }),
                         parameters: [0, 0.5, 1],
                         closed: false
                     },
