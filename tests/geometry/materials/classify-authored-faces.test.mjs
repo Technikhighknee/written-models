@@ -10,6 +10,8 @@ const { classifyAuthoredFaces } = await toolbox(
     "geometry/materials/classifyAuthoredFaces.ts"
 );
 
+const { surfaceMesh } = await toolbox("geometry/mesh/surfaceMesh.ts");
+
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
 const uvs = () => [
     new THREE.Vector2(0, 0), new THREE.Vector2(1, 0),
@@ -104,4 +106,42 @@ test("a classifier cannot create empty surface labels", () => {
         error => error.operation === "classifyAuthoredFaces" &&
             error.reason === "invalid-input"
     );
+});
+
+test("per-piece tint changes render colors, not authored construction data", () => {
+    const original = geometryResult({
+        vertices: [v(0, 0, 0), v(1, 0, 0), v(0, 1, 0)],
+        quads: [],
+        triangles: [{
+            corners: [0, 1, 2],
+            uvs: [
+                new THREE.Vector2(0, 0),
+                new THREE.Vector2(1, 0),
+                new THREE.Vector2(0, 1)
+            ],
+            surface: "wood"
+        }]
+    });
+    const material = new THREE.MeshBasicMaterial({ vertexColors: true });
+    const tint = new THREE.Color("#806040");
+    const mesh = surfaceMesh({
+        name: "TintedPiece",
+        geometry: original,
+        materials: material,
+        tint
+    });
+
+    try {
+        const colors = mesh.geometry.getAttribute("color");
+        assert.ok(colors);
+        assert.equal(colors.count, mesh.geometry.getAttribute("position").count);
+        assert.ok(Math.abs(colors.getX(0) - tint.r) < 1e-6);
+        assert.ok(Math.abs(colors.getY(0) - tint.g) < 1e-6);
+        assert.ok(Math.abs(colors.getZ(0) - tint.b) < 1e-6);
+        assert.equal(original.geometry.triangles[0].surface, "wood");
+        assert.equal(original.geometry.vertices.length, 3);
+    } finally {
+        mesh.geometry.dispose();
+        material.dispose();
+    }
 });
