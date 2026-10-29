@@ -101,10 +101,11 @@ export function findFacingPatch(
     const closest = new THREE.Vector3();
     const candidate = new THREE.Vector3();
     let distance = Infinity;
+    let bestTravel = Infinity;
 
     for (const triangle of triangles) {
-        if (!planar.has(faceKey(triangle.face)) ||
-            triangle.normal.dot(desired) <= 0) {
+        const alignment = triangle.normal.dot(desired);
+        if (!planar.has(faceKey(triangle.face)) || alignment <= 0) {
             continue;
         }
 
@@ -112,8 +113,14 @@ export function findFacingPatch(
         new THREE.Triangle(a, b, c).closestPointToPoint(near, candidate);
         const trial = candidate.distanceToSquared(near);
 
-        if (trial < distance) {
+        // Compare the distance travelled along the requested approach
+        // direction, not just the perpendicular distance to a face.
+        // Otherwise an almost-tangent sidewall can beat the intended
+        // bearing face when the hint lies inside a post.
+        const travel = trial / (alignment * alignment);
+        if (travel < bestTravel) {
             selected = triangle;
+            bestTravel = travel;
             distance = trial;
             closest.copy(candidate);
         }

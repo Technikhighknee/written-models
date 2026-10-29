@@ -158,3 +158,28 @@ test("a warped quad is not silently fitted by its infinite tangent plane", () =>
             error.reason === "no-intersection"
     );
 });
+
+test("a fitting ray prefers the actual bearing face over a grazing side", async () => {
+    const { boxMesh } = await toolbox(
+        "geometry/construction/boxMesh.ts"
+    );
+    const target = {
+        geometry: boxMesh({
+            width: 0.1, height: 0.6, depth: 0.1
+        }),
+        localToWorld: new THREE.Matrix4()
+    };
+
+    // The +X face is physically closer to this inside-post hint, but
+    // the member approaches almost entirely along +Z. The +Z plane
+    // is the relevant full bearing face.
+    const patch = findFacingPatch(
+        target,
+        p(0.04, 0, 0),
+        p(0.06, 0, 1)
+    );
+
+    assert.ok(patch.contact.normal.z > 0.99);
+    assert.ok(Math.abs(patch.contact.point.z - 0.05) < 1e-10);
+    assert.ok(Math.abs(patch.contact.distance - 0.05) < 1e-10);
+});
