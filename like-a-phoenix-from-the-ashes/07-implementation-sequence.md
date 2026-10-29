@@ -669,8 +669,28 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       of unsupported domains. Commits: `4d3efaf`, `13658fb`,
       `ca028e3`, `037e057`, `bfa5f0e`.
       All 232 tests, typecheck and build pass.
-- [ ] **6.4** Implement `cutThrough` for matching entry/exit
+- [x] **6.4** Implement `cutThrough` for matching entry/exit
       contours, with actual inner walls and validity checks.
+      The operation composes two planar `openPatch` edits, a
+      `bridgeBoundaries` wall and two explicit `joinGeometry` welds.
+      Input selections are source-owned, planar, disjoint and opposite
+      facing on one closed manifold shell. The opening contours must
+      admit one exact cyclic correspondence after the opposite rim is
+      reversed, with a positive normal-aligned displacement and
+      consistent stations; tapered/twisted/offset openings are
+      deliberately rejected. The corridor is tested against untouched
+      faces at rim vertices, edge midpoints and interior triangle
+      centroids before welding. The output is one closed connected
+      solid with genuine inner wall quads, semantic wall regions,
+      physical wall UVs, retained external surface selections and
+      named `through-entry`/`through-exit` interior seam chains.
+      Checked on top/bottom and side-to-side cuts, rectangular and
+      six-station sections, blocked corridors, selection ownership,
+      Quad View/export and invalid inputs. The result does not
+      assert a general solid boolean or a complete analytic
+      collision proof; those are separate capabilities.
+      Commits: `d696179`, `c3c6f2b`, `44a4c83`,
+      `e7d3496`, `f84e571`.
 - [ ] **6.5** Extend surface edits to curved patches with valid
       parameterization and explicit cut-boundary correspondence.
 - [ ] **6.6** Implement edge subdivision and local topology

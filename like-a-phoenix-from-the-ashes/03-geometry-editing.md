@@ -216,6 +216,26 @@ breakthroughs, but are not a proof against every possible concave
 obstacle. A through-cut requires matching entry/exit contours or
 an explicit solid-volume difference.
 
+`cutThrough(source, {entry, exit, wallRegion, precision})` composes
+two separate `openPatch` calls and joins their actual edge loops
+through `bridgeBoundaries` and `joinGeometry`. Entry and exit
+must select disjoint, outward-facing planar patches of one closed
+manifold component. Their normals must be opposite, and their closed
+contours must match exactly after reversing and rotating the exit
+seam, with a single displacement along the entry's inward normal.
+Matched contours can be rectangular, polygonal or contain authored
+collinear stations; no hidden resampling is performed. Each tunnel
+wall receives the caller's material region and UVs based on physical
+distance. The returned manifold solid has named
+`through-entry` and `through-exit` seam selections and retains
+verified neighboring patch charts. The corridor is sampled along
+vertices, edge midpoints and triangulated interior points to
+detect intersecting unrelated surfaces. These are explicit
+collision checks, not a mathematical proof for arbitrary concave
+geometries. Oblique, tapered, twisting and offset tunnels belong
+to an explicitly constructed surface or the solid boolean
+operation.
+
 A planar patch uses direct contour clipping in a plane-aligned chart.
 A curved patch needs an explicit mapping between chart coordinates
 and the surface, plus a way to construct its rim/sidewalls.

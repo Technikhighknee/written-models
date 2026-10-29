@@ -181,10 +181,23 @@ There are three distinct results:
 | `recessPatch` | Creates sidewalls and a floor at positive depth | Pocket with a closed floor |
 | `cutThrough` | Connects the opening on two selected surfaces | Through-hole with inner walls |
 
-A `cutThrough` in a complex solid can be implemented by an
-explicit volume difference, with the boolean's topology rules.
-A local aligned-wall implementation is sufficient when the
-opposing patches share a clear compatible chart.
+`cutThrough` requires one closed connected manifold source.
+The entry/exit patches remain disjoint and planar and face outward
+in opposite directions. Its matching contours form a straight,
+normal-aligned extrusion with the same ordered stations after
+reversing one opening's outward boundary. Both surfaces are opened,
+their rims are bridged by real faces, and the two bridge boundaries
+are welded against the matching source rims. The output is a
+single manifold solid with no open edges. The entry and exit seams
+remain selectable as closed interior edge chains, while surviving
+source charts remain owned by the new result.
+
+The straight corridor is checked along sampled rays against
+nonselected source faces. It rejects detected intervening faces,
+but an arbitrary unsampled thin feature is not guaranteed to be
+detected. Complex corridors with different section shapes,
+nonparallel entrances or curved trajectories require an explicit
+wall construction or the solid boolean operation.
 
 Curved patch cutting uses a specifically authored or derived
 parameterization with a valid domain. A surface with folds,
