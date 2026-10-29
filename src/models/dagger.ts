@@ -1,7 +1,11 @@
 import * as THREE from "three";
 import { cm, mm } from "../toolbox/units/length";
 import { facetedDiamondOutline } from "../toolbox/shapes/profiles/facetedDiamondOutline";
-import { profiledMesh } from "../toolbox/geometry/construction/profiledMesh";
+import {
+    profiledSolid,
+    type ProfiledSolidOptions
+} from "../toolbox/geometry/construction/profiledSolid";
+import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { oakVariant } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
 import { bladeSteel } from "../materials/metal/bladeSteel";
@@ -13,17 +17,9 @@ export default {
     description: "A practical late-medieval steel dagger with a fitted oak-and-iron hilt."
 };
 
-// A modest civilian dagger, c. 1400. The model authors shapes, proportions
-// and materials; the toolbox creates cross-sections, seams and topology.
-function create(): THREE.Group {
-    const dagger = new THREE.Group();
-    dagger.name = "CommonQuillonDagger";
-    const steel = bladeSteel();
-    const iron = wroughtIron();
-    const oak = oakVariant(6);
-
-    dagger.add(profiledMesh({
-        name: "ForgedDoubleEdgedBlade",
+// The blade, integral quillon and continuous grip use common profile,
+// section-loft and boundary-finishing operations.
+const BLADE: ProfiledSolidOptions = {
         axis: "y",
         outline: facetedDiamondOutline([0.47, 0.79]),
         profile: {
@@ -41,13 +37,10 @@ function create(): THREE.Group {
         tipStart: -cm(23.75),
         surface: "blade",
         sideSurfaces: {1: "edge", 2: "edge", 5: "edge", 6: "edge"},
-        smoothing: "faceted",
-        materials: {blade: steel.body, edge: steel.edge, ricasso: steel.body},
-        capMaterial: steel.body
-    }));
+        smoothing: "faceted"
+};
 
-    dagger.add(profiledMesh({
-        name: "ForgedQuillonWithIntegralSeat",
+const QUILLON: ProfiledSolidOptions = {
         axis: "x",
         mirrorAround: 0,
         profile: {
@@ -69,12 +62,10 @@ function create(): THREE.Group {
         },
         tipStart: -mm(42.4),
         tipEnd: mm(42.4),
-        smoothing: "smooth",
-        materials: iron
-    }));
+        smoothing: "smooth"
+};
 
-    dagger.add(profiledMesh({
-        name: "ContinuousFittedOakAndIronHilt",
+const HILT: ProfiledSolidOptions = {
         axis: "y",
         profile: {
             start: {at: mm(4.8), radii: [mm(6.8), mm(8.6)]},
@@ -102,7 +93,52 @@ function create(): THREE.Group {
         radialWaves: [
             {lobes: 3, amplitude: 0.012, axialFrequency: 32},
             {lobes: 5, amplitude: 0.006, axialFrequency: -21}
-        ],
+        ]
+};
+
+export const daggerShapes = {
+    blade: BLADE,
+    quillon: QUILLON,
+    hilt: HILT
+} as const;
+
+/** Geometry can be inspected, compared and exported without baked materials. */
+export function buildDaggerGeometry() {
+    return {
+        blade: profiledSolid(BLADE),
+        quillon: profiledSolid(QUILLON),
+        hilt: profiledSolid(HILT)
+    };
+}
+
+function create(): THREE.Group {
+    const dagger = new THREE.Group();
+    dagger.name = "CommonQuillonDagger";
+    const steel = bladeSteel();
+    const iron = wroughtIron();
+    const oak = oakVariant(6);
+    const shapes = buildDaggerGeometry();
+
+    dagger.add(surfaceMesh({
+        name: "ForgedDoubleEdgedBlade",
+        geometry: shapes.blade,
+        materials: {
+            blade: steel.body,
+            edge: steel.edge,
+            ricasso: steel.body
+        },
+        capMaterial: steel.body
+    }));
+
+    dagger.add(surfaceMesh({
+        name: "ForgedQuillonWithIntegralSeat",
+        geometry: shapes.quillon,
+        materials: iron
+    }));
+
+    dagger.add(surfaceMesh({
+        name: "ContinuousFittedOakAndIronHilt",
+        geometry: shapes.hilt,
         materials: {iron, oak: oak.face},
         capMaterial: iron
     }));
