@@ -462,3 +462,111 @@ test("a connected chamfer remains a valid input to a later plane cut", () => {
         assert.ok(part.regions["chamfer-section"].length > 0);
     }
 });
+
+function articulatedEdges(source, corners) {
+    const indexAt = ([x, y, z]) => {
+        const index = source.geometry.vertices.findIndex(v =>
+            Math.abs(v.x - x) < 1e-9 &&
+            Math.abs(v.y - y) < 1e-9 &&
+            Math.abs(v.z - z) < 1e-9
+        );
+        assert.ok(index >= 0, "Missing authored prism vertex");
+        return index;
+    };
+    const ids = corners.map(indexAt);
+    return ids.slice(0, -1).map((from, i) => {
+        const to = ids[i + 1];
+        assert.equal(topologyOf(source).edgeUses(from, to).length, 2);
+        return {owner: source.id, from, to};
+    });
+}
+
+test("an open chamfer traverses three edges across changing cap faces", () => {
+    const source = box();
+    const original = source.geometry.vertices.map(v => v.clone());
+    const edges = articulatedEdges(source, [
+        [-1, 1, 1], [1, 1, 1], [1, -1, 1], [1, -1, -1]
+    ]);
+    const result = bevelEdges(source, edges, () => 0.12);
+
+    assert.deepEqual(source.geometry.vertices, original);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 5);
+    assert.equal(result.geometry.quads.filter(f =>
+        f.surface === "bevel"
+    ).length, 3);
+    assert.equal(result.geometry.triangles.filter(f =>
+        f.surface === "bevel"
+    ).length, 2);
+
+    assert.equal(result.boundaries["bevel-rails"].length, 6);
+    for (const chain of result.boundaries["bevel-rails"]) {
+        assertSelectionOwner(result, chain);
+        assert.equal(chain.closed, false);
+        assert.equal(chain.vertices.length, 2);
+        assert.equal(topologyOf(result).edgeUses(
+            chain.vertices[0], chain.vertices[1]
+        ).length, 2);
+    }
+    assert.ok(result.patches.top?.length);
+    assertSelectionOwner(result, result.patches.top[0]);
+
+    const surface = toBufferGeometry(
+        result,
+        Object.fromEntries(Object.keys(result.regions).map(name => [name, 0]))
+    );
+    try {
+        assert.equal(getControlMesh(surface), result.geometry);
+    } finally {
+        surface.dispose();
+    }
+});
+
+test("articulated chain in reverse travels through the same physical junctions", () => {
+    const source = box();
+    const edges = articulatedEdges(source, [
+        [-1, 1, 1], [1, 1, 1], [1, -1, 1], [1, -1, -1]
+    ]);
+    const reversed = edges.slice().reverse().map(edge => ({
+        owner: source.id, from: edge.to, to: edge.from
+    }));
+    const samples = [];
+    const result = bevelEdges(source, reversed, t => {
+        samples.push(Number(t.toFixed(4)));
+        return 0.09 + t * 0.025;
+    });
+    assert.deepEqual(samples, [0, 1 / 3, 2 / 3, 1]
+        .map(x => Number(x.toFixed(4))));
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(result.regions.bevel.length, 5);
+});
+
+test("a cross-face bevel remains a sound solid for plane cutting", () => {
+    const source = box();
+    const edges = articulatedEdges(source, [
+        [-1, 1, 1], [1, 1, 1], [1, -1, 1], [1, -1, -1]
+    ]);
+    const chamfered = bevelEdges(source, edges, () => 0.1);
+    const split = splitByPlane(chamfered, {
+        point: new THREE.Vector3(0, 0, 0),
+        normal: new THREE.Vector3(0, 1, 0)
+    }, {cap: true, cutRegion: "section"});
+    assert.equal(split.parts.length, 2);
+    assert.equal(split.interfaces.length, 1);
+    for (const part of split.parts) {
+        assert.equal(topologyOf(part).openBoundaries().length, 0);
+        assert.equal(topologyOf(part).connectedComponents().length, 1);
+    }
+});
+
+test("articulated corner rejects a width that collapses one of its rails", () => {
+    const source = box();
+    const edges = articulatedEdges(source, [
+        [-1, 1, 1], [1, 1, 1], [1, -1, 1], [1, -1, -1]
+    ]);
+    assert.throws(
+        () => bevelEdges(source, edges, () => 1.05),
+        error => error.reason === "unsupported-topology"
+    );
+});
