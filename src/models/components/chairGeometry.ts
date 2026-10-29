@@ -226,7 +226,10 @@ export function buildChairFrameGeometry(): ChairFrameGeometry {
             CHAIR.rearX, backHeight,
             chairRearZ(backHeight) + cm(1.1)
         ),
-        cm(5.2), cm(4.1), new THREE.Vector3(0, 1, 0));
+        cm(5.2), cm(4.1), new THREE.Vector3(
+            0, 1,
+            (CHAIR.rearTopZ - CHAIR.rearFootZ) / CHAIR.rearHeight
+        ));
 
     const pegs: ChairPeg[] = [];
     for (const side of [-1, 1] as const) {
