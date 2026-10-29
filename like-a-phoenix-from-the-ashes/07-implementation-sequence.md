@@ -288,8 +288,19 @@ dynamic cavity behavior.
       selections and drop invalidated surface charts. Verified in
       `tests/geometry/queries/fit-boundary.test.mjs`
       (`0e79c00` through `487df45`).
-- [ ] **4.5** Unify frame/anchor attachment math, coordinate-space
+- [x] **4.5** Unify frame/anchor attachment math, coordinate-space
       conversions and cycle detection.
+      `attachAtFrames` now implements the single parent-local
+      transformation `parentFrame * matingTransform * inverse(childFrame)`.
+      Both `attachByFrames` and `attachByAnchors` delegate to it;
+      nested anchors use `frameFromAncestor` to calculate their actual
+      child-local frame. `frameToWorld` and `frameToLocal` handle
+      ordinary hierarchy coordinate conversions. Validation is
+      non-mutating until hierarchy cycles, singular/invalid transforms
+      and Object3D-inexpressible shear are ruled out. Integration tests
+      cover nested anchors, explicit mating rotations, world/local
+      round trips, and rejected attachments (`6671c01` through
+      `9f62358`).
 - [ ] **4.6** Query finite surface clearance, including polygon
       chord intersections between path sample points. Separately
       verify the intended exterior-side placement of hoops and bands;
