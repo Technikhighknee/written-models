@@ -150,7 +150,10 @@ test("shaped beam sections compose with loft, caps, regions and Quad View", () =
     assert.ok(mesh.regions["end-grain-start"].length > 0);
     assert.ok(mesh.regions["end-grain-end"].length > 0);
 
-    const render = toBufferGeometry(mesh.geometry);
+    const materialBySurface = Object.fromEntries(
+        Object.keys(mesh.regions).map(name => [name, 0])
+    );
+    const render = toBufferGeometry(mesh, materialBySurface);
 
     try {
         assert.equal(
