@@ -139,3 +139,109 @@ test("member section holes stay distinct and unsupported intersection directions
         error => error.reason === "invalid-input"
     );
 });
+
+test("explicit planar supports and geometry contacts share the same fitted result", () => {
+    const profile = section(rectangle(-0.25, -0.15, 0.25, 0.15));
+    const footprint = section(rectangle(-1, -1, 1, 1));
+    const firstPlane = {
+        frame: new THREE.Matrix4(),
+        footprint
+    };
+    const lastPlane = {
+        frame: new THREE.Matrix4().makeRotationX(Math.PI)
+            .setPosition(v(0, 0, 2)),
+        footprint
+    };
+    const geometry = support(footprint.outer.points, [], 2);
+
+    const first = fitBetweenSurfaces({
+        start: { authoredPlane: firstPlane, near: v(0, 0, 0) },
+        end: { target: geometry, near: v(0, 0, 2) },
+        section: profile,
+        referenceDirection: v(1, 0, 0)
+    });
+
+    assert.equal(first.startContact.kind, "authored-plane");
+    assert.equal(first.endContact.kind, "surface");
+    assert.ok(first.startContact.point.distanceTo(v(0, 0, 0)) < 1e-12);
+    assert.ok(first.startContact.normal.distanceTo(v(0, 0, 1)) < 1e-12);
+    assert.ok(first.sections[0].outer.points.every(point =>
+        Math.abs(point.z) < 1e-12
+    ));
+
+    const bothPlanes = fitBetweenSurfaces({
+        start: { authoredPlane: firstPlane, near: v(0, 0, 0) },
+        end: { authoredPlane: lastPlane, near: v(0, 0, 2) },
+        section: profile,
+        referenceDirection: v(1, 0, 0)
+    });
+
+    assert.equal(bothPlanes.startContact.kind, "authored-plane");
+    assert.equal(bothPlanes.endContact.kind, "authored-plane");
+    assert.ok(bothPlanes.sections[1].outer.points.every(point =>
+        Math.abs(point.z - 2) < 1e-12
+    ));
+});
+
+test("authored contact planes reject holes, outward reversal and scaling", () => {
+    const frame = new THREE.Matrix4();
+    const outer = rectangle(-2, -2, 2, 2);
+    const plane = {
+        frame,
+        footprint: section(outer, [rectangle(-0.4, -0.4, 0.4, 0.4)])
+    };
+    const next = {
+        frame: new THREE.Matrix4().makeRotationX(Math.PI)
+            .setPosition(v(0, 0, 2)),
+        footprint: section(outer)
+    };
+    const options = {
+        start: { authoredPlane: plane, near: v(0, 0, 0) },
+        end: { authoredPlane: next, near: v(0, 0, 2) },
+        referenceDirection: v(1, 0, 0)
+    };
+
+    assert.throws(
+        () => fitBetweenSurfaces({
+            ...options,
+            section: section(rectangle(-1, -1, 1, 1))
+        }),
+        error => error.operation === "fitBetweenSurfaces" &&
+            error.reason === "outside-contact-patch"
+    );
+    assert.throws(
+        () => fitBetweenSurfaces({
+            ...options,
+            start: {
+                authoredPlane: {
+                    ...plane,
+                    frame: new THREE.Matrix4().makeScale(2, 1, 1)
+                },
+                near: v(0, 0, 0)
+            },
+            section: section(rectangle(0.6, 0.6, 1, 1))
+        }),
+        error => error.reason === "invalid-input"
+    );
+    assert.throws(
+        () => fitBetweenSurfaces({
+            ...options,
+            end: {
+                authoredPlane: {
+                    ...next,
+                    frame: new THREE.Matrix4().setPosition(v(0, 0, 2))
+                },
+                near: v(0, 0, 2)
+            },
+            section: section(rectangle(0.6, 0.6, 1, 1))
+        }),
+        error => error.reason === "invalid-input"
+    );
+
+    const valid = fitBetweenSurfaces({
+        ...options,
+        section: section(rectangle(0.6, 0.6, 1, 1))
+    });
+    assert.equal(valid.startContact.kind, "authored-plane");
+    assert.equal(valid.endContact.kind, "authored-plane");
+});
