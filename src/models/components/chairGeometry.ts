@@ -72,7 +72,7 @@ export interface ChairFrameGeometry {
 }
 
 const underside = CHAIR.seatHeight - CHAIR.seatThickness;
-const apronY = underside - cm(8.3) / 2 - mm(2);
+const apronY = underside - cm(8.3) / 2 - mm(4);
 
 export function chairRearZ(height: number): number {
     return CHAIR.rearFootZ +
