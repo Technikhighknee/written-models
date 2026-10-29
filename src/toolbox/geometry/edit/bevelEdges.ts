@@ -19,6 +19,7 @@ import {
 import { patchChartMatches, transferBoundary } from "../kernel/selectionLifecycle";
 import { topologyOf } from "../kernel/topology";
 import { bevelOpenEdge } from "./bevelOpenEdge";
+import { bevelOpenChain } from "./bevelOpenChain";
 
 export type ScalarField = (t: number) => number;
 
@@ -61,6 +62,10 @@ export function bevelEdges(
     }
     if (edges.length === 1) {
         return bevelOpenEdge(source, edges[0]!, width, policy);
+    }
+    if ((edges.length === 2 || edges.length === 3) &&
+        edges.at(-1)!.to !== edges[0]!.from) {
+        return bevelOpenChain(source, edges, width, policy);
     }
     if (edges.length > 4) {
         const loops: EdgeRef[][] = [];
