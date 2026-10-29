@@ -242,3 +242,44 @@ test("a cut along existing source corners reuses exact vertex positions", () => 
         Math.abs(point.x + point.y) < 1e-9
     ));
 });
+ 
+test("uncut named chains and charts receive new owners; cut selections do not", () => {
+    const original = geometryResult(boxMesh({
+        width: 2, height: 2, depth: 2
+    }));
+    const top = original.geometry.quads.findIndex(face =>
+        face.surface === "py"
+    );
+    const outline = topologyOf(original).regionBoundaries("py")[0];
+    const chart = {
+        at: uv => new THREE.Vector3(uv.x, 1, -uv.y),
+        parameterOf: point => new THREE.Vector2(point.x, -point.z),
+        normalAt: () => new THREE.Vector3(0, 1, 0)
+    };
+    const named = {
+        ...original,
+        boundaries: {topOutline: [outline]},
+        patches: {
+            topSurface: [{
+                owner: original.id,
+                faces: [{kind: "quad", index: top}],
+                chart
+            }]
+        }
+    };
+    const result = splitByPlane(named,
+        plane([0, 1, 0]), options(true));
+    const negative = result.parts[0];
+    const positive = result.parts[1];
+
+    assert.equal(negative.boundaries.topOutline, undefined);
+    assert.equal(negative.patches?.topSurface, undefined);
+    assert.equal(positive.boundaries.topOutline.length, 1);
+    assert.equal(positive.patches.topSurface.length, 1);
+    assert.notEqual(positive.id, original.id);
+    assert.equal(positive.boundaries.topOutline[0].owner, positive.id);
+    assert.equal(positive.patches.topSurface[0].owner, positive.id);
+    assert.equal(positive.boundaries.cut.length, 1);
+    assert.equal(negative.boundaries.cut.length, 1);
+    closed(positive);
+});
