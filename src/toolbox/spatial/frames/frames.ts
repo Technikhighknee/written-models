@@ -1,4 +1,8 @@
 import * as THREE from "three";
+import {
+    assertAffineTransform,
+    DEFAULT_GEOMETRY_PRECISION
+} from "../../geometry/kernel/precision";
 
 const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 
@@ -55,8 +59,8 @@ export function frameToLocal(
     worldFrame: THREE.Matrix4
 ): THREE.Matrix4 {
     object.updateWorldMatrix(true, false);
-    if (object.matrixWorld.determinant() === 0) {
-        throw new RangeError("Cannot convert through a singular object frame");
-    }
+    assertAffineTransform(
+        object.matrixWorld, "frameToLocal", DEFAULT_GEOMETRY_PRECISION
+    );
     return object.matrixWorld.clone().invert().multiply(worldFrame);
 }
