@@ -691,8 +691,28 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       collision proof; those are separate capabilities.
       Commits: `d696179`, `c3c6f2b`, `44a4c83`,
       `e7d3496`, `f84e571`.
-- [ ] **6.5** Extend surface edits to curved patches with valid
+- [x] **6.5** Extend surface edits to curved patches with valid
       parameterization and explicit cut-boundary correspondence.
+      Both `openPatch` and `recessPatch` reconstruct a charted,
+      connected surface using the common `fillSurfacePatch` kernel.
+      Its adaptive interior triangulation leaves every shared outer
+      and existing inner contour station untouched. The new opening
+      is represented by an exact ordered rim with the caller's
+      requested stations; insufficient rim sampling reports a
+      sampling limit, not invented boundary vertices.
+      Recess walls follow each corresponding entry/floor rim edge,
+      while the floor is displaced along the local chart normal.
+      The offset surface has a numerically invertible 2D chart;
+      singular or folded offsets are rejected. Both rebuilt surface
+      and pocket floor are adaptively triangulated with finite
+      chart-deviation checks, retained material UV mapping, named
+      boundary selections and verified new patch ownership.
+      Internal edge regularization is shared between curved
+      filling and surface relief; it never flips the protected
+      authored rim. Tests exercise a crowned surface, a genuinely
+      normal-offset floor, UV and chart roundtrips, exact seam
+      station preservation and insufficient contour sampling.
+      Straight `cutThrough` remains explicitly planar.
 - [ ] **6.6** Implement edge subdivision and local topology
       refinement across adjacent faces without T-junctions.
       Implement general selected-edge `bevelEdges` on that foundation

@@ -236,13 +236,27 @@ geometries. Oblique, tapered, twisting and offset tunnels belong
 to an explicitly constructed surface or the solid boolean
 operation.
 
-A planar patch uses direct contour clipping in a plane-aligned chart.
-A curved patch needs an explicit mapping between chart coordinates
-and the surface, plus a way to construct its rim/sidewalls.
-The initial patch operations work on planar connected faces.
-Curved patches use an explicit chart with a valid domain and
-predictable inverse mapping. A folded or self-overlapping surface
-is split into appropriate patches first.
+Both operations also support a regular curved chart. All source
+and opening boundary vertices retain their authored stations; the
+shared `fillSurfacePatch` operation refines the interior without
+splitting these interfaces. When an opening curve is undersampled
+for the requested geometric deviation, the edit reports
+`sampling-limit` rather than altering the user's contour. The
+rebuilt surface retains the original patch's affine texture UV map.
+
+A curved recess offsets its floor along the source's *local*
+unit normal. Its floor uses an independently invertible offset
+chart and receives new actual triangles; the walls join matching
+entry and floor stations. Singular or folded offset charts fail.
+The geometric normal varies across the opening; no single
+plane-normal translation is substituted. For arbitrary curved
+charts, the surface and offset must remain locally regular and
+single-valued in their parameter domains. A folded or overlapping
+chart needs separate patches or another explicit solid operation.
+
+`cutThrough` still requires compatible planar opposing patches
+and a straight, matched section; it does not silently turn into
+a general curved tunnel.
 
 An opening rim remains available for beveling, lining, or fitting
 another part. The same patch operations make a wooden housing,

@@ -867,7 +867,11 @@ longer valid must be respecified from the returned geometry before
 another parameterized edit.
 
 An `openPatch` removes faces and leaves an open rim. A
-`recessPatch` inserts walls and a floor. `cutThrough` connects
+`recessPatch` inserts walls and a floor. Both work on regular
+curved charts as well as planes, retaining prescribed boundary
+stations. A curved recess creates a local-normal offset floor
+with its own invertible chart; chart folds and underresolved
+rims fail explicitly. `cutThrough` connects
 two compatible openings across an existing solid with actual
 interior walls; its two patches must admit a consistent correspondence.
 Other through-cuts use an explicit solid boolean.

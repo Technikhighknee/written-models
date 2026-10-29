@@ -144,15 +144,17 @@ the unchanged side as one piece with an explicit empty interface set.
 A cap request is valid only for closed intersection loops.
 Open input shells may be cut without automatically becoming solids.
 
-## 5. Editing a planar surface patch
+## 5. Editing a charted surface patch
 
 `SurfacePatchRef` selects a connected collection of authored faces
-and a coordinate chart that maps its local 2D plane to 3D positions.
+and a valid two-way 2D-to-3D chart. Planarity is not required for
+`openPatch` or `recessPatch`.
 
-The implemented first patch-editing operations support planar connected
-patches with valid outer boundary and optional existing holes. The
-selected faces must use one material/smoothing assignment and one
-affine UV mapping; other selected faces are not silently reclassified.
+The selected surface has a valid outer boundary, optional existing
+holes, one material/smoothing assignment and one affine texture UV
+mapping. Other selected faces are not silently reclassified.
+The chart must preserve orientation, avoid folds and round-trip
+its positions.
 
 A fully interior cut contour must be simple, closed and contained
 within the selected patch's actual domain. In the first planar
@@ -199,10 +201,22 @@ detected. Complex corridors with different section shapes,
 nonparallel entrances or curved trajectories require an explicit
 wall construction or the solid boolean operation.
 
-Curved patch cutting uses a specifically authored or derived
-parameterization with a valid domain. A surface with folds,
-singularities, or overlapping coordinates needs local patch
-splitting first.
+For curved patches, the existing boundary and the new opening
+contour supply exact stations in the chart domain. Chart-space
+triangulation and adaptive interior refinement use real 3D chord
+and centroid deviation; the original contour edges are never
+resampled independently of their neighbors. A contour whose chord
+cannot meet the deviation limit reports `sampling-limit`.
+Recess walls connect corresponding original and displaced rim
+vertices, and the floor follows the chart's local unit normal.
+The resulting floor has its own inverse chart, obtained by
+iterative solving on the offset surface; singular or
+self-overlapping offsets are unsupported. Valid returned
+surface/floor selections belong to the new geometry result.
+
+`cutThrough` continues to require two compatible planar patches.
+General curved through-tunnels have separate correspondence
+requirements and are not claimed by these surface edits.
 
 ## 6. Surface edits and chart ownership
 
