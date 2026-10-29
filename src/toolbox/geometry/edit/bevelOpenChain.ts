@@ -301,6 +301,19 @@ export function bevelOpenChain(
             ? terminals[1]! : joins[segment]!;
     };
 
+    for (let i = 0; i < edges.length; i++) {
+        const direction = vertices[chain[i + 1]!]!.clone()
+            .sub(vertices[chain[i]!]!).normalize();
+        const start = railAt(i, false);
+        const end = railAt(i, true);
+        for (const side of ["cap", "side"] as const) {
+            if (vertices[end[side]]!.clone()
+                .sub(vertices[start[side]]!).dot(direction) <= tolerance) {
+                fail("unsupported-topology", "Bevel width reverses an inner rail");
+            }
+        }
+    }
+
     // The unselected part of a face boundary is unchanged. Replace
     // the chain's original corners with shared miter vertices and
     // insert terminal stations along the first/last selected edges.
