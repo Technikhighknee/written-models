@@ -20,8 +20,11 @@ const { loftAxialProfile } = await toolbox(
 const { topologyOf } = await toolbox(
     "geometry/kernel/topology.ts"
 );
-const { getControlOutline, getControlResult } = await toolbox(
+const { getControlResult } = await toolbox(
     "geometry/mesh/toBufferGeometry.ts"
+);
+const { getControlOutline } = await toolbox(
+    "geometry/mesh/controlOutline.ts"
 );
 const { surfaceMesh } = await toolbox(
     "geometry/mesh/surfaceMesh.ts"
