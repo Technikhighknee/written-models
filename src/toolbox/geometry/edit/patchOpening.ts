@@ -312,6 +312,93 @@ function sampled(
     };
 }
 
+/**
+ * Offset a regular chart along its own unit normals. Recover the original
+ * UV parameters by solving against the offset surface itself; blindly using
+ * the source chart inverse would misidentify points on a curved pocket floor.
+ */
+function offsetChart(
+    chart: SurfacePatchRef["chart"],
+    depth: number,
+    tolerance: number
+): SurfacePatchRef["chart"] {
+    const offset = (uv: THREE.Vector2Like): THREE.Vector3 => {
+        const direction = chart.normalAt(uv);
+        if (!direction || ![direction.x, direction.y, direction.z]
+            .every(Number.isFinite)) {
+            fail("unsupported-topology", "Offset chart normal is not finite");
+        }
+        const normal = new THREE.Vector3().copy(direction);
+        if (!(normal.length() > tolerance)) {
+            fail("unsupported-topology", "Offset chart normal is singular");
+        }
+        const point = chart.at(uv);
+        if (!point || ![point.x, point.y, point.z].every(Number.isFinite)) {
+            fail("unsupported-topology", "Offset chart position is not finite");
+        }
+        return new THREE.Vector3().copy(point)
+            .addScaledVector(normal.normalize(), -depth);
+    };
+    const step = Math.max(1e-5, Math.sqrt(tolerance) * 0.25);
+    const tangent = (uv: THREE.Vector2Like, axis: "x" | "y"): THREE.Vector3 => {
+        const first = new THREE.Vector2(uv.x, uv.y);
+        const second = first.clone();
+        first[axis] -= step;
+        second[axis] += step;
+        return offset(second).sub(offset(first)).divideScalar(2 * step);
+    };
+    return {
+        at: offset,
+        parameterOf: (point: THREE.Vector3Like): THREE.Vector2 => {
+            const guess = chart.parameterOf(point);
+            if (!guess || ![guess.x, guess.y].every(Number.isFinite)) {
+                fail("unsupported-topology", "Offset chart has no initial inverse");
+            }
+            const uv = new THREE.Vector2(guess.x, guess.y);
+            const target = new THREE.Vector3().copy(point);
+            for (let iteration = 0; iteration < 24; iteration++) {
+                const residual = target.clone().sub(offset(uv));
+                if (residual.length() <= tolerance) return uv;
+                const u = tangent(uv, "x");
+                const v = tangent(uv, "y");
+                const uu = u.dot(u);
+                const vv = v.dot(v);
+                const uvDot = u.dot(v);
+                const det = uu * vv - uvDot * uvDot;
+                if (!(det > Math.max(1e-24, uu * vv * 1e-14))) {
+                    fail("unsupported-topology", "Offset chart is locally singular");
+                }
+                const rightU = residual.dot(u);
+                const rightV = residual.dot(v);
+                const du = (rightU * vv - rightV * uvDot) / det;
+                const dv = (rightV * uu - rightU * uvDot) / det;
+                if (![du, dv].every(Number.isFinite)) {
+                    fail("unsupported-topology", "Offset chart inverse diverged");
+                }
+                uv.x += du;
+                uv.y += dv;
+                if (Math.hypot(du, dv) <= tolerance &&
+                    offset(uv).distanceTo(target) <= tolerance * 4) {
+                    return uv;
+                }
+            }
+            fail("unsupported-topology", "Offset chart inverse did not converge");
+        },
+        normalAt: (uv: THREE.Vector2Like): THREE.Vector3 => {
+            const normal = tangent(uv, "x")
+                .cross(tangent(uv, "y"));
+            const original = chart.normalAt(uv);
+            if (!original || ![original.x, original.y, original.z]
+                .every(Number.isFinite) ||
+                !(normal.length() > tolerance) ||
+                normal.dot(new THREE.Vector3().copy(original)) <= 0) {
+                fail("unsupported-topology", "Offset chart folds or reverses");
+            }
+            return normal.normalize();
+        }
+    };
+}
+
 function uvMap(
     source: GeometryResult,
     patch: SurfacePatchRef,
@@ -455,6 +542,7 @@ function edited(
     }
     const roofCount = faces.length - roofStart;
     let floorIds: number[] = [];
+    let floorChart: SurfacePatchRef["chart"] | undefined;
     let floorStart = -1;
     let floorCount = 0;
 
@@ -478,14 +566,19 @@ function edited(
                 triangle.reduce((sum, i) => sum.add(opening[i]!),
                     new THREE.Vector2()).divideScalar(3))
         ];
+        floorChart = offsetChart(patch.chart, depth, tolerance);
+
         for (const uv of samples) {
+            const localNormal = new THREE.Vector3().copy(
+                patch.chart.normalAt(uv)
+            ).normalize();
             const point = new THREE.Vector3().copy(patch.chart.at(uv))
-                .addScaledVector(normal, -tolerance * 4);
+                .addScaledVector(localNormal, -tolerance * 4);
             const hit = raycastSurface({
                 geometry: outside, localToWorld: new THREE.Matrix4()
             }, {
                 origin: point,
-                direction: normal.clone().negate(),
+                direction: localNormal.clone().negate(),
                 maxDistance: depth
             }, policy);
             if (hit && hit.distance <= depth - tolerance * 2) {
@@ -493,35 +586,51 @@ function edited(
             }
         }
 
-        floorIds = newIds.map(id => vertices.push(vertices[id]!.clone()
-            .addScaledVector(normal, -depth)) - 1);
+        const floor = fillSurfacePatch({
+            profile: {outer: sampled(opening, floorChart)},
+            chart: floorChart,
+            region: floorRegion,
+            maxDeviation: 0.005,
+            precision: policy
+        });
+        floorIds = opening.map((_, i) => vertices.push(
+            floor.geometry.vertices[i]!.clone()
+        ) - 1);
+        const floorVertexIds = [...floorIds];
+        for (let i = opening.length; i < floor.geometry.vertices.length; i++) {
+            floorVertexIds.push(vertices.push(
+                floor.geometry.vertices[i]!.clone()
+            ) - 1);
+        }
+
         const length = opening.length;
+        let distance = 0;
         for (let i = 0; i < length; i++) {
             const next = (i + 1) % length;
             const a = newIds[i]!;
             const b = newIds[next]!;
             const c = floorIds[i]!;
             const d = floorIds[next]!;
-            const distance = vertices[a]!.distanceTo(vertices[b]!);
+            const nextDistance = distance +
+                vertices[a]!.distanceTo(vertices[b]!);
             quads.push({
                 corners: [b, a, c, d],
                 uvs: [
+                    new THREE.Vector2(nextDistance, 0),
                     new THREE.Vector2(distance, 0),
-                    new THREE.Vector2(0, 0),
-                    new THREE.Vector2(0, depth),
-                    new THREE.Vector2(distance, depth)
+                    new THREE.Vector2(distance, depth),
+                    new THREE.Vector2(nextDistance, depth)
                 ],
                 surface: wallRegion
             });
+            distance = nextDistance;
         }
         floorStart = faces.length;
-        for (const triangle of triangulateProfile([opening], policy)) {
-            const corners = triangle.map(i => floorIds[i]!) as
-                TriangleFace["corners"];
+        for (const face of floor.geometry.triangles ?? []) {
             faces.push({
-                corners,
-                uvs: triangle.map(i => opening[i]!.clone()) as
-                    TriangleFace["uvs"],
+                corners: face.corners.map(i => floorVertexIds[i]!) as
+                    TriangleFace["corners"],
+                uvs: face.uvs.map(uv => uv.clone()) as TriangleFace["uvs"],
                 surface: floorRegion
             });
         }
@@ -584,23 +693,12 @@ function edited(
     (patches[patchName] ??= []).push(replacement);
 
     if (recess) {
-        const floorChart = {
-            at: (uv: THREE.Vector2Like) =>
-                new THREE.Vector3().copy(patch.chart.at(uv))
-                    .addScaledVector(normal, -recess.depth),
-            parameterOf: (point: THREE.Vector3Like) =>
-                patch.chart.parameterOf(
-                    new THREE.Vector3().copy(point)
-                        .addScaledVector(normal, recess.depth)
-                ),
-            normalAt: () => normal.clone()
-        };
         const floor: SurfacePatchRef = {
             owner: result.id,
             faces: Array.from({length: floorCount}, (_, i) => ({
                 kind: "triangle" as const, index: floorStart + i
             })),
-            chart: floorChart
+            chart: floorChart!
         };
         if (!patchChartMatches(result, floor, policy)) {
             fail("invalid-topology", "Recess floor lost its chart");
