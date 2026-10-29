@@ -150,7 +150,9 @@ function validateOutline(
     if (!points.every(point =>
         inside(point, loops[0]!.uv, tolerance) &&
         loops.slice(1).every(hole => !inside(point, hole.uv, tolerance))
-    ) || loops.some(loop => loopEdges(points, loop.uv, tolerance))) {
+    ) || loops.some(loop => loopEdges(points, loop.uv, tolerance)) ||
+        loops.slice(1).some(hole =>
+            inside(hole.uv[0]!, points, tolerance))) {
         fail("unsupported-topology", "Opening must be strictly inside the patch footprint");
     }
 
@@ -255,6 +257,14 @@ function planar(
     if (!(normal.length() > 0)) fail("invalid-input", "Invalid patch normal");
 
     const samples = [
+        ...Array.from(new Set(patch.faces.flatMap(ref => {
+            const face = ref.kind === "quad"
+                ? source.geometry.quads[ref.index]!
+                : source.geometry.triangles![ref.index]!;
+            return face.corners;
+        }))).map(id =>
+            patch.chart.parameterOf(source.geometry.vertices[id]!)
+        ),
         ...loops.flatMap(loop => loop.uv),
         ...outline,
         ...outline.map((from, i) => from.clone()
@@ -298,23 +308,14 @@ function uvMap(
             uv: face.uvs[i]!
         }));
     });
-    let anchors: typeof uvCorners = [];
-    for (let i = 0; i < uvCorners.length && !anchors.length; i++) {
-        for (let j = i + 1; j < uvCorners.length && !anchors.length; j++) {
-            for (let k = j + 1; k < uvCorners.length; k++) {
-                if (Math.abs(cross(
-                    uvCorners[i]!.chart, uvCorners[j]!.chart,
-                    uvCorners[k]!.chart
-                )) > tolerance * tolerance) {
-                    anchors = [uvCorners[i]!, uvCorners[j]!, uvCorners[k]!];
-                    break;
-                }
-            }
-        }
+    // Every authored face has a nondegenerate first triangle. One face
+    // determines the affine UV basis; all other corners must obey it.
+    const [a, b, c] = uvCorners;
+    if (!a || !b || !c ||
+        Math.abs(cross(a.chart, b.chart, c.chart)) <=
+            tolerance * tolerance) {
+        fail("degenerate-geometry", "Cannot project patch UVs");
     }
-    if (!anchors.length) fail("degenerate-geometry", "Cannot project patch UVs");
-
-    const [a, b, c] = anchors;
     const base = new THREE.Triangle(
         new THREE.Vector3(a!.chart.x, a!.chart.y, 0),
         new THREE.Vector3(b!.chart.x, b!.chart.y, 0),
