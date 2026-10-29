@@ -77,22 +77,38 @@ export function surfaceTriangles(
         return world;
     });
 
+    const checkFaces = (
+        faces: readonly unknown[],
+        kind: FaceRef["kind"],
+        count: 3 | 4
+    ): void => {
+        faces.forEach((entry, index) => {
+            const face = entry as MeshData["quads"][number];
+            const ref: FaceRef = { kind, index };
+
+            if (
+                !face || !Array.isArray(face.corners) ||
+                face.corners.length !== count ||
+                new Set(face.corners).size !== count ||
+                face.corners.some(id => !Number.isInteger(id) ||
+                    id < 0 || id >= vertices.length) ||
+                !Array.isArray(face.uvs) || face.uvs.length !== count ||
+                face.uvs.some(uv => !uv ||
+                    ![uv.x, uv.y].every(Number.isFinite)) ||
+                typeof face.surface !== "string" || !face.surface.trim()
+            ) {
+                invalid(operation, "Invalid authored face", ref);
+            }
+        });
+    };
+
+    checkFaces(target.geometry.quads, "quad", 4);
+    checkFaces(target.geometry.triangles ?? [], "triangle", 3);
+
     return triangulateAuthoredFaces(target.geometry).map(triangle => {
         const face = triangle.face.kind === "quad"
             ? target.geometry.quads[triangle.face.index]
             : target.geometry.triangles?.[triangle.face.index];
-
-        if (
-            !face ||
-            typeof face.surface !== "string" || !face.surface.trim() ||
-            face.corners.length !== (triangle.face.kind === "quad" ? 4 : 3) ||
-            !Array.isArray(face.uvs) ||
-            face.uvs.length !== face.corners.length ||
-            face.uvs.some(uv =>
-                !uv || ![uv.x, uv.y].every(Number.isFinite))
-        ) {
-            invalid(operation, "Invalid authored face", triangle.face);
-        }
 
         const points = triangle.vertices.map(index => vertices[index]) as
             [THREE.Vector3 | undefined, THREE.Vector3 | undefined, THREE.Vector3 | undefined];
