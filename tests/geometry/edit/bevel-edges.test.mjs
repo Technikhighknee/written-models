@@ -185,3 +185,100 @@ test("a triangular prism cap gets a three-panel bevel without open edges", () =>
     assert.equal(result.boundaries["bevel-lower"][0].vertices.length, 3);
     assert.equal(result.geometry.quads.length, prism.geometry.quads.length + 3);
 });
+
+test("one open manifold edge is beveled with closed physical terminal triangles", () => {
+    const source = box();
+    const edge = topEdges(source)[0];
+    const original = source.geometry.vertices.map(point => point.clone());
+    const result = bevelEdges(source, [edge], () => 0.12);
+    assert.deepEqual(source.geometry.vertices, original);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 3);
+    assert.equal(result.geometry.quads.filter(face =>
+        face.surface === "bevel"
+    ).length, 1);
+    assert.equal(result.geometry.triangles.filter(face =>
+        face.surface === "bevel"
+    ).length, 2);
+    assert.equal(result.boundaries["bevel-upper"].length, 1);
+    assert.equal(result.boundaries["bevel-upper"][0].closed, false);
+    assert.equal(result.boundaries["bevel-lower"][0].closed, false);
+    assert.equal(result.boundaries.topRim, undefined);
+    for (const name of ["bevel-upper", "bevel-lower"]) {
+        const selected = result.boundaries[name][0];
+        assertSelectionOwner(result, selected);
+        assert.equal(selected.vertices.length, 2);
+        assert.equal(topologyOf(result).edgeUses(
+            selected.vertices[0], selected.vertices[1]
+        ).length, 2);
+    }
+    assert.ok(result.patches.top?.length);
+    assertSelectionOwner(result, result.patches.top[0]);
+});
+
+test("open edge chamfer is invariant to the caller's edge direction", () => {
+    const source = box();
+    const e = topEdges(source)[0];
+    const forward = bevelEdges(source, [e], () => 0.08);
+    const reversed = bevelEdges(source, [{
+        owner: source.id, from: e.to, to: e.from
+    }], () => 0.08);
+    assert.equal(topologyOf(reversed).openBoundaries().length, 0);
+    assert.equal(reversed.regions.bevel.length, 3);
+    assert.equal(forward.geometry.triangles.length,
+        reversed.geometry.triangles.length);
+});
+
+test("a full top and bottom bevel retain both independent named rings", () => {
+    const source = box();
+    const bottom = topologyOf(source).regionBoundaries("ny")[0].vertices;
+    const rings = [
+        ...topEdges(source),
+        ...bottom.map((from, i) => ({
+            owner: source.id,
+            from, to: bottom[(i + 1) % bottom.length]
+        }))
+    ];
+    const distances = [];
+    const result = bevelEdges(source, rings, t => {
+        distances.push(t);
+        return 0.14;
+    });
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 8);
+    assert.equal(result.boundaries["bevel-upper"].length, 2);
+    assert.equal(result.boundaries["bevel-lower"].length, 2);
+    assert.deepEqual(distances.map(x => Number(x.toFixed(2))),
+        [0, 0.25, 0.5, 0.75, 0, 0.25, 0.5, 0.75]);
+    for (const rim of result.boundaries["bevel-upper"]) {
+        assertSelectionOwner(result, rim);
+    }
+});
+
+test("unclosed and shared-corner ring sets do not create partial geometry", () => {
+    const source = box();
+    const edges = topEdges(source);
+    assert.throws(
+        () => bevelEdges(source, [
+            ...edges, ...edges
+        ], () => 0.1),
+        error => error.reason === "unsupported-topology"
+    );
+    assert.throws(
+        () => bevelEdges(source, [
+            ...edges, ...edges.slice(0, 1)
+        ], () => 0.1),
+        error => error.reason === "unsupported-topology"
+    );
+});
+
+test("open chamfer rejects a broken or concave dihedral", () => {
+    const source = box();
+    const edge = topEdges(source)[0];
+    assert.throws(
+        () => bevelEdges(source, [edge], () => 2),
+        error => error.reason === "unsupported-topology"
+    );
+});
