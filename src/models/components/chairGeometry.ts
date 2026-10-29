@@ -220,11 +220,11 @@ export function buildChairFrameGeometry(): ChairFrameGeometry {
     add("LowerBackRail", backLeft, backRight,
         new THREE.Vector3(
             -CHAIR.rearX, backHeight,
-            chairRearZ(backHeight) + cm(1.3)
+            chairRearZ(backHeight) + cm(1.1)
         ),
         new THREE.Vector3(
             CHAIR.rearX, backHeight,
-            chairRearZ(backHeight) + cm(1.3)
+            chairRearZ(backHeight) + cm(1.1)
         ),
         cm(5.2), cm(4.1), new THREE.Vector3(0, 1, 0));
 
