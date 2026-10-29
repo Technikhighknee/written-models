@@ -27,10 +27,10 @@ export interface BandAroundProfileOptions {
  * sampling rate plus calculated chord clearance keeps the entire INNER
  * polygon outside the barrel, not just the ring's sampled vertices.
  *
- * Produces a genuine quad control mesh (including the inner face),
- * with smooth circumferential shading and sharp chamfer boundaries.
+ * Produces an authored quad mesh (including the inner face),
+ * with explicit smoothing regions and sharp chamfer boundaries.
  */
-export function bandAroundProfile(
+export function bandAroundProfileData(
     profile: readonly THREE.Vector2Like[],
     {
         y,
@@ -42,7 +42,7 @@ export function bandAroundProfile(
         bevel = 0,
         arc
     }: BandAroundProfileOptions
-): THREE.BufferGeometry {
+): MeshData {
     const bottom = y - width / 2;
     const top = y + width / 2;
 
@@ -215,8 +215,15 @@ export function bandAroundProfile(
         }
     }
 
-    const controlMesh: MeshData = { vertices, quads };
-    return toBufferGeometry(controlMesh, {
+    return { vertices, quads };
+}
+
+/** Compile a profile band for the renderer without losing its authored source. */
+export function bandAroundProfile(
+    profile: readonly THREE.Vector2Like[],
+    options: BandAroundProfileOptions
+): THREE.BufferGeometry {
+    return toBufferGeometry(bandAroundProfileData(profile, options), {
         bottom: 0,
         "lower-bevel": 0,
         outside: 0,

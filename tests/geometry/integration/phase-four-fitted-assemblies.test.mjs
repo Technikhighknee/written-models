@@ -29,6 +29,22 @@ const { getControlOutline } = await toolbox(
     "geometry/mesh/controlOutline.ts"
 );
 
+const { bandAroundProfileData, bandAroundProfile } = await toolbox(
+    "geometry/construction/bandAroundProfile.ts"
+);
+const { bulgedProfile } = await toolbox(
+    "shapes/profiles/bulged.ts"
+);
+const { radialStaves } = await toolbox(
+    "geometry/construction/radialStaves.ts"
+);
+const { surfaceClearance } = await toolbox(
+    "geometry/queries/surfaceClearance.ts"
+);
+const { verifyExteriorPlacement } = await toolbox(
+    "geometry/queries/verifyExteriorPlacement.ts"
+);
+
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
 const uv = (x, y) => new THREE.Vector2(x, y);
 
@@ -218,4 +234,86 @@ test("both diagonal table braces fit the real foot and post footprints", () => {
         assert.ok(footNormal.dot(brace.contacts.startNormal) > 0.99);
         assert.ok(postNormal.dot(brace.contacts.endNormal) > 0.99);
     }
+});
+
+/**
+ * Use the barrel's actual twenty-four stave dimensions, section profile
+ * and hoop sampling. Limit the query to outward wood faces and the
+ * band surface closest to the wood; no invisible cylinder is involved.
+ */
+test("the barrel's real iron band remains outside its faceted staves", () => {
+    const profile = bulgedProfile({
+        height: 0.78,
+        bottomDiameter: 0.52,
+        topDiameter: 0.52,
+        peakDiameter: 0.60,
+        points: 9,
+        curve: "quadratic"
+    });
+    const staves = radialStaves(profile, {
+        count: 24,
+        thickness: 0.024,
+        innerWidthSamples: [0, 1],
+        edgeRoundover: 0.0022
+    });
+    const bandOptions = {
+        y: 0.08,
+        width: 0.028,
+        thickness: 0.0038,
+        clearance: 0.001,
+        bevel: 0.00075,
+        radialSegments: 48,
+        angleOffset: 0
+    };
+    const band = bandAroundProfileData(profile, bandOptions);
+
+    assert.ok(band.quads.some(face => face.surface === "inside"));
+    assert.ok(band.quads.some(face => face.surface === "outside"));
+
+    const compiled = bandAroundProfile(profile, bandOptions);
+    try {
+        assert.equal(getControlOutline(compiled).quadCount,
+            band.quads.length);
+    } finally {
+        compiled.dispose();
+    }
+
+    const shell = { vertices: [], quads: [] };
+    for (const stave of staves) {
+        const offset = shell.vertices.length;
+        shell.vertices.push(...stave.vertices);
+        for (const face of stave.quads) {
+            if (face.surface !== "outer") continue;
+            shell.quads.push({
+                ...face,
+                corners: face.corners.map(index => index + offset)
+            });
+        }
+    }
+
+    const wood = {
+        geometry: shell,
+        localToWorld: new THREE.Matrix4()
+    };
+    const innerBand = {
+        geometry: {
+            vertices: band.vertices,
+            quads: band.quads.filter(face => face.surface === "inside")
+        },
+        localToWorld: new THREE.Matrix4()
+    };
+
+    const clearance = surfaceClearance(innerBand, wood, {
+        minimum: 0.0003
+    });
+    assert.equal(clearance.intersects, false);
+    assert.equal(clearance.meetsMinimum, true);
+    assert.ok(clearance.closestDistance > 0);
+
+    const side = verifyExteriorPlacement(innerBand, wood, {
+        minimum: 0.0003
+    });
+    assert.equal(side.exterior, true);
+    assert.equal(side.ambiguous, false);
+    assert.ok(side.minimumSignedDistance > 0);
 });
