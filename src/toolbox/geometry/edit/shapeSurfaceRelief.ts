@@ -578,6 +578,9 @@ export function shapeSurfaceRelief(
     // Verify the full sampled edge, not just its endpoints.
     for (const edge of boundary) {
         const [a, b] = edge.split(":").map(Number);
+        if (a === undefined || b === undefined) {
+            fail("invalid-topology", "Invalid patch boundary edge");
+        }
         for (const t of [0, 0.25, 0.5, 0.75, 1]) {
             const point = uv[a]!.clone().lerp(uv[b]!, t);
             if (Math.abs(displacement(point).height) > tolerance) {
