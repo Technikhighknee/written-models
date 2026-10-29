@@ -605,6 +605,13 @@ export function shapeSurfaceRelief(
         }
     }
 
+    const charted = (point: THREE.Vector2): THREE.Vector3 => {
+        const base = checkedChart(patch.chart, point, tolerance);
+        const normal = vector3(patch.chart.normalAt(point)).normalize();
+
+        return base.addScaledVector(normal, displacement(point).height);
+    };
+
     // Split marked interior edges once for all incident faces. A centroid
     // fan then reconstructs each affected triangle without a T-junction.
     // Protected boundary edges are never subdivided.
