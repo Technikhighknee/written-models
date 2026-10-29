@@ -2,6 +2,7 @@ import * as THREE from "three";
 import type { MeshData } from "./MeshData";
 import type { GeometryResult } from "../kernel/GeometryResult";
 import { toBufferGeometry } from "./toBufferGeometry";
+import { tintVertices } from "../materials/tintVertices";
 
 export interface SurfaceMeshOptions {
     name: string;
@@ -10,6 +11,8 @@ export interface SurfaceMeshOptions {
     materials: THREE.Material | Readonly<Record<string, THREE.Material>>;
     /** Fallback for loft cap-start / cap-end only. */
     capMaterial?: THREE.Material;
+    /** Per-piece vertex color multiplier; materials must enable vertexColors. */
+    tint?: THREE.ColorRepresentation;
 }
 
 /**
@@ -18,7 +21,7 @@ export interface SurfaceMeshOptions {
  * Never reconstructs or discards the control mesh used by Quad View.
  */
 export function surfaceMesh({
-    name, geometry, materials, capMaterial
+    name, geometry, materials, capMaterial, tint
 }: SurfaceMeshOptions): THREE.Mesh {
     const authored = "geometry" in geometry ? geometry.geometry : geometry;
     const palette: THREE.Material[] = [];
@@ -44,8 +47,13 @@ export function surfaceMesh({
         indices[face.surface] = index;
     }
 
+    const rendered = toBufferGeometry(geometry, indices);
+    if (tint !== undefined) {
+        tintVertices(rendered, new THREE.Color(tint));
+    }
+
     const result = new THREE.Mesh(
-        toBufferGeometry(geometry, indices),
+        rendered,
         palette.length === 1 ? palette[0]! : palette
     );
     result.name = name;
