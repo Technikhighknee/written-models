@@ -4,7 +4,7 @@ import * as THREE from "three";
 
 import { sourceModule, toolbox } from "../../support/toolbox.mjs";
 
-const { buildPlankGeometry, default: plankDefinition } =
+const { buildPlankGeometry } =
     await sourceModule("models/plank.ts");
 const { buildSandingPaperGeometry, default: paperDefinition } =
     await sourceModule("models/sandingpaper.ts");
@@ -22,6 +22,9 @@ const { getControlOutline } = await toolbox(
 );
 const { getControlResult } = await toolbox(
     "geometry/mesh/toBufferGeometry.ts"
+);
+const { surfaceMesh } = await toolbox(
+    "geometry/mesh/surfaceMesh.ts"
 );
 
 const nearly = (actual, expected, tolerance = 1e-9) =>
@@ -67,15 +70,33 @@ test("the migrated plank retains all five curved sections, UVs and actual quads"
         }
     }
 
-    const model = plankDefinition.create();
-    const plank = model.getObjectByName("Plank");
-    assert.ok(plank?.isMesh);
-    assert.equal(getControlResult(plank.geometry)?.id, getControlResult(plank.geometry)?.id);
-    assert.equal(getControlOutline(plank.geometry).quadCount, 18);
-    assert.equal(plank.geometry.groups.length, 2);
-    assert.ok(plank.material.length === 2);
-    assert.equal(plank.geometry.boundingBox.min.z, -0.6);
-    assert.equal(plank.geometry.boundingBox.max.z, 0.6);
+    // The model's wood textures require a DOM canvas; this test checks
+    // the same authored-to-render adapter with independent flat materials.
+    const oak = new THREE.MeshStandardMaterial({ color: "#96744c" });
+    const endGrain = new THREE.MeshStandardMaterial({ color: "#6b4930" });
+    const plank = surfaceMesh({
+        name: "Plank",
+        geometry: newBoard,
+        materials: {
+            "side-0": oak, "side-1": oak,
+            "side-2": oak, "side-3": oak,
+            "cap-start": endGrain, "cap-end": endGrain
+        }
+    });
+    try {
+        assert.ok(getControlResult(plank.geometry));
+        assert.equal(getControlOutline(plank.geometry).quadCount, 18);
+        assert.equal(plank.geometry.groups.length, 2);
+        assert.equal(plank.material.length, 2);
+        assert.equal(plank.material[0], oak);
+        assert.equal(plank.material[1], endGrain);
+        nearly(plank.geometry.boundingBox.min.z, -0.6, 1e-7);
+        nearly(plank.geometry.boundingBox.max.z, 0.6, 1e-7);
+    } finally {
+        plank.geometry.dispose();
+        oak.dispose();
+        endGrain.dispose();
+    }
 });
 
 test("the sanding sheet's authored field matches the previous silhouette", () => {
@@ -123,9 +144,11 @@ test("the sanding sheet's authored field matches the previous silhouette", () =>
     assert.equal(surfaces.get("py"), 12 * 16);
     assert.equal(surfaces.get("ny"), 12 * 16);
     assert.ok(paper.geometry.groups.length >= 2);
-    assert.equal(paper.material[0].name, paper.material[0].name);
-    assert.notEqual(paper.material[0].color.getHex(),
-        paper.material[1].color.getHex());
+    assert.equal(paper.material.length, 2);
+    assert.equal(paper.material[0].color.getHex(),
+        new THREE.Color("#c8b291").getHex());
+    assert.equal(paper.material[1].color.getHex(),
+        new THREE.Color("#554d40").getHex());
 
     const bound = new THREE.Box3().setFromObject(model);
     nearly(bound.min.y, 0.001, 1e-9);
