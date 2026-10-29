@@ -1022,12 +1022,34 @@ and outside its holes. This is stricter than testing only vertices:
 an edge joining two interior points can leave a concave patch.
 The caller can explicitly select a different support patch.
 
-Curved-boundary fitting accepts an ordered boundary loop, records
-hits for every station, and returns newly displaced geometry.
-It does not invent new stations: any required boundary refinement
-must be completed, including shared-interface propagation, before
-fitting. It leaves independent solids topologically independent. Clearance is a signed offset
-along the target hit normal, measured in world meters.
+Curved-boundary fitting (`fitBoundary`) accepts an owned,
+ordered open or closed edge chain, records target contacts for each
+existing vertex and returns a new `GeometryResult`. The source
+and target have independent local-to-world transforms; the output
+remains in source-local coordinates. Ray projection travels only
+forward along the requested direction, with the nearest front-facing
+intersection and finite maximum travel. Closest projection uses the
+nearest finite authored triangle and rejects contacts approached
+from its back side. Signed clearance is applied along the target's
+winding-based world normal, never along global Z or automatically
+along the ray.
+
+Falloff blends the fitted displacement over an authored-edge graph,
+limited to the requested number of rings. Vertices belonging to
+independent named or actual open rims are protected; a shared
+vertex explicitly selected by the fitted chain necessarily moves
+with that chain. All selected stations remain present, with no new
+subdivisions, face IDs or UV seams. After fitting, face orientation,
+contact tolerance and independent boundary preservation are
+validated in world space. Surface charts invalidated by arbitrary
+curved deformation are discarded and named selections receive
+new owners.
+
+This is contact, not a Boolean union or weld. Refinement and
+shared-interface propagation must be performed before fitting;
+the function does not invent intermediate contact stations or
+guarantee that the continuous *unsampled* source rim conforms to
+the continuous target between authored vertices.
 
 Queries operate on authored geometry plus a transform. A triangle
 acceleration structure or render-backed ray implementation may be
