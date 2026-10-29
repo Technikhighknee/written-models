@@ -109,6 +109,38 @@ function checkSelections(result) {
     }
 }
 
+function physicalVolume(result) {
+    let sum = 0;
+    for (const face of [
+        ...result.geometry.quads, ...result.geometry.triangles
+    ]) {
+        const first = result.geometry.vertices[face.corners[0]];
+        for (let index = 1; index < face.corners.length - 1; index++) {
+            const second = result.geometry.vertices[face.corners[index]];
+            const third = result.geometry.vertices[face.corners[index + 1]];
+            sum += first.dot(second.clone().cross(third)) / 6;
+        }
+    }
+    return sum;
+}
+
+function uvSeamCount(result) {
+    const coordinates = new Map();
+    for (const face of [
+        ...result.geometry.quads, ...result.geometry.triangles
+    ]) {
+        for (let i = 0; i < face.corners.length; i++) {
+            const vertex = face.corners[i];
+            const uv = face.uvs[i];
+            const key = vertex;
+            const unique = coordinates.get(key) ?? new Set();
+            unique.add(uv.x.toFixed(6) + ":" + uv.y.toFixed(6));
+            coordinates.set(key, unique);
+        }
+    }
+    return [...coordinates.values()].filter(values => values.size > 1).length;
+}
+
 function faceUVsAreFinite(result) {
     for (const face of [
         ...result.geometry.quads, ...result.geometry.triangles
@@ -202,6 +234,10 @@ test("planar pocket -> capped split -> exact quad floor reconstruction", () => {
             floorRegion: "pocket-floor"
         });
     closed(pocket);
+    assert.ok(Math.abs(physicalVolume(source) - 8) < 1e-8);
+    assert.ok(Math.abs(physicalVolume(pocket) -
+        (8 - 0.7 * 0.7 * 0.4)) < 1e-6);
+    assert.ok(uvSeamCount(pocket) > 0);
     assert.equal(pocket.regions["pocket-wall"].length, 4);
     assert.equal(pocket.boundaries.upperRim.length, 1);
     checkSelections(pocket);
@@ -212,6 +248,9 @@ test("planar pocket -> capped split -> exact quad floor reconstruction", () => {
     }, {cap: true, cutRegion: "sawn-section"});
     assert.equal(partition.parts.length, 2);
     assert.equal(partition.interfaces.length, 1);
+    assert.ok(Math.abs(partition.parts.reduce(
+        (sum, part) => sum + physicalVolume(part), 0
+    ) - physicalVolume(pocket)) < 1e-6);
 
     for (const part of partition.parts) {
         closed(part);
@@ -253,6 +292,11 @@ test("through-bore -> annular plane split -> Boolean trim retains real interior 
     }, {cap: true, cutRegion: "annular-saw"});
     assert.equal(split.parts.length, 2);
     assert.equal(split.interfaces.length, 2);
+    assert.ok(Math.abs(physicalVolume(bored) -
+        (8 - 0.64 * 0.64 * 2)) < 1e-6);
+    assert.ok(Math.abs(split.parts.reduce(
+        (sum, part) => sum + physicalVolume(part), 0
+    ) - physicalVolume(bored)) < 1e-6);
     for (const part of split.parts) {
         closed(part);
         assert.ok(part.regions["through-wall"]?.length);
@@ -267,8 +311,13 @@ test("through-bore -> annular plane split -> Boolean trim retains real interior 
         Object.keys(carved.regions).some(name => name.startsWith("cut:")));
     assert.ok(carved.regions["first:through-wall"]?.length);
     faceUVsAreFinite(carved);
+    assert.ok(physicalVolume(carved) > 0);
+    assert.ok(physicalVolume(carved) < physicalVolume(upper));
+    assert.ok(uvSeamCount(carved) > 0);
     assert.equal(carved.geometry.quads.length, 0);
-    return render(carved, "BoreTrim").mesh.geometry.dispose();
+    const {mesh, materials} = render(carved, "BoreTrim");
+    mesh.geometry.dispose();
+    Object.values(materials).forEach(material => material.dispose());
 });
 
 test("curved recess and curved opening preserve exact contour stations and distinct UV regions", () => {
@@ -319,6 +368,9 @@ test("non-box extrusion -> plane partition -> Boolean -> Quad View and runtime G
     }, {cap: true, cutRegion: "hex-cross-section"});
     assert.equal(split.parts.length, 2);
     assert.equal(split.interfaces.length, 1);
+    assert.ok(Math.abs(split.parts.reduce(
+        (sum, part) => sum + physicalVolume(part), 0
+    ) - physicalVolume(prism)) < 1e-6);
     for (const part of split.parts) {
         closed(part);
         faceUVsAreFinite(part);
@@ -328,6 +380,8 @@ test("non-box extrusion -> plane partition -> Boolean -> Quad View and runtime G
     const cutter = box(0.65, 0.72, 0.6, [0.58, 0.18, 1.55]);
     const result = await booleanSolids(positive, cutter, "difference");
     closed(result);
+    assert.ok(physicalVolume(result) > 0);
+    assert.ok(physicalVolume(result) < physicalVolume(positive));
     assert.ok(Object.keys(result.regions).some(region =>
         region.startsWith("cut:")
     ));
