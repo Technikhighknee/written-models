@@ -4,7 +4,13 @@ import { boardedSurface } from "./components/boardedSurface";
 import { offsetMeshUvs as offsetAuthoredUvs } from "../toolbox/geometry/edit/geometryEdits";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import type { GeometryResult } from "../toolbox/geometry/kernel/GeometryResult";
-import { tableTimberGeometry } from "./components/tableTimberGeometry";
+import {
+    tableTimberGeometry,
+    tableTimberBetweenSurfaces,
+    type TableTimberGeometry
+} from "./components/tableTimberGeometry";
+import { getControlResult } from "../toolbox/geometry/mesh/toBufferGeometry";
+import type { TimberContactNormals } from "../toolbox/geometry/construction/timber";
 import {
     createTrestleSupport,
     type TrestleTimberFactory,
@@ -24,6 +30,16 @@ interface TopSpec {
     crown: number;
 }
 
+const TABLE_TOP: TopSpec = {
+    length: m(1.8),
+    depth: cm(90),
+    thickness: cm(5),
+    surfaceHeight: cm(76),
+    boardWeights: [1.07, 0.94, 1.03, 0.96],
+    chamfer: mm(3),
+    crown: mm(0.6)
+};
+
 export default {
     create,
     slug: "table",
@@ -35,17 +51,7 @@ function create(): THREE.Group {
     const table = new THREE.Group();
     table.name = "TavernTable";
 
-    // A six-person tavern table, built at real-world meter scale.
-    // The slab and its two trestles are sized together, not scaled afterward.
-    const topSpec: TopSpec = {
-        length: m(1.8),
-        depth: cm(90),
-        thickness: cm(5),
-        surfaceHeight: cm(76),
-        boardWeights: [1.07, 0.94, 1.03, 0.96],
-        chamfer: mm(3),
-        crown: mm(0.6)
-    };
+    const topSpec = TABLE_TOP;
 
     const topCenterHeight = topSpec.surfaceHeight - topSpec.thickness / 2;
     const top = new THREE.Group();
@@ -60,15 +66,9 @@ function create(): THREE.Group {
 }
 
 /** The tabletop is authored before material or render geometry creation. */
-export function buildTabletopGeometry(spec: TopSpec = {
-    length: m(1.8),
-    depth: cm(90),
-    thickness: cm(5),
-    surfaceHeight: cm(76),
-    boardWeights: [1.07, 0.94, 1.03, 0.96],
-    chamfer: mm(3),
-    crown: mm(0.6)
-}): GeometryResult[] {
+export function buildTabletopGeometry(
+    spec: TopSpec = TABLE_TOP
+): GeometryResult[] {
     return boardedSurface({
         length: spec.length,
         width: spec.depth,
@@ -127,12 +127,35 @@ function buildTrestles(
     topCenterHeight: number
 ): void {
     let timberNumber = 0;
+    const members = new Map<string, THREE.Mesh>();
+
+    function asSurface(
+        mesh: THREE.Mesh,
+        parentTransform = new THREE.Matrix4()
+    ) {
+        const data = getControlResult(mesh.geometry)?.geometry;
+        if (!data) {
+            throw new Error("Trestle part has no authored geometry");
+        }
+
+        mesh.updateMatrix();
+        return {
+            geometry: data,
+            localToWorld: parentTransform.clone().multiply(mesh.matrix)
+        };
+    }
 
     // A fixed set of related oak cuts, and dedicated UV windows, keep
     // the framing related to the tabletop without repeating its pattern.
-    const timber: TrestleTimberFactory = (
-        name, start, end, width, depth, contacts
-    ) => {
+    const createTimber = (
+        name: string,
+        start: THREE.Vector3,
+        end: THREE.Vector3,
+        width: number,
+        depth: number,
+        contacts?: TimberContactNormals,
+        supplied?: TableTimberGeometry
+    ): THREE.Mesh => {
         const piece = timberNumber++;
         const seed = (piece * 5 + 1) % 8;
         const material = oakVariant(seed);
@@ -145,8 +168,19 @@ function buildTrestles(
             v: (piece * cm(31)) % cm(49)
         };
 
-        const member = tableTimberGeometry(
-            start, end, width, depth, contacts
+        const brace = contacts && (name === "BraceBack" ||
+            name === "BraceFront");
+        const foot = members.get("Foot");
+        const post = members.get("Post");
+        const member = supplied ?? (
+            brace && foot && post
+                ? tableTimberBetweenSurfaces({
+                    first: {target: asSurface(foot), near: start},
+                    last: {target: asSurface(post), near: end},
+                    width, depth,
+                    referenceDirection: new THREE.Vector3(1, 0, 0)
+                })
+                : tableTimberGeometry(start, end, width, depth, contacts)
         );
         const geometry = offsetAuthoredUvs(
             member.geometry, uvOffset.u, uvOffset.v
@@ -175,8 +209,10 @@ function buildTrestles(
             tint: new THREE.Color(0.97, 0.97, 0.97)
         });
         beam.applyMatrix4(member.localToParent);
+        members.set(name, beam);
         return beam;
     };
+    const timber: TrestleTimberFactory = createTimber;
 
     const support: TrestleSupportOptions = {
         height: spec.surfaceHeight - spec.thickness,
@@ -191,13 +227,16 @@ function buildTrestles(
     };
 
     const supportX = cm(60);
+    const trestles = new Map<string, THREE.Group>();
 
     for (const [name, x] of [
         ["LeftTrestle", -supportX],
         ["RightTrestle", supportX]
     ] as const) {
+        members.clear();
         const trestle = createTrestleSupport(support, timber);
         trestle.name = name;
+        trestles.set(name, trestle);
 
         // All framing belongs to the table top's coordinate frame.
         // Reposition or rotate TableTop, and the whole assembly follows.
@@ -205,16 +244,30 @@ function buildTrestles(
         parent.add(trestle);
     }
 
-    // Longitudinal tie between the inside faces of both upright posts.
-    // The ends meet the posts, not empty space or the outer foot.
-    const insideX = supportX - support.postWidth / 2;
-    const tieHeight = cm(34);
-    const tie = timber(
+    // Resolve the complete tie ends against the *actual* inward post
+    // faces, including finite footprint checks, in TableTop coordinates.
+    const left = trestles.get("LeftTrestle")!;
+    const right = trestles.get("RightTrestle")!;
+    const leftPost = left.getObjectByName("Post") as THREE.Mesh;
+    const rightPost = right.getObjectByName("Post") as THREE.Mesh;
+    left.updateMatrix();
+    right.updateMatrix();
+
+    const tieHeight = cm(34) - topCenterHeight;
+    const start = new THREE.Vector3(-supportX, tieHeight, 0);
+    const end = new THREE.Vector3(supportX, tieHeight, 0);
+    const fittedTie = tableTimberBetweenSurfaces({
+        first: {target: asSurface(leftPost, left.matrix), near: start},
+        last: {target: asSurface(rightPost, right.matrix), near: end},
+        width: cm(10.5),
+        depth: cm(10.5),
+        referenceDirection: new THREE.Vector3(0, 1, 0)
+    });
+
+    parent.add(createTimber(
         "LongStretcher",
-        new THREE.Vector3(-insideX, tieHeight - topCenterHeight, 0),
-        new THREE.Vector3(insideX, tieHeight - topCenterHeight, 0),
-        cm(10.5),
-        cm(10.5)
-    );
-    parent.add(tie);
+        start, end,
+        cm(10.5), cm(10.5),
+        undefined, fittedTie
+    ));
 }
