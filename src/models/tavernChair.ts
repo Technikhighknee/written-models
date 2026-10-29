@@ -21,7 +21,7 @@ export default {
 const SEAT_HEIGHT = cm(46);
 const SEAT_THICKNESS = cm(3.8);
 const SEAT_UNDERSIDE = SEAT_HEIGHT - SEAT_THICKNESS;
-const APRON_Y = SEAT_UNDERSIDE - cm(8.3) / 2;
+const APRON_Y = SEAT_UNDERSIDE - cm(8.3) / 2 - mm(2);
 const SEAT_WIDTH = cm(49);
 const SEAT_BACK = -cm(26.2);
 const SEAT_REAR_BOARD_FRONT = -cm(8.7);

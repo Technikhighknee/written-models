@@ -148,7 +148,7 @@ test("chair seat and low rails fit the finite faces of the front legs", () => {
     );
 
     for (const [height, width, depth] of [
-        [0.422 - 0.083 / 2, 0.083, 0.042],
+        [0.422 - 0.083 / 2 - 0.002, 0.083, 0.042],
         [0.180, 0.044, 0.042]
     ]) {
         const fitted = fitBetweenSurfaces({
