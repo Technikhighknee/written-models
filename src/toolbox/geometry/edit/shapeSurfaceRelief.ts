@@ -605,16 +605,12 @@ export function shapeSurfaceRelief(
         }
     }
 
-    // A single conforming reconstruction: centroids refine only their
-    // own triangle. Shared original edges never acquire one-sided splits.
-    const charted = (point: THREE.Vector2) => {
-        const base = checkedChart(patch.chart, point, tolerance);
-        const normal = vector3(patch.chart.normalAt(point)).normalize();
-        return base.addScaledVector(normal, displacement(point).height);
-    };
-
-    for (let iteration = 0; iteration < 13; iteration++) {
-        const pending: number[] = [];
+    // Split marked interior edges once for all incident faces. A centroid
+    // fan then reconstructs each affected triangle without a T-junction.
+    // Protected boundary edges are never subdivided.
+    for (let iteration = 0; iteration < 12; iteration++) {
+        const marked = new Set<number>();
+        const split = new Map<string, [number, number]>();
 
         for (let i = 0; i < triangles.length; i++) {
             const [a, b, c] = triangles[i]!;
@@ -625,24 +621,89 @@ export function shapeSurfaceRelief(
                 .add(charted(uv[c]!)).multiplyScalar(1 / 3);
 
             if (actual.distanceTo(estimated) > maxDeviation) {
-                pending.push(i);
+                marked.add(i);
+            }
+
+            for (const [from, to] of [
+                [a, b], [b, c], [c, a]
+            ] as const) {
+                const key = edgeKey(from, to);
+                if (split.has(key)) continue;
+
+                const midpoint = uv[from]!.clone().add(uv[to]!)
+                    .multiplyScalar(0.5);
+                const middle = charted(midpoint);
+                const linear = charted(uv[from]!).add(charted(uv[to]!))
+                    .multiplyScalar(0.5);
+
+                if (middle.distanceTo(linear) <= maxDeviation) continue;
+                if (boundary.has(key)) {
+                    fail(
+                        "sampling-limit",
+                        "A shared rim needs coordinated resampling before relief"
+                    );
+                }
+                split.set(key, [from, to]);
             }
         }
 
-        if (!pending.length) break;
-        if (iteration === 12 || triangles.length + pending.length * 2 > 60000) {
-            fail("sampling-limit", "Relief detail exceeds the interior sampling budget");
-        }
-
-        for (const index of pending.reverse()) {
-            const [a, b, c] = triangles[index]!;
-            const center = uv[a]!.clone().add(uv[b]!).add(uv[c]!)
-                .multiplyScalar(1 / 3);
-            const id = uv.push(center) - 1;
-            triangles.splice(index, 1,
-                [a, b, id], [b, c, id], [c, a, id]
+        if (!marked.size && !split.size) break;
+        if (iteration === 11 ||
+            triangles.length * 4 > 60000) {
+            fail(
+                "sampling-limit",
+                "Relief detail exceeds the interior sampling budget"
             );
         }
+
+        const midpoints = new Map<string, number>();
+        for (const [key, [from, to]] of split) {
+            const point = uv[from]!.clone().add(uv[to]!)
+                .multiplyScalar(0.5);
+            midpoints.set(key, uv.push(point) - 1);
+        }
+
+        const refined: Triangle[] = [];
+
+        triangles.forEach((face, index) => {
+            const outline: number[] = [];
+            let affected = marked.has(index);
+
+            for (let corner = 0; corner < 3; corner++) {
+                const a = face[corner]!;
+                const b = face[(corner + 1) % 3]!;
+                outline.push(a);
+
+                const middle = midpoints.get(edgeKey(a, b));
+                if (middle !== undefined) {
+                    outline.push(middle);
+                    affected = true;
+                }
+            }
+
+            if (!affected) {
+                refined.push(face);
+                return;
+            }
+
+            const center = uv[face[0]]!.clone()
+                .add(uv[face[1]]!).add(uv[face[2]]!)
+                .multiplyScalar(1 / 3);
+            const centerId = uv.push(center) - 1;
+
+            for (let i = 0; i < outline.length; i++) {
+                refined.push([
+                    outline[i]!,
+                    outline[(i + 1) % outline.length]!,
+                    centerId
+                ]);
+            }
+        });
+
+        if (refined.length > 60000) {
+            fail("sampling-limit", "Relief exceeded its topology budget");
+        }
+        triangles.splice(0, triangles.length, ...refined);
     }
 
     for (let i = originalPositions.length; i < uv.length; i++) {
