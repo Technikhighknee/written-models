@@ -356,9 +356,10 @@ function offsetChart(
             }
             const uv = new THREE.Vector2(guess.x, guess.y);
             const target = new THREE.Vector3().copy(point);
-            for (let iteration = 0; iteration < 24; iteration++) {
+            const inverseTolerance = Math.min(1e-10, tolerance * 0.05);
+            for (let iteration = 0; iteration < 32; iteration++) {
                 const residual = target.clone().sub(offset(uv));
-                if (residual.length() <= tolerance) return uv;
+                if (residual.length() <= inverseTolerance) return uv;
                 const u = tangent(uv, "x");
                 const v = tangent(uv, "y");
                 const uu = u.dot(u);
@@ -377,8 +378,8 @@ function offsetChart(
                 }
                 uv.x += du;
                 uv.y += dv;
-                if (Math.hypot(du, dv) <= tolerance &&
-                    offset(uv).distanceTo(target) <= tolerance * 4) {
+                if (Math.hypot(du, dv) <= inverseTolerance &&
+                    offset(uv).distanceTo(target) <= inverseTolerance) {
                     return uv;
                 }
             }
