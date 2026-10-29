@@ -77,6 +77,11 @@ export function bevelEdges(
         }
         return bevelArticulatedChain(source, edges, width, policy);
     }
+    if (edges.length <= 4 && edges.at(-1)!.to !== edges[0]!.from &&
+        !edges.every((edge, i) => i === 0 ||
+            edges[i - 1]!.to === edge.from)) {
+        fail("invalid-topology", "Open bevel edges must be contiguous and ordered");
+    }
     if (edges.length > 4) {
         const loops: EdgeRef[][] = [];
         const used = new Set<number>();
