@@ -231,9 +231,18 @@ UVs and local geometry survive to GLB.
 **Result:** Geometry finds real contacts and retains the mug's
 dynamic cavity behavior.
 
-- [ ] **4.1** Query authored faces through explicit geometric
+- [x] **4.1** Query authored faces through explicit geometric
       transforms with source-face provenance, barycentrics,
       winding-based normals and a separate front-facing flag.
+      `raycastSurface` and the shared `surfaceTriangles` world-space
+      adapter use the same authored quad split and face-corner provenance
+      as the renderer. Rays return nearest hits in world metres without
+      flipping geometric normals; negative determinants, nonuniform
+      scale, shears, nonplanar quads, UV seams and miss/distance limits
+      are exercised. Malformed raw faces and noninvertible transforms
+      fail with typed errors. Verified in
+      `tests/geometry/queries/surface-query.test.mjs`
+      (`e139c86` through `7ab09b6`).
 - [ ] **4.2** Select finite support patches by position/orientation
       and fit member sections against their complete footprints,
       including concavities and holes.
