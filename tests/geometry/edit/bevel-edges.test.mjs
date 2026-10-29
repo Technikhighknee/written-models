@@ -5,6 +5,8 @@ import * as THREE from "three";
 import {toolbox} from "../../support/toolbox.mjs";
 
 const {bevelEdges} = await toolbox("geometry/edit/bevelEdges.ts");
+const {subdivideEdges} = await toolbox("geometry/edit/subdivideEdges.ts");
+const {splitByPlane} = await toolbox("geometry/edit/splitByPlane.ts");
 const {boxMesh} = await toolbox("geometry/construction/boxMesh.ts");
 const {extrudeContour} = await toolbox("geometry/build/extrudeContour.ts");
 const {geometryResult, assertSelectionOwner} = await toolbox(
@@ -325,5 +327,29 @@ test("one edge shared by two triangular sheets can be chamfered without touching
     assert.ok(result.regions.second.length >= 2);
     for (const id of [0, 1, 2, 3]) {
         assert.ok(result.geometry.vertices[id].equals(source.geometry.vertices[id]));
+    }
+});
+
+test("an open chamfer survives later subdivision and a capped plane split", () => {
+    const source = box();
+    const beveled = bevelEdges(source, [topEdges(source)[0]], () => 0.12);
+    const rim = beveled.boundaries["bevel-upper"][0].vertices;
+    const refined = subdivideEdges(beveled, [{
+        edge: {owner: beveled.id, from: rim[0], to: rim[1]},
+        t: 0.5
+    }]);
+    assert.equal(topologyOf(refined).openBoundaries().length, 0);
+    assert.equal(refined.boundaries["bevel-upper"][0].vertices.length, 3);
+
+    const partition = splitByPlane(refined, {
+        point: new THREE.Vector3(0, 0, 0),
+        normal: new THREE.Vector3(0, 1, 0)
+    }, {cap: true, cutRegion: "cross-section"});
+    assert.equal(partition.parts.length, 2);
+    assert.equal(partition.interfaces.length, 1);
+    for (const part of partition.parts) {
+        assert.equal(topologyOf(part).openBoundaries().length, 0);
+        assert.equal(topologyOf(part).connectedComponents().length, 1);
+        assert.ok(part.regions["cross-section"].length > 0);
     }
 });
