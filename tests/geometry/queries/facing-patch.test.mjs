@@ -119,7 +119,8 @@ test("disconnected coplanar islands are not silently joined into one support", (
         ...face,
         corners: face.corners.map(id => id + offset)
     })));
-    geometry.triangles.push(...shifted.triangles.map(face => ({
+    geometry.triangles ??= [];
+    geometry.triangles.push(...(shifted.triangles ?? []).map(face => ({
         ...face,
         corners: face.corners.map(id => id + offset)
     })));
