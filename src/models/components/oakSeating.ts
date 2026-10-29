@@ -98,6 +98,10 @@ export function oakPlankPanel(spec: OakPanel): THREE.Group {
 }
 
 export interface OakTimberShop {
+    timberFromGeometry(
+        name: string,
+        member: TableTimberGeometry
+    ): THREE.Mesh;
     timber(
         name: string,
         start: THREE.Vector3,
@@ -171,6 +175,7 @@ export function oakTimberShop(seed: number): OakTimberShop {
     };
 
     return {
+        timberFromGeometry: timberMesh,
         timber(name, start, end, width, depth, contacts) {
             return timberMesh(name, tableTimberGeometry(
                 start, end, width, depth, contacts
