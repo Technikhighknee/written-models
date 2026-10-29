@@ -10,7 +10,6 @@ import {
     resolvePrecision,
     type GeometryPrecision
 } from "../kernel/precision";
-import { contourWinding } from "../topology/contours";
 
 export interface MeshRegionTarget {
     geometry: MeshData;
@@ -271,6 +270,12 @@ export function cavitySectionsFromSurfaces({
         const mesh: MeshData = pieces[input.piece]!.geometry;
         for (const index of input.selected) {
             const face: MeshData["quads"][number] = mesh.quads[index]!;
+            if (!face || !Array.isArray(face.corners) ||
+                face.corners.length !== 4) {
+                fail("invalid-input", "Invalid wall face", {
+                    face: { kind: "quad", index }
+                });
+            }
             const ids: number[] = face.corners.map((id: number) => input.start + id);
             if (ids.some(id =>
                 !Number.isInteger(id) || id < input.start ||
@@ -376,7 +381,7 @@ export function cavitySectionsFromSurfaces({
 
     for (const y of heights) {
         const stations = new Map<number, THREE.Vector2>();
-        const segments = new Map<string, number>();
+        const segments = new Map<string, WallCell[]>();
         const adjacency = new Map<number, Set<number>>();
 
         for (const cell of cells) {
@@ -412,20 +417,25 @@ export function cavitySectionsFromSurfaces({
             }
 
             const key = [first, last].sort((l, r) => l - r).join(":");
-            const count = (segments.get(key) ?? 0) + 1;
-            if (count > 1 &&
-                !(Math.abs(y - cell.bottom) <= tolerance ||
-                    Math.abs(y - cell.top) <= tolerance)) {
-                fail("invalid-topology", "Doubled cavity section edge", {
-                    face: cell.face
-                });
+            const contributors = segments.get(key) ?? [];
+            if (contributors.length) {
+                const other = contributors[0]!;
+                const legitimateRowJoin =
+                    contributors.length === 1 &&
+                    other.piece === cell.piece &&
+                    (Math.abs(other.top - y) <= tolerance &&
+                        Math.abs(cell.bottom - y) <= tolerance ||
+                    Math.abs(other.bottom - y) <= tolerance &&
+                        Math.abs(cell.top - y) <= tolerance);
+
+                if (!legitimateRowJoin) {
+                    fail("invalid-topology",
+                        "Cavity row edge is doubled without adjacent longitudinal provenance",
+                        { face: cell.face });
+                }
             }
-            if (count > 2) {
-                fail("invalid-topology", "Ambiguous duplicated cavity row edge", {
-                    face: cell.face
-                });
-            }
-            segments.set(key, count);
+            contributors.push(cell);
+            segments.set(key, contributors);
             (adjacency.get(first) ?? adjacency.set(first, new Set())
                 .get(first)!).add(last);
             (adjacency.get(last) ?? adjacency.set(last, new Set())
@@ -469,8 +479,13 @@ export function cavitySectionsFromSurfaces({
                 fail("invalid-topology",
                     "Multiple disconnected cavity loops");
             }
-            if (contourWinding(order.map(id => stations.get(id)!)) ===
-                "clockwise") {
+            const initialArea = signedArea(
+                order.map(id => stations.get(id)!)
+            );
+            if (Math.abs(initialArea) <= tolerance * tolerance) {
+                fail("degenerate-geometry", "Cavity contour has no winding");
+            }
+            if (initialArea < 0) {
                 order = [order[0]!, ...order.slice(1).reverse()];
             }
             reference = order;
