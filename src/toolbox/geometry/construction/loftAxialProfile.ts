@@ -1,9 +1,8 @@
 import type { MeshData } from "../mesh/MeshData";
 import { loftRings } from "./loftRings";
 import {
-    sampleAxialSections, axialStationPoint,
-    type AxialProfileStation, type ProfileAxis,
-    type ProfileSmoothing, type RadialWave,
+    sampleAxialSections,
+    axialStationPoint,
     type LoftAxialProfileOptions
 } from "../build/sampleAxialSections";
 
