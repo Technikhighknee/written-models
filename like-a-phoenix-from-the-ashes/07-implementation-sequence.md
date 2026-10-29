@@ -191,10 +191,18 @@ independent pieces with precise adjoining geometry.
       patches. Transform charts snapshot caller matrices. Tests cover
       partial welds, cap aliases, invalid charts, stale selections and
       transform ownership (`8af6297` through `6a477e4`).
-- [ ] **3.8** Implement `classifyAuthoredFaces` with owned region
+- [x] **3.8** Implement `classifyAuthoredFaces` with owned region
       updates, centralize physical UV projection and per-piece render
       tint/variation. Classification uses authored faces rather
       than GPU render index groups.
+      `classifyAuthoredFaces` evaluates authored quad/triangle normals
+      and area-weighted centroids, reissues regions and surviving
+      selections. `projectAuthoredUvs` assigns independent face-corner
+      coordinates using any projector; `planarUvProjector` derives
+      physical metres from a rigid frame. `surfaceMesh` can apply
+      per-piece vertex tint to render buffers without modifying source
+      geometry or materials. Verified in material, UV and integration
+      tests (`ccab36a` through `9059bad`).
 - [ ] **3.9** Reproduce the tabletop's worn but coherent plank seams,
       the barrel head's detailed outer/simple inner faces, and
       the chair's slanted rear-seat corner housings.
