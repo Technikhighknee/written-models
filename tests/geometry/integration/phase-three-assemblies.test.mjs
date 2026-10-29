@@ -70,13 +70,14 @@ function patchFromContour(contour, stations, surfaceChart, region) {
 test("raked chair housings retain their distinct top and bottom corners", () => {
     const top = notchedSeatContour(0.038, 0.015);
     const bottom = notchedSeatContour(0, 0.035);
-    const matched = correspondContours(top, bottom, [
-        { id: "front-left", first: 0, second: 0 },
-        { id: "front-right", first: 1, second: 1 },
-        { id: "right-housing", first: 3, second: 3 },
-        { id: "back-left", first: 5, second: 5 },
-        { id: "left-housing", first: 6, second: 6 }
-    ]);
+    const marks = [
+        "front-left", "front-right", "right-post-outer",
+        "right-housing", "rear-right", "rear-left",
+        "left-housing", "left-post-outer"
+    ];
+    const matched = correspondContours(top, bottom, marks.map(
+        (id, index) => ({ id, first: index, second: index })
+    ));
 
     const walls = loftSectionWalls([
         { outer: matched.first },
