@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import Module from "manifold-3d";
 
-import type { MeshData, TriangleFace } from "../mesh/MeshData";
+import type { TriangleFace } from "../mesh/MeshData";
 import {
     geometryResult,
     GeometryOperationError,
@@ -10,7 +10,6 @@ import {
 import { topologyOf } from "../kernel/topology";
 import { triangulateAuthoredFaces } from "../kernel/triangulation";
 import {
-    lengthTolerance,
     resolvePrecision,
     type GeometryPrecision
 } from "../kernel/precision";
@@ -300,7 +299,7 @@ export async function solidBoolean(
         return resultMesh(output.getMesh(), regions, policy);
     } catch (error) {
         if (error instanceof GeometryOperationError) throw error;
-        fail("invalid-topology",
+        throw new GeometryOperationError("solidBoolean", "invalid-topology",
             "Boolean kernel could not process these solids: " +
                 (error instanceof Error ? error.message : String(error)));
     } finally {
