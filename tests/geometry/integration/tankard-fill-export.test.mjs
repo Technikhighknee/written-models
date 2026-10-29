@@ -155,7 +155,9 @@ test("binary glTF contains the named fill targets and initial weights", async ()
         const gltf = JSON.parse(new TextDecoder().decode(
             new Uint8Array(result, 20, jsonLength)
         ));
-        const mesh = gltf.meshes.find(entry => entry.name === "AmberAleContents");
+        const node = gltf.nodes.find(entry => entry.name === "AmberAleContents");
+        assert.ok(node && Number.isInteger(node.mesh));
+        const mesh = gltf.meshes[node.mesh];
         assert.ok(mesh);
         assert.equal(mesh.primitives[0].targets.length, 8);
         assert.deepEqual(mesh.extras.targetNames,
