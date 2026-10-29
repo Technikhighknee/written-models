@@ -721,21 +721,24 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       `subdivideEdges` is implemented for authored triangle edges
       and convex planar quad edges. Every undirected edge station is
       shared by all incident faces; surface-corner UVs are interpolated
-      independently, adjacent affected faces are triangulated
-      conformingly, untouched quads remain quads, and valid named
-      boundary/patch selections receive fresh owners. It rejects
-      collapsed stations and warped/concave quad reconstruction.
-      `bevelEdges` now supports an exact, closed, convex 3/4-edge
-      cap rim on a prism-like manifold section with matching quad
-      side walls. It rebuilds the inset cap, lowered side edges and
-      genuine chamfer quads; accepts variable physical widths by
-      normalized chain distance; and exposes upper/lower rim
-      selections. Widths which invert the inset or exceed the side
-      height, unsupported junctions and stale chains are rejected.
-      Remaining before 6.6 is complete: selected partial/open
-      manifold chains and junctions beyond one complete cap face,
-      multiple nonbranching loops in one operation, and general
-      adjacent-face reconstruction beyond the current exact domain.
+      independently, adjacent affected faces are triangulated with
+      the minimum necessary real triangles, untouched quads remain
+      quads, and valid boundary/patch selections receive fresh owners.
+      Collapsed stations and warped/concave quad reconstruction fail.
+      `bevelEdges` supports complete, convex 3/4-edge prismatic cap
+      rims, including several independent rings in one operation.
+      It also supports one open manifold edge between two convex,
+      planar triangle or quad faces with a convex dihedral. That
+      open chamfer has actual terminating triangles, and its end
+      taper adapts to the corner angles of both incident faces.
+      All chamfers reconstruct their adjoining faces, preserve
+      independently mapped UVs and return new upper/lower edges.
+      Excessive widths, overlapping multi-ring selections, concave
+      junctions, folded faces and stale owners fail explicitly.
+      Bevel -> subdivide -> split is checked as a composition.
+      Remaining before 6.6 is complete: contiguous open chains
+      with two or more selected edges, general intersecting corner
+      joins, and larger selected multi-face bevel loops.
 - [ ] **6.7** Implement solid boolean operations using the
       available `manifold-3d` kernel; return actual triangles
       with explicitly assigned surface regions and UVs.

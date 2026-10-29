@@ -356,24 +356,35 @@ The edge/corner work in `profiledBoard`,
 construction-time section shaping plus patch relief. The implemented `subdivideEdges(source, [{edge, t}, ...])`
 propagates each strictly interior station to every incident face.
 All affected faces use the same construction vertex; UV interpolation
-remains face-local. Intact quads remain authored quads, while affected
-planar convex quads and triangles use real conforming triangles.
-Named edge chains inherit their stations, and charted patch selections
-survive only when valid on the resulting topology. Warped or concave
-quad splitting needs a separate supported reconstruction operation.
+remains face-local. Intact quads remain authored quads; planar
+convex faces are retriangulated along the exact subdivided boundary
+without synthetic face-center vertices. Named edge chains inherit
+their stations, and charted patch selections survive only when
+valid on the resulting topology. Warped/concave quad splitting
+needs a separate supported reconstruction operation.
 
-`bevelEdges` currently supports one complete, closed convex
-triangular/quad cap rim with matching manifold quad side faces,
-aligned along the negative cap normal (for example, a box top or
-triangular-prism end). The width field's `t` is normalized
-arc length around the caller's ordered ring. It rebuilds the inset
-cap, side faces and chamfer panels with shared physical construction
-vertices; the two new seams are `bevel-upper` and `bevel-lower`.
-Unsupported partial/open chains, branched selections, ambiguous
-junctions, warped sides and excessive widths fail explicitly.
-General post-hoc beveling of other nonbranching edge chains is
-still outstanding; this domain is not claimed by the current
-implementation.
+`bevelEdges` supports one or more disjoint, ordered, closed
+3/4-edge convex cap rings on prismatic sections with matching
+manifold side quads. Each ring is processed with the same normalized
+arc-length width field. The result has a physical inset cap,
+lowered side edges, chamfer panels and `bevel-upper` /
+`bevel-lower` closed seam selections. Rings may be combined
+when no source vertex belongs to more than one ring.
+
+A **single open manifold edge** between two convex planar faces
+(triangles or quads) also supports beveling. The selected edge is
+removed from both faces; their new planar outlines are triangulated
+with their original UVs. One chamfer quad connects the interior
+rails and two terminal triangles taper them toward the untouched
+source endpoints. The taper is fitted within both incident face
+footprints, including acute angles. The upper/lower selections are
+open chains. Existing unrelated boundary edges are not resampled.
+
+Multiple adjacent open edges are **not** automatically treated as
+one valid chamfer: their shared-corner junction must be constructed
+explicitly. Such chains, branched junctions and unsupported
+dihedrals fail. The implementation does not claim arbitrary
+multi-face bevel surfaces or unrestricted rounded fillets.
 
 ## Deformation and variation
 
