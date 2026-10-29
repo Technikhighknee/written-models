@@ -421,3 +421,44 @@ test("an invalid multi-edge corner cannot be joined by independent fake caps", (
         error => error.reason === "unsupported-topology"
     );
 });
+
+test("two adjacent triangular-prism edges meet at one chamfer corner", () => {
+    const source = extrudeContour({
+        outer: {
+            closed: true,
+            points: [
+                new THREE.Vector2(-1, -1),
+                new THREE.Vector2(-1, 1),
+                new THREE.Vector2(1, -1)
+            ]
+        }
+    }, {frame: new THREE.Matrix4(), depth: 1});
+    const rim = topologyOf(source).regionBoundaries("cap-end")[0].vertices;
+    const edges = rim.slice(0, 2).map((from, index) => ({
+        owner: source.id, from, to: rim[index + 1]
+    }));
+    const result = bevelEdges(source, edges, () => 0.06);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 4);
+    assert.equal(result.boundaries["bevel-upper"][0].vertices.length, 3);
+    const corner = result.boundaries["bevel-upper"][0].vertices[1];
+    const lower = result.boundaries["bevel-lower"][0].vertices[1];
+    assert.equal(topologyOf(result).edgeUses(corner, lower).length, 2);
+});
+
+test("a connected chamfer remains a valid input to a later plane cut", () => {
+    const source = box();
+    const chamfered = bevelEdges(source, topEdges(source).slice(0, 2),
+        () => 0.11);
+    const result = splitByPlane(chamfered, {
+        point: new THREE.Vector3(0, 0, 0),
+        normal: new THREE.Vector3(0, 1, 0)
+    }, {cap: true, cutRegion: "chamfer-section"});
+    assert.equal(result.parts.length, 2);
+    assert.equal(result.interfaces.length, 1);
+    for (const part of result.parts) {
+        assert.equal(topologyOf(part).openBoundaries().length, 0);
+        assert.ok(part.regions["chamfer-section"].length > 0);
+    }
+});
