@@ -200,3 +200,83 @@ test("a second disjoint closed solid is not silently included in the tunnel", ()
         error => error.reason === "unsupported-topology"
     );
 });
+
+test("a bore through the side of a box uses the geometric chart, not a Y-axis assumption", () => {
+    const source = geometryResult(boxMesh({
+        width: 2, height: 2, depth: 2,
+        depthSegments: 2, heightSegments: 2
+    }));
+    const patch = (region, x, sign) => ({
+        owner: source.id,
+        faces: source.geometry.quads.flatMap((face, index) =>
+            face.surface === region ? [{kind: "quad", index}] : []
+        ),
+        chart: {
+            at: uv => new THREE.Vector3(x, uv.y, sign * uv.x),
+            parameterOf: point => new THREE.Vector2(sign * point.z, point.y),
+            normalAt: () => new THREE.Vector3(-sign, 0, 0)
+        }
+    });
+    const right = patch("px", 1, -1);
+    const left = patch("nx", -1, 1);
+    const decorated = {
+        ...source,
+        patches: {right: [right], left: [left]}
+    };
+    const result = cutThrough(decorated, {
+        wallRegion: "cross-bore",
+        entry: {patch: right, contour: rect(0.3)},
+        exit: {patch: left, contour: rect(0.3)}
+    });
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.geometry.quads.filter(face =>
+        face.surface === "cross-bore"
+    ).length, 4);
+    assert.ok(result.patches.right?.length);
+    assert.ok(result.patches.left?.length);
+});
+
+test("an inward fold blocking the corridor is rejected before a wall is joined", () => {
+    const authored = boxMesh({
+        width: 2, height: 2, depth: 2,
+        widthSegments: 4, heightSegments: 4, depthSegments: 4
+    });
+    const vertices = authored.vertices.map(vertex => {
+        const point = vertex.clone();
+        if (Math.abs(point.x - 1) < 1e-12 &&
+            Math.abs(point.y) < 1e-12 &&
+            Math.abs(point.z) < 1e-12) {
+            point.x = -0.2;
+        }
+        return point;
+    });
+    const source = geometryResult({...authored, vertices});
+    const patches = box().patches;
+    const charted = {
+        ...source,
+        patches: {
+            top: [{
+                owner: source.id,
+                chart: patches.top[0].chart,
+                faces: source.geometry.quads.flatMap((face, index) =>
+                    face.surface === "py" ? [{kind: "quad", index}] : []
+                )
+            }],
+            bottom: [{
+                owner: source.id,
+                chart: patches.bottom[0].chart,
+                faces: source.geometry.quads.flatMap((face, index) =>
+                    face.surface === "ny" ? [{kind: "quad", index}] : []
+                )
+            }]
+        }
+    };
+
+    assert.equal(topologyOf(charted).openBoundaries().length, 0);
+    assert.throws(
+        () => cutThrough(charted, through(charted)),
+        error => error.reason === "unsupported-topology" &&
+            error.message.includes("crosses an unrelated surface")
+    );
+});
