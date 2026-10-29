@@ -440,8 +440,8 @@ function edited(
     const mainRegion = selectedFaces[0]!.surface;
     const smooth = selectedFaces[0]!.smoothingGroup;
     for (const face of rebuilt.geometry.triangles ?? []) {
-        const corners = face.corners.map(id => mapped[id]!)
-            as TriangleFace["corners"];
+        const corners = face.corners.map(id => mapped[id]!) as
+            TriangleFace["corners"];
         faces.push({
             corners,
             uvs: face.corners.map(id => mapUv(
@@ -516,12 +516,12 @@ function edited(
         }
         floorStart = faces.length;
         for (const triangle of triangulateProfile([opening], policy)) {
-            const corners = triangle.map(i => floorIds[i]!)
-                as TriangleFace["corners"];
+            const corners = triangle.map(i => floorIds[i]!) as
+                TriangleFace["corners"];
             faces.push({
                 corners,
-                uvs: triangle.map(i => opening[i]!.clone())
-                    as TriangleFace["uvs"],
+                uvs: triangle.map(i => opening[i]!.clone()) as
+                    TriangleFace["uvs"],
                 surface: floorRegion
             });
         }
