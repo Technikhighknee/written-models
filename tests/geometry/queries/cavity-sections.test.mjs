@@ -280,3 +280,19 @@ test("interpolation rejects a brief ring collapse missed at the midpoint", () =>
             ["degenerate-geometry", "invalid-topology", "self-intersection"].includes(error.reason)
     );
 });
+
+test("omitting an authored bulge row cannot silently change the vessel volume", () => {
+    const pieces = staves(12, [0, 0.3, 0.65, 1]);
+
+    assert.throws(
+        () => cavitySectionsFromSurfaces(options(pieces, [0, 1])),
+        error => error.operation === "cavitySectionsFromSurfaces" &&
+            error.reason === "invalid-input" &&
+            /authored wall row/.test(error.message)
+    );
+
+    const complete = cavitySectionsFromSurfaces(options(
+        pieces, [0, 0.3, 0.65, 1]
+    ));
+    assert.ok(new ProfiledCavity(complete).capacity > 0);
+});
