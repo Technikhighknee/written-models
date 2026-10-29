@@ -46,3 +46,9 @@ export type {
     SurfaceReliefFeature,
     SurfaceReliefOptions
 } from "../edit/shapeSurfaceRelief";
+export { shapeSectionCorners } from "../build/shapeSectionCorners";
+export type {
+    CornerTransition,
+    SectionEdgeOrigin,
+    ShapedSectionContour
+} from "../build/shapeSectionCorners";
