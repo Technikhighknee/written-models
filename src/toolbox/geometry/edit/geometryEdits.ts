@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { MeshData } from "../mesh/MeshData";
 import {
+    assertSelectionOwner,
     GeometryOperationError,
     geometryResult,
     type BoundaryRef,
@@ -9,6 +10,7 @@ import {
     type SurfaceChart,
     type SurfacePatchRef
 } from "../kernel/GeometryResult";
+import { patchChartMatches, transferBoundary } from "../kernel/selectionLifecycle";
 import {
     assertAffineTransform,
     resolvePrecision,
