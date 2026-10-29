@@ -673,38 +673,64 @@ export function shapeSurfaceRelief(
         const refined: Triangle[] = [];
 
         triangles.forEach((face, index) => {
-            const outline: number[] = [];
-            let affected = marked.has(index);
+            const middle = [0, 1, 2].map(i =>
+                midpoints.get(edgeKey(face[i]!, face[(i + 1) % 3]!))
+            );
+            const cut = middle.map((id, i) =>
+                id === undefined ? -1 : i
+            ).filter(i => i >= 0);
 
-            for (let corner = 0; corner < 3; corner++) {
-                const a = face[corner]!;
-                const b = face[(corner + 1) % 3]!;
-                outline.push(a);
-
-                const middle = midpoints.get(edgeKey(a, b));
-                if (middle !== undefined) {
-                    outline.push(middle);
-                    affected = true;
+            if (!cut.length) {
+                if (!marked.has(index)) {
+                    refined.push(face);
+                    return;
                 }
-            }
 
-            if (!affected) {
-                refined.push(face);
+                const [a, b, c] = face;
+                const center = uv[a]!.clone().add(uv[b]!).add(uv[c]!)
+                    .multiplyScalar(1 / 3);
+                const id = uv.push(center) - 1;
+                refined.push([a, b, id], [b, c, id], [c, a, id]);
                 return;
             }
 
-            const center = uv[face[0]]!.clone()
-                .add(uv[face[1]]!).add(uv[face[2]]!)
-                .multiplyScalar(1 / 3);
-            const centerId = uv.push(center) - 1;
-
-            for (let i = 0; i < outline.length; i++) {
-                refined.push([
-                    outline[i]!,
-                    outline[(i + 1) % outline.length]!,
-                    centerId
-                ]);
+            if (cut.length === 1) {
+                const i = cut[0]!;
+                const a = face[i]!;
+                const b = face[(i + 1) % 3]!;
+                const c = face[(i + 2) % 3]!;
+                const m = middle[i]!;
+                refined.push([a, m, c], [m, b, c]);
+                return;
             }
+
+            if (cut.length === 2) {
+                const i = [0, 1, 2].find(edge =>
+                    middle[edge] === undefined
+                )!;
+                const a = face[i]!;
+                const b = face[(i + 1) % 3]!;
+                const c = face[(i + 2) % 3]!;
+                const bc = middle[(i + 1) % 3]!;
+                const ca = middle[(i + 2) % 3]!;
+                refined.push(
+                    [a, b, bc],
+                    [a, bc, ca],
+                    [ca, bc, c]
+                );
+                return;
+            }
+
+            const [a, b, c] = face;
+            const ab = middle[0]!;
+            const bc = middle[1]!;
+            const ca = middle[2]!;
+            refined.push(
+                [a, ab, ca],
+                [ab, b, bc],
+                [ca, bc, c],
+                [ab, bc, ca]
+            );
         });
 
         if (refined.length > 60000) {
