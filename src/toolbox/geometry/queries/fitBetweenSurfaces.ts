@@ -322,8 +322,12 @@ export function fitBetweenSurfaces({
     precision
 }: FitBetweenSurfacesOptions): FittedSections {
     const policy = resolvePrecision(precision);
-    if (!start?.target || !end?.target || !section?.outer) {
-        failure("invalid-input", "Expected two surfaces and a member profile");
+    if (
+        !start || !end || !section?.outer ||
+        (!!start.target === !!start.authoredPlane) ||
+        (!!end.target === !!end.authoredPlane)
+    ) {
+        failure("invalid-input", "Expected two unambiguous finite contacts and a member profile");
     }
 
     const startNear = worldVector(start.near);
