@@ -216,7 +216,7 @@ export function triangulateProfile(
 
     for (const edge of boundaryEdges) {
         if (edgeUses.get(edge)?.length !== 1) {
-            fail("invalid-topology", `An authored cap boundary was not preserved: ${edge}`);
+            fail("invalid-topology", `An authored cap boundary was not preserved: ${edge} (uses ${edgeUses.get(edge)?.length ?? 0}, triangles ${triangles.length}, contours ${contours.map(loop => loop.length).join(",")})`);
         }
     }
 
