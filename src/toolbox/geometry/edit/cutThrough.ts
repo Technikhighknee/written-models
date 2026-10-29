@@ -88,9 +88,8 @@ function mappedExitPatch(
         }
 
         const previous = ref.kind === "quad" ? quadBefore : triangleBefore;
-        const removed = previous.slice(0, ref.index).reduce(
-            (sum, count) => sum + count, 0
-        );
+        const removed = previous.slice(0, ref.index)
+            .filter(Boolean).length;
         return {kind: ref.kind, index: ref.index - removed};
     });
 
