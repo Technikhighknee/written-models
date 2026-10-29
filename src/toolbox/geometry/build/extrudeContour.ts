@@ -199,9 +199,12 @@ export function extrudeContour(
         );
 
         const position = (loop: readonly THREE.Vector2[]) => ({
+            // Positive-depth walls require counterclockwise outer rings.
+            // Keep the input/offset sampling convention unchanged, then
+            // reverse the authored traversal before lofting.
             points: offsetContour(
                 loop, layer.contourOffset, policy
-            ).map(point => along.clone()
+            ).reverse().map(point => along.clone()
                 .addScaledVector(x, point.x)
                 .addScaledVector(y, point.y)),
             closed: true
