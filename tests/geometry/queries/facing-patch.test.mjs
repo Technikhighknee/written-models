@@ -46,6 +46,12 @@ test("concave support is one connected patch with finite nearest contact", () =>
             ? target.geometry.quads[ref.index]
             : target.geometry.triangles[ref.index];
         return face.surface === "cap-end";
+    }), JSON.stringify({
+        contact: found.contact.point.toArray(),
+        normal: found.contact.normal.toArray(),
+        labels: found.faces.map(ref => (ref.kind === "quad"
+            ? target.geometry.quads[ref.index]
+            : target.geometry.triangles[ref.index]).surface)
     }));
     assert.equal(found.contact.frontFacing, true);
     assert.ok(found.contact.point.distanceTo(p(0.5, 2, 0.2)) < 1e-12);
@@ -86,6 +92,12 @@ test("a hole remains empty and neighboring opposite faces are not selected", () 
             ? target.geometry.quads[ref.index]
             : target.geometry.triangles[ref.index];
         return face.surface === "cap-end";
+    }), JSON.stringify({
+        contact: patch.contact.point.toArray(),
+        normal: patch.contact.normal.toArray(),
+        labels: patch.faces.map(ref => (ref.kind === "quad"
+            ? target.geometry.quads[ref.index]
+            : target.geometry.triangles[ref.index]).surface)
     }));
     assert.ok(Math.abs(patch.contact.point.z - 0.2) < 1e-12);
     assert.ok(
