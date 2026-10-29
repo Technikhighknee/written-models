@@ -398,7 +398,8 @@ test("five barrel head planks keep exact seams and export distinct materials", a
             "outer", "inner", "end-grain",
             "groove-floor", "groove-shoulder"
         ]) {
-            assert.ok(names.has(`head-${region}`));
+            assert.ok(names.has(`head-${region}`),
+                JSON.stringify({ materials: json.materials, meshes: json.meshes?.length }));
         }
         assert.ok(primitives.length > 1);
         assert.ok(primitives.some(primitive =>
