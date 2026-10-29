@@ -217,7 +217,7 @@ export function cavitySectionsFromSurfaces({
         if (
             !(piece.localToWorld instanceof THREE.Matrix4) ||
             !Array.isArray(piece.regions) || !piece.regions.length ||
-            piece.regions.some(name =>
+            piece.regions.some((name: string) =>
                 typeof name !== "string" || !name.trim()) ||
             !piece.geometry ||
             !Array.isArray(piece.geometry.vertices) ||
@@ -242,14 +242,14 @@ export function cavitySectionsFromSurfaces({
             }
             vertices.push(transformed);
         }
-        const names = new Set(piece.regions);
+        const names = new Set<string>(piece.regions);
         const selected: number[] = [];
         for (let i = 0; i < piece.geometry.quads.length; i++) {
             if (names.has(piece.geometry.quads[i]!.surface)) {
                 selected.push(i);
             }
         }
-        if ((piece.geometry.triangles ?? []).some(face =>
+        if ((piece.geometry.triangles ?? []).some((face: NonNullable<MeshData["triangles"]>[number]) =>
             names.has(face.surface))) {
             fail("unsupported-topology",
                 "Selected triangular walls have no unambiguous longitudinal quad correspondence");
@@ -268,10 +268,10 @@ export function cavitySectionsFromSurfaces({
     const used = new Set<number>();
 
     for (const input of inputs) {
-        const mesh = pieces[input.piece]!.geometry;
+        const mesh: MeshData = pieces[input.piece]!.geometry;
         for (const index of input.selected) {
-            const face = mesh.quads[index]!;
-            const ids = face.corners.map(id => input.start + id);
+            const face: MeshData["quads"][number] = mesh.quads[index]!;
+            const ids: number[] = face.corners.map((id: number) => input.start + id);
             if (ids.some(id =>
                 !Number.isInteger(id) || id < input.start ||
                 id >= input.start + mesh.vertices.length) ||
