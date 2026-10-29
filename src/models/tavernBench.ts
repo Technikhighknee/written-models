@@ -1,7 +1,9 @@
 import * as THREE from "three";
-import {createTrestleSupport} from "./components/trestleSupport";
-import {oakPlankPanel, oakTimberShop} from "./components/oakSeating";
-import {cm, m} from "../toolbox/units/length";
+
+import { createTrestleSupport } from "./components/trestleSupport";
+import { oakPlankPanel, oakTimberShop } from "./components/oakSeating";
+import { getControlResult } from "../toolbox/geometry/mesh/toBufferGeometry";
+import { cm, m } from "../toolbox/units/length";
 
 export default {
     create,
@@ -9,6 +11,22 @@ export default {
     title: "Oak Tavern Bench",
     description: "A long, hand-planed oak form with paired braced trestles and a pegged stretcher."
 };
+
+function surfaceOf(
+    mesh: THREE.Mesh,
+    parent = new THREE.Matrix4()
+) {
+    const geometry = getControlResult(mesh.geometry)?.geometry;
+    if (!geometry) {
+        throw new Error("Bench member has no authored surface");
+    }
+    mesh.updateMatrix();
+
+    return {
+        geometry,
+        localToWorld: parent.clone().multiply(mesh.matrix)
+    };
+}
 
 function create(): THREE.Group {
     const bench = new THREE.Group();
@@ -48,17 +66,41 @@ function create(): THREE.Group {
         braceSize: cm(3.3)
     };
 
+    const trestles = new Map<string, THREE.Group>();
+
     for (const [name, x] of [
         ["LeftBenchTrestle", -supportOffset],
         ["RightBenchTrestle", supportOffset]
     ] as const) {
-        const support = createTrestleSupport(supports, workshop.timber);
+        const members = new Map<string, THREE.Mesh>();
+        const support = createTrestleSupport(
+            supports,
+            (part, start, end, memberWidth, memberDepth, contacts) => {
+                const foot = members.get("Foot");
+                const post = members.get("Post");
+                const wood = contacts && foot && post
+                    ? workshop.fittedTimber(
+                        part,
+                        { target: surfaceOf(foot), near: start },
+                        { target: surfaceOf(post), near: end },
+                        memberWidth, memberDepth,
+                        new THREE.Vector3(1, 0, 0)
+                    )
+                    : workshop.timber(
+                        part, start, end,
+                        memberWidth, memberDepth, contacts
+                    );
+                members.set(part, wood);
+                return wood;
+            }
+        );
+
         support.name = name;
         support.position.x = x;
+        trestles.set(name, support);
         bench.add(support);
 
-        // Oak draw-pins are visible on the outer face of the uprights and
-        // on the feet. They are physical fittings, not texture dots.
+        // Draw-pins stay separately authored solids in their original seats.
         for (const y of [cm(19), cm(32)]) {
             bench.add(workshop.peg(
                 `${name}PostPin${Math.round(y * 100)}`,
@@ -76,14 +118,28 @@ function create(): THREE.Group {
         }
     }
 
-    // The long stretcher meets the actual inner faces of both posts.
-    const postInside = supportOffset - supports.postWidth / 2;
+    // The full 75 mm section must fit on BOTH finite inner post faces.
+    const left = trestles.get("LeftBenchTrestle")!;
+    const right = trestles.get("RightBenchTrestle")!;
+    left.updateMatrix();
+    right.updateMatrix();
+
     const tieY = cm(18);
-    bench.add(workshop.timber(
+    const firstPost = left.getObjectByName("Post") as THREE.Mesh;
+    const lastPost = right.getObjectByName("Post") as THREE.Mesh;
+
+    bench.add(workshop.fittedTimber(
         "LongLowStretcher",
-        new THREE.Vector3(-postInside, tieY, 0),
-        new THREE.Vector3(postInside, tieY, 0),
-        cm(7.5), cm(7.5)
+        {
+            target: surfaceOf(firstPost, left.matrix),
+            near: new THREE.Vector3(-supportOffset, tieY, 0)
+        },
+        {
+            target: surfaceOf(lastPost, right.matrix),
+            near: new THREE.Vector3(supportOffset, tieY, 0)
+        },
+        cm(7.5), cm(7.5),
+        new THREE.Vector3(0, 1, 0)
     ));
 
     return bench;
