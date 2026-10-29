@@ -427,7 +427,29 @@ export function fillSurfacePatch({
                     worstFace = [a, b, c];
                 }
 
-                if (deviation > maxDeviation) marked.add(i);
+                if (deviation > maxDeviation) {
+                    marked.add(i);
+
+                    // A centroid-only fan can leave long, inaccurate
+                    // diagonals untouched indefinitely. Bisect the longest
+                    // internal edge instead, on both incident triangles.
+                    // Authored boundary edges are never subdivided.
+                    const candidates = [
+                        [a, b], [b, c], [c, a]
+                    ].map(([from, to]) => ({
+                        id: key(from!, to!),
+                        length: uv[from!]!.distanceTo(uv[to!]!)
+                    })).filter(candidate =>
+                        !boundary.has(candidate.id) &&
+                        edges.get(candidate.id)?.uses === 2
+                    ).sort((first, second) =>
+                        second.length - first.length
+                    );
+
+                    if (candidates.length) {
+                        split.add(candidates[0]!.id);
+                    }
+                }
             }
 
             if (split.size === 0 && marked.size === 0) {
@@ -436,7 +458,7 @@ export function fillSurfacePatch({
             }
 
             if (iteration === maxIterations || triangles.length > maxFaces) {
-                fail("sampling-limit", `Interior refinement reached its triangle budget (pass ${iteration}, ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} marked edges, worst ${worstError} at ${worstFace?.map(id => `(${uv[id]!.x},${uv[id]!.y})`).join(",")})`);
+                fail("sampling-limit", `Interior refinement failed to converge within its limits (pass ${iteration}, ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} marked edges, worst ${worstError} at ${worstFace?.map(id => `(${uv[id]!.x},${uv[id]!.y})`).join(",")})`);
             }
 
             const midpoints = new Map<string, number>();
