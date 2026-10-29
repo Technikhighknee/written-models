@@ -997,6 +997,18 @@ holes, not an infinite plane. `FittedSections` returns two placed
 3D sections and a `FittedContact` for each end. Both contact kinds
 go through the same finite-footprint and section-fitting algorithm.
 
+The finite-fitting implementation now shares one support resolution
+path for both contact variants. An authored plane is first triangulated
+from its actual `Profile2` footprint, including holes. Its frame must
+be rigid and right-handed, with local +Z pointing from the support
+toward the member. A geometry-selected patch instead supplies its
+connected authored triangles and geometric normal. Both are projected
+into their respective contact frames, then compared against the
+**entire filled member section** by triangle intersection area.
+This detects a concave crossing even when all member corners touch
+the support, and detects a support hole fully enclosed by the member
+outline. Returned `FittedContact.kind` records which kind was used.
+
 The member axis runs between the intended joint locations.
 `referenceDirection` is projected perpendicular to that axis to
 orient the cross-section; a parallel hint is invalid. The fitted
