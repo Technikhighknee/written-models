@@ -177,11 +177,20 @@ independent pieces with precise adjoining geometry.
       welded by `joinGeometry` (`34f0a49`, `da85cc9`). Existing
       per-model edge detail remains until full model migration;
       general mesh-edge beveling stays in Phase 6.
-- [ ] **3.7** Implement the result/selection lifecycle: preserve
+- [x] **3.7** Implement the result/selection lifecycle: preserve
       face and edge chains with new owners where still valid; consume
       closed rims; retain patch charts only with valid round-trip
       mapping. Arbitrary deformation invalidates patch charts by
       default, while invertible transforms update them.
+      The shared `transferBoundary` carries only surviving ordered edge
+      runs, splitting partial selections and dropping consumed or
+      superseded edges. `patchChartMatches` checks owner, connected
+      authored faces, vertex/chart round trips, finite interior samples
+      and normal orientation. Join, cap/tip, relief, transforms and
+      UV edits use these policies; deformation drops parameterized
+      patches. Transform charts snapshot caller matrices. Tests cover
+      partial welds, cap aliases, invalid charts, stale selections and
+      transform ownership (`8af6297` through `6a477e4`).
 - [ ] **3.8** Implement `classifyAuthoredFaces` with owned region
       updates, centralize physical UV projection and per-piece render
       tint/variation. Classification uses authored faces rather
