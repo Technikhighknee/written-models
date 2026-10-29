@@ -88,3 +88,65 @@ test("patch charts must reproduce the actual selected vertices", () => {
         false
     );
 });
+
+test("missing target edges split named chains without leaving stale IDs", () => {
+    const source = face();
+    const target = geometryResult({
+        vertices: source.geometry.vertices,
+        quads: [],
+        triangles: [{
+            corners: [0, 1, 2],
+            uvs: [
+                new THREE.Vector2(0, 0),
+                new THREE.Vector2(1, 0),
+                new THREE.Vector2(1, 1)
+            ],
+            surface: "half"
+        }]
+    });
+
+    const runs = transferBoundary(
+        source, target, source.boundaries.rim[0], id => id
+    );
+    assert.deepEqual(runs, [{
+        owner: target.id,
+        vertices: [0, 1, 2],
+        closed: false
+    }]);
+
+    assert.throws(
+        () => transferBoundary(
+            source, target, source.boundaries.rim[0], () => 0
+        ),
+        error => error.reason === "invalid-topology"
+    );
+});
+
+test("chart ownership and orientation are part of survival", () => {
+    const source = face();
+    const other = face();
+    const patch = {
+        owner: source.id,
+        faces: [{ kind: "quad", index: 0 }],
+        chart: {
+            at: uv => new THREE.Vector3(uv.x, uv.y, 0),
+            parameterOf: point => new THREE.Vector2(point.x, point.y),
+            normalAt: () => new THREE.Vector3(0, 0, 1)
+        }
+    };
+
+    assert.throws(
+        () => patchChartMatches(other, patch),
+        error => error.reason === "invalid-input"
+    );
+    assert.equal(
+        patchChartMatches(source, {
+            ...patch,
+            chart: {
+                ...patch.chart,
+                normalAt: () => new THREE.Vector3(0, 0, -1)
+            }
+        }),
+        false
+    );
+});
