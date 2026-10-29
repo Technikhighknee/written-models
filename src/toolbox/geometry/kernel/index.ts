@@ -52,3 +52,8 @@ export type {
     SectionEdgeOrigin,
     ShapedSectionContour
 } from "../build/shapeSectionCorners";
+export { classifyAuthoredFaces } from "../materials/classifyAuthoredFaces";
+export type {
+    AuthoredFaceInfo,
+    FaceMetadata
+} from "../materials/classifyAuthoredFaces";
