@@ -260,3 +260,65 @@ test("a boundary from the back side cannot claim an exterior closest contact", (
         error.reason === "outside-contact-patch"
     );
 });
+
+test("a closed perimeter remains closed without inventing stations", () => {
+    const original = geometryResult({
+        vertices: [
+            p(0, 0, 0.8),
+            p(2, 0, 0.8),
+            p(2, 1, 0.8),
+            p(0, 1, 0.8)
+        ],
+        quads: [{
+            corners: [0, 1, 2, 3],
+            uvs: [uv(0, 0), uv(1, 0), uv(1, 1), uv(0, 1)],
+            surface: "panel"
+        }]
+    });
+    const rim = {
+        owner: original.id,
+        vertices: [0, 1, 2, 3],
+        closed: true
+    };
+    const source = {
+        ...original,
+        boundaries: { rim: [rim] }
+    };
+    const fitted = fitBoundary(
+        source, rim, target(),
+        options({ kind: "ray", direction: p(0, 0, -1), maxDistance: 2 }, {
+            falloffRings: 0,
+            clearance: 0
+        })
+    );
+
+    assert.equal(fitted.geometry.vertices.length, 4);
+    assert.equal(fitted.geometry.quads.length, 1);
+    assert.deepEqual(fitted.boundaries.rim[0].vertices, rim.vertices);
+    assert.equal(fitted.boundaries.rim[0].closed, true);
+    assertSelectionOwner(fitted, fitted.boundaries.rim[0]);
+    assert.deepEqual(
+        fitted.geometry.vertices.map(v => v.z),
+        [0, 0, 0, 0]
+    );
+    assert.deepEqual(source.geometry.vertices.map(v => v.z),
+        [0.8, 0.8, 0.8, 0.8]);
+});
+
+test("zero falloff moves only the selected stations", () => {
+    const original = mesh();
+    const fitted = fitBoundary(
+        original, original.boundaries.fitted[0], target(),
+        options({ kind: "ray", direction: p(0, 0, -1), maxDistance: 2 }, {
+            falloffRings: 0
+        })
+    );
+
+    for (let id = 0; id < 6; id++) {
+        assert.deepEqual(
+            fitted.geometry.vertices[id].toArray(),
+            original.geometry.vertices[id].toArray()
+        );
+    }
+    assert.ok(fitted.geometry.vertices.slice(6).every(v => v.z < 0.3));
+});
