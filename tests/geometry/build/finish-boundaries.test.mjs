@@ -210,3 +210,30 @@ test("stale selections, nonplanar caps, and out-of-rim tips fail", () => {
         error => error.reason === "degenerate-geometry"
     );
 });
+
+test("capping consumes aliases and partial chains on the closed rim", () => {
+    const walls = loftSectionWalls([solid(0), solid(2)]);
+    const rim = walls.boundaries["start-outer"][0];
+    const source = {
+        ...walls,
+        boundaries: {
+            ...walls.boundaries,
+            alias: [rim],
+            segment: [{
+                owner: walls.id,
+                vertices: rim.vertices.slice(0, 2),
+                closed: false
+            }]
+        }
+    };
+
+    const capped = capBoundary(source, rim, {
+        region: "end",
+        uvFrame: frameAt(0),
+        tessellation: "quad-if-planar"
+    });
+
+    assert.equal(capped.boundaries.alias, undefined);
+    assert.equal(capped.boundaries.segment, undefined);
+    assertSelectionOwner(capped, capped.boundaries["end-outer"][0]);
+});
