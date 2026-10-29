@@ -19,7 +19,8 @@ export function selectionEdgeKey(a: number, b: number): string {
 
 /**
  * Carry an ordered authored edge chain into another result. Consumed edges
- * split a chain into its surviving runs; an untouched closed loop stays closed.
+ * split a chain into its surviving runs; edges missing in the target are
+ * omitted as well. An untouched closed loop stays closed.
  */
 export function transferBoundary(
     source: GeometryResult,
@@ -55,7 +56,20 @@ export function transferBoundary(
                 "Named chain contains a missing or nonmanifold edge"
             );
         }
-        return consumed.has(selectionEdgeKey(from, to));
+        const a = vertexId(from);
+        const b = vertexId(to);
+
+        if (!Number.isInteger(a) || !Number.isInteger(b) ||
+            a < 0 || b < 0 || a >= target.geometry.vertices.length ||
+            b >= target.geometry.vertices.length || a === b) {
+            throw new GeometryOperationError(
+                "transferBoundary", "invalid-topology",
+                "Edge remapping produces invalid target vertices"
+            );
+        }
+
+        return consumed.has(selectionEdgeKey(from, to)) ||
+            targetTopology.edgeUses(a, b).length === 0;
     });
 
     const output: BoundaryRef[] = [];
@@ -123,7 +137,23 @@ export function patchChartMatches(
     const extent = new THREE.Box3().setFromPoints(vertices)
         .getSize(new THREE.Vector3()).length();
     const tolerance = lengthTolerance(policy, extent);
-    const tested = new Set<number>();
+    const tested = new Map<number, THREE.Vector2>();
+
+    const chartAt = (uv: THREE.Vector2): THREE.Vector3 | undefined => {
+        const mapped = patch.chart.at(uv);
+        const inverted = mapped && patch.chart.parameterOf(mapped);
+        const normal = patch.chart.normalAt(uv);
+
+        if (
+            !mapped || ![mapped.x, mapped.y, mapped.z].every(Number.isFinite) ||
+            !inverted || ![inverted.x, inverted.y].every(Number.isFinite) ||
+            !normal || ![normal.x, normal.y, normal.z].every(Number.isFinite) ||
+            new THREE.Vector3(normal.x, normal.y, normal.z).length() <= policy.absoluteLength ||
+            new THREE.Vector2(inverted.x, inverted.y).distanceTo(uv) > tolerance
+        ) return undefined;
+
+        return new THREE.Vector3(mapped.x, mapped.y, mapped.z);
+    };
 
     try {
         for (const ref of patch.faces) {
@@ -132,25 +162,43 @@ export function patchChartMatches(
                 : result.geometry.triangles?.[ref.index];
             if (!face) return false;
 
+            const parameters: THREE.Vector2[] = [];
             for (const id of face.corners) {
-                if (tested.has(id)) continue;
-                tested.add(id);
-                const point = vertices[id]!;
-                const uv = patch.chart.parameterOf(point);
-                if (!uv || ![uv.x, uv.y].every(Number.isFinite)) return false;
+                let uv = tested.get(id);
 
-                const mapped = patch.chart.at(uv);
-                const inverted = patch.chart.parameterOf(mapped);
-                const normal = patch.chart.normalAt(uv);
-                if (
-                    !mapped || ![mapped.x, mapped.y, mapped.z].every(Number.isFinite) ||
-                    !inverted || ![inverted.x, inverted.y].every(Number.isFinite) ||
-                    !normal || ![normal.x, normal.y, normal.z].every(Number.isFinite) ||
-                    new THREE.Vector3(normal.x, normal.y, normal.z).length() <= policy.absoluteLength ||
-                    new THREE.Vector3(mapped.x, mapped.y, mapped.z).distanceTo(point) > tolerance ||
-                    new THREE.Vector2(inverted.x, inverted.y).distanceTo(uv) > tolerance
-                ) return false;
+                if (!uv) {
+                    const point = vertices[id]!;
+                    const inverse = patch.chart.parameterOf(point);
+                    if (!inverse || ![inverse.x, inverse.y].every(Number.isFinite)) {
+                        return false;
+                    }
+
+                    uv = new THREE.Vector2(inverse.x, inverse.y);
+                    const mapped = chartAt(uv);
+                    if (!mapped || mapped.distanceTo(point) > tolerance) {
+                        return false;
+                    }
+                    tested.set(id, uv);
+                }
+                parameters.push(uv);
             }
+
+            // Check a chart-domain interior sample, not just its vertices.
+            const center = parameters.reduce(
+                (sum, uv) => sum.add(uv), new THREE.Vector2()
+            ).multiplyScalar(1 / parameters.length);
+            if (!chartAt(center)) return false;
+
+            // Face orientation and chart normals must agree. Comparing only
+            // inverse round-trips would accept a reversed surface chart.
+            const corners = face.corners.map(id => vertices[id]!);
+            const normal = new THREE.Vector3()
+                .subVectors(corners[1]!, corners[0]!)
+                .cross(new THREE.Vector3().subVectors(corners[2]!, corners[0]!));
+            const chartNormal = patch.chart.normalAt(center);
+            if (normal.dot(new THREE.Vector3(
+                chartNormal.x, chartNormal.y, chartNormal.z
+            )) <= 0) return false;
         }
     } catch {
         return false;
