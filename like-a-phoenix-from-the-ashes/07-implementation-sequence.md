@@ -272,9 +272,22 @@ dynamic cavity behavior.
       `authored-plane` contacts. Tests cover mesh/plane mixes, two
       authored planes, false exterior fit, support holes and invalid
       transforms (`a9da536` through `83fafff`).
-- [ ] **4.4** Fit ordered geometry boundaries onto curved targets,
+- [x] **4.4** Fit ordered geometry boundaries onto curved targets,
       preserving other boundaries, and validate travel, face
       orientation and contact tolerance.
+      `fitBoundary` projects owned, ordered open or closed edge chains
+      onto finite authored target triangles using a world-space ray or
+      closest-point query. The chosen geometric normal determines signed
+      clearance, not the source's ray direction or global Z. The
+      operation validates selection topology, transform invertibility,
+      maximum travel, target-facing orientation, face winding and
+      post-transform world-space contact tolerance. The fitted stations
+      and authored faces retain their indices, independent named and
+      unnamed rims remain fixed, and constrained graph-distance
+      falloff does not cross those rims. Results re-own surviving
+      selections and drop invalidated surface charts. Verified in
+      `tests/geometry/queries/fit-boundary.test.mjs`
+      (`0e79c00` through `487df45`).
 - [ ] **4.5** Unify frame/anchor attachment math, coordinate-space
       conversions and cycle detection.
 - [ ] **4.6** Query finite surface clearance, including polygon
