@@ -69,7 +69,11 @@ test("a complete box rim becomes a closed chamfer with real upper/lower edges", 
         assert.ok(Math.abs(top.y - 1) < 1e-9);
         assert.ok(Math.abs(bottom.y - 0.8) < 1e-9);
         assert.ok(Math.abs(top.x) < 1 && Math.abs(top.z) < 1);
-        assert.ok(Math.abs(bottom.x - before[source.boundaries.topRim[0].vertices[i]].x) < 1e-9);
+        assert.ok(before.some(point =>
+            Math.abs(point.x - bottom.x) < 1e-9 &&
+            Math.abs(point.z - bottom.z) < 1e-9 &&
+            Math.abs(point.y - 1) < 1e-9
+        ));
         assert.equal(topologyOf(result).edgeUses(
             upper.vertices[i], upper.vertices[(i + 1) % 4]
         ).length, 2);

@@ -236,6 +236,18 @@ export function bevelEdges(
         ) - 1);
     }
 
+    for (let i = 0; i < ring.length; i++) {
+        const a = ring[i]!;
+        const b = ring[(i + 1) % ring.length]!;
+        const original = vertices[b]!.clone().sub(vertices[a]!);
+        const shortened = vertices[inset.get(b)!]!.clone()
+            .sub(vertices[inset.get(a)!]!);
+        if (shortened.dot(original) <=
+            tolerance * original.length()) {
+            fail("unsupported-topology", "Bevel inset collapses or reverses an edge");
+        }
+    }
+
     // A face-local affine UV map is the only valid unambiguous projection
     // for a cap that will have its vertices moved.
     const triangle = new THREE.Triangle(first, second, third);
