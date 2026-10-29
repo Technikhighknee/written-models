@@ -13,7 +13,7 @@ export type { SurfacePatchHit } from "../queries/findFacingPatch";
 export { finiteFootprintContains } from "../queries/finiteFootprint";
 export type { FootprintTriangle } from "../queries/finiteFootprint";
 export { fitBetweenSurfaces } from "../queries/fitBetweenSurfaces";
-export type { SurfaceAttachment, FittedContact, FittedSections, FitBetweenSurfacesOptions } from "../queries/fitBetweenSurfaces";
+export type { AuthoredPlanarSupport, SurfaceAttachment, FittedContact, FittedSections, FitBetweenSurfacesOptions } from "../queries/fitBetweenSurfaces";
 export {
     DEFAULT_GEOMETRY_PRECISION,
     resolvePrecision,
