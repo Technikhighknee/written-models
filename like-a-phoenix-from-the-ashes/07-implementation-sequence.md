@@ -484,8 +484,35 @@ while keeping its visual and runtime behavior.
       Godot/editor appearance and fill controls remain for 5.11.
       Commits: `038b8be`, `a64cec4`, `0d76e1a`,
       `f494b7f`, `78159f8`, `5927657`.
-- [ ] **5.6** Migrate `tavernBench.ts` with its trestles, seat
+- [x] **5.6** Migrate `tavernBench.ts` with its trestles, seat
       planks, stretcher and pegs.
+      The bench's `BENCH_SEAT` recipe uses `oakPanelGeometry`,
+      which composes the shared `boardedSurface` operation with its
+      original three weighted, worn oak planks. Their positions,
+      control quads, UVs, shared seams, crown and wood cuts match
+      the previous `boardPanel` result in the regression proof.
+      `trestleTimbers` exposes the five-member support cut list
+      independently of any renderer; `createTrestleSupport` still
+      assembles that same list for existing callers. The bench
+      constructs two complete authored trestles through
+      `tableTimberGeometry` and `tableTimberBetweenSurfaces`.
+      Both diagonal braces are fitted against finite foot and
+      post faces. The full 75 mm longitudinal stretcher is
+      separately fitted against the two inward-facing authored
+      post surfaces, including each member's local transform.
+      `oakTimberShop` finishes these owned results using
+      `surfaceMesh`; its eight distinct oak peg solids preserve
+      their original locations and orientations. No contact
+      geometry is recovered from a render buffer.
+      `phase-five-bench.test.mjs` compares the full three-board
+      seat against its previous mesh, verifies closed support
+      and stretcher topology and Quad View, and exports the
+      complete 22-mesh bench assembly to binary GLB.
+      All 199 repository tests, typecheck and build passed.
+      Native Godot/visual appearance remains for 5.11.
+      Commits: `fec590a`, `3ecab0b`, `eaaa5a3`,
+      `6cf5082`, `c470e9c`, `82ead75`,
+      `959b503`, `0837102`.
 - [ ] **5.7** Migrate `tavernChair.ts`, preserving raked back,
       fitted rails, angled housings, crest and pegs.
 - [ ] **5.8** Keep `models/components/oakSeating.ts` and
