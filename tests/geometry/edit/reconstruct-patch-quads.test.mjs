@@ -132,6 +132,8 @@ test("two coplanar triangles recover one real control quad with exactly the old 
     assert.equal(result.boundaries.oldDiagonal, undefined);
     assert.equal(result.patches.panel.length, 1);
     assertSelectionOwner(result, result.patches.panel[0]);
+    assert.equal(result.patches["quad-reconstructed"].length, 1);
+    assertSelectionOwner(result, result.patches["quad-reconstructed"][0]);
 
     const rendered = toBufferGeometry(result, {panel: 0});
     try {
@@ -284,4 +286,70 @@ test("actual Boolean triangles can be reconstructed only on an explicitly select
     assert.equal(topologyOf(output).openBoundaries().length, 0);
     assert.equal(topologyOf(output).connectedComponents().length,
         topologyOf(boolean).connectedComponents().length);
+});
+
+test("a four-cell triangulated grid recovers a consistent four-quad control layout", () => {
+    const vertices = [];
+    const triangles = [];
+    for (let y = 0; y <= 2; y++) {
+        for (let x = 0; x <= 2; x++) {
+            vertices.push(new THREE.Vector3(x, y, 0));
+        }
+    }
+    const coord = id => [
+        id % 3, Math.floor(id / 3)
+    ];
+    const make = (ids, region) => ({
+        corners: ids,
+        uvs: ids.map(id => {
+            const [x, y] = coord(id);
+            return uv(x, y);
+        }),
+        surface: region,
+        smoothingGroup: "front"
+    });
+    for (let y = 0; y < 2; y++) {
+        for (let x = 0; x < 2; x++) {
+            const a = y * 3 + x;
+            const b = a + 1;
+            const d = a + 3;
+            const c = d + 1;
+            triangles.push(make([a, b, c], "grid"),
+                make([a, c, d], "grid"));
+        }
+    }
+    const source = geometryResult({vertices, triangles, quads: []});
+    const original = orientedTriangles(source);
+    const outline = topologyOf(source).openBoundaries();
+    assert.equal(outline.length, 1);
+    const input = {
+        ...source, boundaries: {outer: outline}
+    };
+    const result = reconstructPatchQuads(input, "grid", {
+        requireComplete: true
+    });
+
+    assert.equal(result.geometry.quads.length, 4);
+    assert.equal(result.geometry.triangles.length, 0);
+    assert.deepEqual(orientedTriangles(result), original);
+    assert.equal(result.boundaries.outer.length, 1);
+    assert.deepEqual(result.boundaries.outer[0].vertices,
+        outline[0].vertices);
+    assert.equal(topologyOf(result).openBoundaries().length, 1);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.geometry.quads.every(face =>
+        face.smoothingGroup === "front"
+    ), true);
+});
+
+test("an ad-hoc chart selection returns a new usable selected patch", () => {
+    const source = panel();
+    const {patches, ...base} = source;
+    const result = reconstructPatchQuads(base, patches.panel[0], {
+        requireComplete: true
+    });
+    assert.equal(result.patches["quad-reconstructed"].length, 1);
+    const patch = result.patches["quad-reconstructed"][0];
+    assertSelectionOwner(result, patch);
+    assert.deepEqual(patch.faces, [{kind: "quad", index: 0}]);
 });
