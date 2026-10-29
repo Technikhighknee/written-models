@@ -267,152 +267,163 @@ actual face structure explicit.
 
 ## 9. Build a chair seat whose housings tilt through thickness
 
-The rear-seat cutouts follow the rake of the two back stiles.
-Their upper and lower outlines therefore have **different
-positions** at the same corner.
+The chair's rear-seat cutouts follow the rake of the back stiles. Each
+housing corner has a different position on the top and underside.
+The model supplies two ordered contours and corresponding landmarks.
 
 ```ts
 const match = correspondContours(
-  bottomContour,
   topContour,
+  bottomContour,
   housingLandmarks
 );
 
-// The two resampled contours have corresponding vertex indices.
-const walls = loftSections([
+const walls = loftSectionWalls([
   { outer: match.first },
   { outer: match.second }
-], { ends: "open" });
+], { outerRegion: "end-grain" });
 
-// Project the already matched physical vertices into each chart.
-const bottom = fillSurfacePatch({
+const upper = fillSurfacePatch({
   profile: {
     outer: {
-      points: match.first.points.map(p => bottomSurfaceChart.parameterOf(p)),
+      points: match.first.points.map(p => topChart.parameterOf(p)),
       parameters: match.stations
     }
   },
-  chart: bottomSurfaceChart,
-  region: "underside"
-});
-
-const top = fillSurfacePatch({
-  profile: {
-    outer: {
-      points: match.second.points.map(p => crownedTopSurfaceChart.parameterOf(p)),
-      parameters: match.stations
-    }
-  },
-  chart: crownedTopSurfaceChart,
+  chart: topChart,
   region: "upper"
 });
 
-const seat = joinGeometry([walls, bottom, top], {
-  weld: matchingRimPairs
+const underside = fillSurfacePatch({
+  profile: {
+    outer: {
+      points: match.second.points.map(p => bottomChart.parameterOf(p)),
+      parameters: match.stations
+    }
+  },
+  chart: bottomChart,
+  region: "underside"
+});
+
+const seat = joinGeometry([walls, upper, underside], {
+  weld: [
+    {
+      firstPart: 0, first: walls.boundaries["start-outer"][0]!,
+      secondPart: 1, second: upper.boundaries.outer[0]!
+    },
+    {
+      firstPart: 0, first: walls.boundaries["end-outer"][0]!,
+      secondPart: 2, second: underside.boundaries.outer[0]!
+    }
+  ]
 });
 ```
 
-Both projections must round-trip through their charts to the
-corresponding physical wall vertices within the shared geometric
-precision. Equal station values on independently sampled source
-profiles would not establish coincident vertices. The two profiles
-may have different 2D positions at corresponding stations.
+Every authored housing corner is a landmark. The two contours
+are not replaced by one vertical outline: their actual 3D
+positions become the shared stations of the loft and both
+patch boundaries. The top and underside charts must reproduce
+their respective boundary points exactly. An optional crown
+belongs inside a compatible top chart; it must not displace the
+already shared wall rim.
 
-The walls inherit the slanted cheek profiles. The top patch can
-carry a crown while the underside remains simpler. Both surface
-patches consume exactly the same authored contour stations as their
-adjoining walls. Patch refinement adds vertices in the interior.
-Joining creates a solid with shared interface vertices.
-
-The same operations can construct a tapered opening in a
-metal plate or a sloped building component.
-
-**Proof:** Top and bottom cutout corners retain their distinct
-positions, the walls slope accordingly, and the final edge
-incidence is valid.
+**Proof:** Both housings have slanted actual sidewalls, all top
+and bottom faces weld into a closed solid, and Quad View follows
+the authored faces. The same construction works for a tapered
+sheet edge or other nonvertical enclosure.
 
 ## 10. Rebuild a barrel head with a detailed outer face
 
-The head is partitioned into boards using common cut curves.
-Each part has one detailed outward face and a simpler inward face.
-The same sampled planar outline controls both faces and the
-connecting walls.
+Five planks are partitioned from one circular outline. The
+outward face may receive multiple batched grooves and crown
+detail, but its underside stays simple and its mating rim fixed.
 
 ```ts
-const pieces = partitionContour(diskProfile, weightedSeamCuts);
+const layout = samplePartition(
+  partitionContour(diskProfile, weightedSeamCuts)
+);
 
-const headBoards = pieces.parts.map((footprint, index) => {
-  const chart = headCrownChart(index); // model-authored shape
-  const sampled = sampleProfile(footprint, headSeamStations(index));
+const headBoards = layout.parts.map((sampled, index) => {
+  const outerChart = headCrownChart(index);
+  const innerChart = headUndersideChart(index);
+
   const outer = fillSurfacePatch({
     profile: sampled,
-    chart,
+    chart: outerChart,
     region: "outer"
   });
 
-  // Each seam is a 2D partition interface projected through the
-  // authored surface chart, with the exact partition stations.
-  const pieceSeams = pieces.interfaces.filter(
-    seam => seam.firstPart === index || seam.secondPart === index
-  );
-  const relief = pieceSeams.map(seam => ({
-    path: {
-      points: seam.points.map(point => chart.at(point)),
-      parameters: seam.stations,
-      closed: false
-    },
-    ...headGrooveProfile(index) // model-authored inward-only boundary relief
-  }));
-  const detailed = shapeSurfaceRelief(
-    outer,
-    outer.patches!.surface[0]!,
-    relief,
-    { overlap: "minimum" }
-  );
+  const features = layout.interfaces
+    .filter(seam =>
+      seam.firstPart === index || seam.secondPart === index
+    )
+    .map(seam => insetHeadGroove(seam, sampled, outerChart));
+
+  const detailed = features.length
+    ? shapeSurfaceRelief(
+        outer,
+        outer.patches!.outer[0]!,
+        features,
+        { overlap: "minimum" }
+      )
+    : outer;
 
   const inner = fillSurfacePatch({
     profile: sampled,
-    chart: headUndersideChart(index),
+    chart: innerChart,
     region: "inner"
   });
 
-  const outerRim = detailed.boundaries.rim[0]!;
-  const innerRim = inner.boundaries.rim[0]!;
   const sides = bridgeBoundaries(
-    boundaryContour(detailed, outerRim),
-    boundaryContour(inner, innerRim),
-    { fromStations: outlineStations(index), toStations: outlineStations(index) }
+    {
+      closed: true,
+      points: sampled.outer.points.map(uv => outerChart.at(uv))
+    },
+    {
+      closed: true,
+      points: sampled.outer.points.map(uv => innerChart.at(uv))
+    },
+    {
+      fromStations: sampled.outer.parameters,
+      toStations: sampled.outer.parameters,
+      reverseWinding: true,
+      region: "end-grain"
+    }
   );
 
   return joinGeometry([detailed, inner, sides], {
     weld: [
-      { firstPart: 0, first: outerRim,
-        secondPart: 2, second: sides.boundaries.start[0]! },
-      { firstPart: 1, first: innerRim,
-        secondPart: 2, second: sides.boundaries.end[0]! }
+      {
+        firstPart: 0, first: detailed.boundaries.outer[0]!,
+        secondPart: 2, second: sides.boundaries.from[0]!
+      },
+      {
+        firstPart: 1, first: inner.boundaries.outer[0]!,
+        secondPart: 2, second: sides.boundaries.to[0]!
+      }
     ]
   });
 });
 ```
 
-`headCrownChart`, `headUndersideChart`, the groove profile
-and cut/outline stations are authored by the model. The actual
-geometry operations are shared toolbox functions.
+`headCrownChart`, `headUndersideChart` and
+`insetHeadGroove` describe model-authored appearance and
+geometry. The groove recipe places its feature path inside
+the selected plank, tapers its ends and returns zero
+displacement at the protected perimeter. All seams on one
+face are passed in a single relief operation.
 
-Relief on the cut edge has zero displacement at the preserved
-joining rim, with its shoulder/groove extending inward into the
-outer patch. Otherwise the newly sculpted outer boundary could no
-longer weld to the original sidewall. Groove paths that run on an
-interface are not permission to displace that interface.
+`samplePartition` provides exact shared interface stations.
+The same sampled outline controls the outer patch, sparse
+inner patch and sidewalls. Independent new interior triangles
+do not create hanging boundary vertices. UVs, semantic face
+regions, Quad View topology and per-piece tint survive the
+ordinary render/GLB pipeline.
 
-All seams are sampled and resolved together on the original
-surface chart. The resulting grooves have real shoulders and
-floors, with deterministic overlap. The underside and the
-mating surfaces beneath the shallow relief remain intact.
-
-**Proof:** Five independent boards with matching circular
-silhouette, no seam opened through the entire head and correct
-Quad View topology on both faces.
+**Proof:** Five closed independent pieces form the circular
+head; two batched grooves on a central plank remain visible
+without separating the mating surfaces. The GLB preserves
+distinct outer, inner, end-grain and groove appearances.
 
 ## 11. Extract a drinking cavity from separate staves
 
