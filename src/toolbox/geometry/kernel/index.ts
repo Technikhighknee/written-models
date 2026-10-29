@@ -41,3 +41,8 @@ export { fillSurfacePatch } from "../build/fillSurfacePatch";
 export type { SurfaceFillOptions } from "../build/fillSurfacePatch";
 export { joinGeometry } from "../build/joinGeometry";
 export type { GeometryJoinOptions } from "../build/joinGeometry";
+export { shapeSurfaceRelief } from "../edit/shapeSurfaceRelief";
+export type {
+    SurfaceReliefFeature,
+    SurfaceReliefOptions
+} from "../edit/shapeSurfaceRelief";
