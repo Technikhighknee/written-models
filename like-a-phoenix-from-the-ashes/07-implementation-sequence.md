@@ -319,11 +319,27 @@ dynamic cavity behavior.
       between valid radial endpoints, inward nested bands, and
       real world-space clearances
       (`06a82d1` through `0b6625f`).
-- [ ] **4.7** Extract aligned cavity sections from separate inner
+- [x] **4.7** Extract aligned cavity sections from separate inner
       stave surfaces, deduplicating horizontal row edges and resolving
       crossings at intermediate heights. Reject ambiguous seams or
       rings without matching longitudinal provenance and validate
       volume interpolation.
+      `cavitySectionsFromSurfaces` reconstructs a single ordered
+      section-local XZ loop from independently transformed, planar
+      longitudinal wall strips. It preserves row-edge identity,
+      merges coincident cross-piece seam columns, and follows the
+      same longitudinal stations at every requested height.
+      Authored quads and uniquely paired planar triangles are supported;
+      ambiguous pairings, nonplanar strips, doubled seams, missing
+      loops, disconnected or crossing contours and changed station
+      provenance fail explicitly. Requested heights must include all
+      intervening authored rows, and analytic interpolation checks
+      catch even brief edge crossings and winding inversions between
+      rings. Output is directly usable by `ProfiledCavity`.
+      The original twelve-stave wooden mug's reconstructed capacity
+      and 90% serving height agree with the existing fill behavior.
+      Verified in `tests/geometry/queries/cavity-sections.test.mjs`
+      (`c6efaf8` through `c5b84f2`).
 - [ ] **4.8** Preserve the existing fixed-topology morph targets,
       controller and serving-volume calibration through GLB/Godot.
 - [ ] **4.9** Demonstrate fitted chair rails, trestle braces, mug
