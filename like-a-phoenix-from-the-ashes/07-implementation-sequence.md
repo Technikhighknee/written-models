@@ -391,7 +391,8 @@ while keeping its visual and runtime behavior.
       using its actual deformed bounds. Both compile through
       `surfaceMesh` with original surface-material distinctions.
       `phase-five-simple-models.test.mjs` checks the migrated forms,
-      quads, UVs, material regions and bounds. Commit: pending.
+      quads, UVs, material regions and bounds. Commits: `0a2aa66`,
+      `aec6358`.
 - [ ] **5.2** Migrate `dagger.ts`, including continuous profile
       transitions, faceted edges, guard tips and grip materials.
 - [ ] **5.3** Migrate `table.ts`, preserving the four worn planks,
