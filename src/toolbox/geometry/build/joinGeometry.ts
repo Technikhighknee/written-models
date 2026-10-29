@@ -357,7 +357,7 @@ export function joinGeometry(
             for (const [part, from, to] of [
                 [firstPart, a, b],
                 [secondPart, c, d]
-            ]) {
+            ] as const) {
                 const id = `${part}:${edgeKey(from, to)}`;
                 if (declared.has(id)) {
                     fail("invalid-topology", "An open edge is welded more than once");
