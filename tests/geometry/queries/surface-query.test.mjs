@@ -207,3 +207,65 @@ test("ray validation is typed and distances are always world metres", () => {
             error.reason === "invalid-input"
     );
 });
+
+test("a warped authored quad has two correct triangle normals but one face ID", () => {
+    const geometry = geometryResult({
+        vertices: [
+            v(0, 0, 0), v(1, 0, 0),
+            v(1, 1, 0.2), v(0, 1, 0)
+        ],
+        quads: [{
+            corners: [0, 1, 2, 3],
+            uvs: [uv(0, 0), uv(1, 0), uv(1, 1), uv(0, 1)],
+            surface: "warped"
+        }]
+    }).geometry;
+    const target = {
+        geometry, localToWorld: new THREE.Matrix4()
+    };
+    const first = raycastSurface(target, {
+        origin: v(0.75, 0.25, 2),
+        direction: v(0, 0, -1),
+        maxDistance: 3
+    });
+    const second = raycastSurface(target, {
+        origin: v(0.25, 0.75, 2),
+        direction: v(0, 0, -1),
+        maxDistance: 3
+    });
+
+    assert.ok(first && second);
+    assert.deepEqual(first.face, { kind: "quad", index: 0 });
+    assert.deepEqual(second.face, { kind: "quad", index: 0 });
+    assert.deepEqual(first.faceCorners, [0, 1, 2]);
+    assert.deepEqual(second.faceCorners, [0, 2, 3]);
+    assert.ok(first.normal.distanceTo(second.normal) > 0.1);
+    assert.equal(first.frontFacing, true);
+    assert.equal(second.frontFacing, true);
+    assert.ok(Math.abs(first.point.z - 0.05) < 1e-12);
+    assert.ok(Math.abs(second.point.z - 0.05) < 1e-12);
+});
+
+test("malformed raw topology is reported as a geometry failure", () => {
+    const original = authored();
+    const target = {
+        geometry: {
+            ...original,
+            quads: [{
+                ...original.quads[0],
+                corners: [0, 1, 999, 3]
+            }]
+        },
+        localToWorld: new THREE.Matrix4()
+    };
+
+    assert.throws(
+        () => raycastSurface(target, {
+            origin: v(1, 0.5, 1),
+            direction: v(0, 0, -1),
+            maxDistance: 2
+        }),
+        error => error.operation === "raycastSurface" &&
+            error.reason === "invalid-input"
+    );
+});
