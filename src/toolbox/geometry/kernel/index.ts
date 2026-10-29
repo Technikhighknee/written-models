@@ -63,6 +63,8 @@ export type { SurfaceFillOptions } from "../build/fillSurfacePatch";
 export { joinGeometry } from "../build/joinGeometry";
 export type { GeometryJoinOptions } from "../build/joinGeometry";
 export { openPatch, recessPatch } from "../edit/patchOpening";
+export { cutThrough } from "../edit/cutThrough";
+export type { ThroughCutOptions } from "../edit/cutThrough";
 export type { RecessOptions } from "../edit/patchOpening";
 export { shapeSurfaceRelief } from "../edit/shapeSurfaceRelief";
 export type {
