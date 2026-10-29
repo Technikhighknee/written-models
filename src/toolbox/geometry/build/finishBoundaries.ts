@@ -51,6 +51,17 @@ function loopEdges(vertices: readonly number[]): Set<string> {
     ));
 }
 
+function sameLoop(a: BoundaryRef, b: BoundaryRef): boolean {
+    if (!a.closed || !b.closed || a.vertices.length !== b.vertices.length) {
+        return false;
+    }
+
+    const edges = loopEdges(a.vertices);
+    return b.vertices.every((vertex, i) =>
+        edges.has(edgeKey(vertex, b.vertices[(i + 1) % b.vertices.length]!))
+    );
+}
+
 function validateOpenLoop(
     source: GeometryResult,
     boundary: BoundaryRef,
