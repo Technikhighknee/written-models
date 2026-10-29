@@ -457,8 +457,33 @@ while keeping its visual and runtime behavior.
       visual inspection stays in 5.11.
       Commits: `80cd049`, `b7793ca`, `ed5c6d2`, `d60916e`,
       `963e1f1`, `2e28e62`, `812313c`, `618d3bf`, `50a8d31`.
-- [ ] **5.5** Migrate `beerMug.ts`, preserving twelve staves,
+- [x] **5.5** Migrate `beerMug.ts`, preserving twelve staves,
       bands, fitted handle and fill morphs.
+      `cooperedStaves` now builds both the 24-stave barrel and the
+      twelve-stave tankard through `samplePolarStripSections` and
+      `loftBoard`; the old barrel-only model component was replaced.
+      The tankard's body, inset floor, two wrought-iron bands and
+      grip now stay as owned `GeometryResult` constructions until
+      `surfaceMesh` compiles their rendering geometry. The grip
+      is a transported authored sweep whose two genuine cap rims
+      are fitted against the stave's finite surface with the shared
+      `fitBoundary` operation; its ray projection now supports a
+      general outward origin offset so rays can start outside wood
+      even when a draft mount begins inside its contact envelope.
+      The serving cavity is still extracted from the authored inner
+      stave faces, with its volume-calibrated 90% serving limit.
+      `createFillableVolume` retains the eight named morph targets,
+      noncollapsed full base, initial 0.65 fill, 0–1 controller,
+      Godot-compatible blend-shape weights and binary GLB export.
+      `phase-five-tankard.test.mjs` checks the migrated staves against
+      their previous geometry and both bands against their authored
+      render controls. Existing integration proofs cover both fitted
+      handle rims, finite wall cavity, serving calibration, the
+      full seventeen-part tankard and morph-preserving GLB export.
+      All 197 repository tests, typecheck and build pass. Native
+      Godot/editor appearance and fill controls remain for 5.11.
+      Commits: `038b8be`, `a64cec4`, `0d76e1a`,
+      `f494b7f`, `78159f8`, `5927657`.
 - [ ] **5.6** Migrate `tavernBench.ts` with its trestles, seat
       planks, stretcher and pegs.
 - [ ] **5.7** Migrate `tavernChair.ts`, preserving raked back,
