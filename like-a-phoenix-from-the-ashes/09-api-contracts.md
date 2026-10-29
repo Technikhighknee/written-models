@@ -1071,25 +1071,44 @@ cavitySectionsFromSurfaces(
 
 The cavity source may contain **separate** meshes. Each piece's
 local-to-world transform and the inverse of the explicit section
-frame place its faces into a common section-local coordinate
-system. At every requested section-local Y height, the regions
-contribute edges/section segments that must form exactly one
-ordered, simple, closed XZ polygon. At authored
-horizontal row heights, coincident row edges are collected once;
-generic plane intersections instead apply a deterministic half-open
-vertex/edge rule to avoid duplicate segments at shared vertices.
-Missing, branching, doubled, self-intersecting and disconnected
-loops fail clearly. Cross-height correspondence uses the source
-wall's longitudinal edge/feature provenance to align stations and
-winding; all returned `CavityRing` outlines must have equal ordered
-vertex counts. If correspondence cannot be established or a section
-changes topology, the operation fails instead of resampling away a
-real feature. The resulting rings are compatible with
-`ProfiledCavity` without a model-specific circular approximation.
-The section frame must be rigid and invertible (a reflection is
-allowed with winding correction); scale must be applied to source
-geometry explicitly. The caller places the resulting liquid
-assembly using that same frame.
+frame place selected wall faces into a common section-local
+coordinate system. The supported wall topology consists of
+longitudinal strips with two authored horizontal row edges and two
+longitudinal edges. Authored planar quads and *unambiguously paired*
+coplanar triangles are valid. Nonplanar quads and ambiguous triangle
+pairings fail instead of replacing their actual geometry with a
+false planar loft.
+
+At any requested Y height, each strip contributes the section
+segment from its real longitudinal edges. Coincident row segments
+from the two height intervals of the *same* piece are deduplicated,
+while doubled geometry without matching row provenance is rejected.
+Separate pieces meet only when their authored seam columns agree
+spatially within the operation's length tolerance. Each section
+must form exactly one ordered, simple closed XZ polygon. The first
+ring defines the seam and winding; subsequent sections retain the
+same longitudinal column IDs and edge adjacency. Missing, branching,
+doubled, disconnected and crossing contours fail explicitly.
+
+All authored height rows within the requested interval must be
+included, otherwise piecewise-linear volume interpolation would
+silently remove real bulges. In addition to checking the individual
+rings, interpolation is validated across the full interval by
+isolating quadratic orientation events of moving edges, not only
+sampling a few intermediate heights. The resulting rings can be
+passed to `ProfiledCavity` directly, including their real polygonal
+perimeters, without a model-specific circular approximation.
+
+The section frame must be rigid and invertible; reflected frames
+are supported and output winding is normalized in section-local
+XZ coordinates. Source geometry may be placed by affine
+local-to-world transforms. The caller positions the liquid assembly
+using the same section frame.
+
+General unstructured triangular meshes without longitudinal
+correspondence are explicitly unsupported: recovering their
+sections requires different station/topology-transition semantics,
+not an invented correspondence or hidden resampling.
 
 `surfaceClearance` checks actual finite triangles, including their
 interiors and edges. It is usable after a circular-band sweep to
