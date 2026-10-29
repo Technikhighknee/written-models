@@ -342,6 +342,27 @@ export function reconstructPatchQuads(
             }
         }
     }
+    // A caller may supply a valid ad-hoc patch which is not named in the
+    // source. Return its reconstructed selection as an owned, charted
+    // patch, rather than making the caller rediscover the new face IDs.
+    if (typeof selection !== "string") {
+        const refs = new Map<string, FaceRef>();
+        for (const face of selected) {
+            for (const mappedFace of mapped.get(faceKey(face)) ?? []) {
+                refs.set(faceKey(mappedFace), mappedFace);
+            }
+        }
+        const reconstructed: SurfacePatchRef = {
+            owner: result.id,
+            chart: selection.chart,
+            faces: [...refs.values()]
+        };
+        if (!patchChartMatches(result, reconstructed, policy)) {
+            fail("invalid-topology", "Reconstructed patch lost its source chart");
+        }
+        (patches["quad-reconstructed"] ??= []).push(reconstructed);
+    }
+
     return {
         ...result, boundaries,
         ...(Object.keys(patches).length ? {patches} : {})
