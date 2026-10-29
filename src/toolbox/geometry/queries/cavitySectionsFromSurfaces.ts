@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import type { MeshData } from "../mesh/MeshData";
 import {
+    pairedWallTriangles,
+    type PairedWallFace
+} from "./pairedWallTriangles";
+import {
     GeometryOperationError,
     type FaceRef
 } from "../kernel/GeometryResult";
@@ -264,10 +268,9 @@ function validateInterpolation(
 
 /**
  * Extract finite section loops from separately authored longitudinal
- * wall strips. Every selected quad must have two horizontal row edges
- * and two longitudinal edges, with a single well-defined height span.
- * Ambiguous triangulations must be reconstructed as authored strips
- * before extraction; inventing correspondence would change the cavity.
+ * wall strips. Every recovered strip has two horizontal row edges
+ * and two longitudinal edges. Triangles are paired only with unique,
+ * unambiguous diagonal provenance; no stations are invented.
  */
 export function cavitySectionsFromSurfaces({
     pieces,
@@ -306,7 +309,12 @@ export function cavitySectionsFromSurfaces({
     const inverse = sectionFrame.clone().invert();
 
     const vertices: THREE.Vector3[] = [];
-    const inputs: { start: number; selected: number[]; piece: number }[] = [];
+    const inputs: {
+        start: number;
+        selected: number[];
+        triangles: number[];
+        piece: number;
+    }[] = [];
     for (const [index, piece] of pieces.entries()) {
         if (
             !(piece.localToWorld instanceof THREE.Matrix4) ||
@@ -343,12 +351,13 @@ export function cavitySectionsFromSurfaces({
                 selected.push(i);
             }
         }
-        if ((piece.geometry.triangles ?? []).some((face: NonNullable<MeshData["triangles"]>[number]) =>
-            names.has(face.surface))) {
-            fail("unsupported-topology",
-                "Selected triangular walls have no unambiguous longitudinal quad correspondence");
-        }
-        inputs.push({ start: offset, selected, piece: index });
+        const triangles: number[] = [];
+        (piece.geometry.triangles ?? []).forEach((
+            face: NonNullable<MeshData["triangles"]>[number], index: number
+        ) => {
+            if (names.has(face.surface)) triangles.push(index);
+        });
+        inputs.push({ start: offset, selected, triangles, piece: index });
     }
 
     if (!vertices.length) {
@@ -363,22 +372,27 @@ export function cavitySectionsFromSurfaces({
 
     for (const input of inputs) {
         const mesh: MeshData = pieces[input.piece]!.geometry;
-        for (const index of input.selected) {
-            const face: MeshData["quads"][number] = mesh.quads[index]!;
-            if (!face || !Array.isArray(face.corners) ||
-                face.corners.length !== 4) {
-                fail("invalid-input", "Invalid wall face", {
-                    face: { kind: "quad", index }
-                });
-            }
-            const ids: number[] = face.corners.map((id: number) => input.start + id);
+        const faces: PairedWallFace[] = [
+            ...input.selected.map(index => ({
+                corners: mesh.quads[index]?.corners ?? [],
+                reference: { kind: "quad" as const, index }
+            })),
+            ...pairedWallTriangles(
+                mesh, input.triangles, vertices, input.start, tolerance
+            )
+        ];
+
+        for (const face of faces) {
+            const ids: number[] = face.corners.map(
+                (id: number) => input.start + id
+            );
             if (ids.some(id =>
                 !Number.isInteger(id) || id < input.start ||
                 id >= input.start + mesh.vertices.length) ||
-                new Set(ids).size !== 4
+                new Set(ids).size !== 4 || ids.length !== 4
             ) {
                 fail("invalid-input", "Invalid wall quad", {
-                    face: { kind: "quad", index }
+                    face: face.reference
                 });
             }
 
@@ -397,7 +411,7 @@ export function cavitySectionsFromSurfaces({
             ) {
                 fail("unsupported-topology",
                     "Wall quad needs two horizontal rows and two longitudinal edges",
-                    { face: { kind: "quad", index } });
+                    { face: face.reference });
             }
 
             const longEdges = [];
@@ -414,7 +428,7 @@ export function cavitySectionsFromSurfaces({
                     !high.some(id => edge.includes(id)))) {
                 fail("unsupported-topology",
                     "Wall needs two distinct authored longitudinal edges",
-                    { face: { kind: "quad", index } });
+                    { face: face.reference });
             }
 
             // A nonplanar quad intersects a horizontal section in a
@@ -432,7 +446,7 @@ export function cavitySectionsFromSurfaces({
                     tolerance * normalLength) {
                 fail("unsupported-topology",
                     "Nonplanar wall quad changes section stations",
-                    { face: { kind: "quad", index } });
+                    { face: face.reference });
             }
 
             for (const [a, b] of longEdges) {
@@ -448,7 +462,7 @@ export function cavitySectionsFromSurfaces({
                     vertices[a]!.y > vertices[b]!.y ? a : b
                 ) as [number, number],
                 bottom, top, piece: input.piece,
-                face: { kind: "quad", index }
+                face: face.reference
             });
         }
     }
