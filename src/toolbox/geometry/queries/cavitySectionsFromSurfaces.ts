@@ -167,6 +167,101 @@ function validateRing(
     }
 }
 
+function validateInterpolation(
+    lower: readonly THREE.Vector2[],
+    upper: readonly THREE.Vector2[],
+    tolerance: number
+): void {
+    const at = (index: number, t: number): THREE.Vector2 =>
+        lower[index]!.clone().lerp(upper[index]!, t);
+
+    const quadratic = (f0: number, middle: number, f1: number): number[] => {
+        // A quadratic is determined exactly by three samples.
+        const a = 2 * (f0 + f1 - 2 * middle);
+        const b = f1 - f0 - a;
+        const c = f0;
+        const scale = Math.max(Math.abs(a), Math.abs(b), Math.abs(c));
+        const epsilon = Number.EPSILON * Math.max(scale, 1e-30) * 16;
+        if (Math.abs(a) <= epsilon) {
+            return Math.abs(b) <= epsilon ? [] : [-c / b];
+        }
+
+        const discriminant = b * b - 4 * a * c;
+        if (discriminant < 0) return [];
+        const root = Math.sqrt(discriminant);
+        return [(-b - root) / (2 * a), (-b + root) / (2 * a)];
+    };
+
+    const area0 = signedArea(lower);
+    const area1 = signedArea(upper);
+    const areaMid = signedArea(lower.map((point, i) =>
+        point.clone().lerp(upper[i]!, 0.5)
+    ));
+    const coefficient = 2 * (area0 + area1 - 2 * areaMid);
+    const slope = area1 - area0 - coefficient;
+    const candidate = Math.abs(coefficient) > Number.EPSILON
+        ? THREE.MathUtils.clamp(-slope / (2 * coefficient), 0, 1)
+        : 0;
+    const areaAt = (t: number): number =>
+        area0 + slope * t + coefficient * t * t;
+    if (areaAt(candidate) <= tolerance * tolerance) {
+        fail("invalid-topology", "Cavity interpolation reverses its winding");
+    }
+
+    for (let i = 0; i < lower.length; i++) {
+        const next = (i + 1) % lower.length;
+        const d0 = lower[i]!.clone().sub(lower[next]!);
+        const motion = upper[i]!.clone().sub(upper[next]!).sub(d0);
+        const lengthSq = motion.lengthSq();
+        const t = lengthSq > 0
+            ? THREE.MathUtils.clamp(-d0.dot(motion) / lengthSq, 0, 1)
+            : 0;
+        if (d0.addScaledVector(motion, t).length() <= tolerance) {
+            fail("degenerate-geometry",
+                "Cavity edge collapses between authored heights");
+        }
+    }
+
+    for (let i = 0; i < lower.length; i++) {
+        const nextI = (i + 1) % lower.length;
+        for (let j = i + 2; j < lower.length; j++) {
+            if (i === 0 && j === lower.length - 1) continue;
+            const nextJ = (j + 1) % lower.length;
+            const orientations = [
+                [i, nextI, j], [i, nextI, nextJ],
+                [j, nextJ, i], [j, nextJ, nextI]
+            ];
+            const critical = [0, 1];
+
+            for (const [a, b, c] of orientations) {
+                const value = (t: number): number =>
+                    cross(at(a!, t), at(b!, t), at(c!, t));
+                for (const root of quadratic(
+                    value(0), value(0.5), value(1)
+                )) {
+                    if (root > 0 && root < 1) critical.push(root);
+                }
+            }
+
+            critical.sort((a, b) => a - b);
+            const check = (t: number): void => {
+                if (segmentsCross(
+                    at(i, t), at(nextI, t),
+                    at(j, t), at(nextJ, t), tolerance
+                )) {
+                    fail("self-intersection",
+                        "Cavity interpolation creates a crossing between heights");
+                }
+            };
+
+            critical.forEach(check);
+            for (let k = 1; k < critical.length; k++) {
+                check((critical[k - 1]! + critical[k]!) / 2);
+            }
+        }
+    }
+}
+
 /**
  * Extract finite section loops from separately authored longitudinal
  * wall strips. Every selected quad must have two horizontal row edges
@@ -513,18 +608,14 @@ export function cavitySectionsFromSurfaces({
         rings.push({ y, outline });
     }
 
-    // Cross-height interpolation itself can invert or cross even when
-    // both endpoints of the interval are individually valid.
+    // Interpolation is linear in every longitudinal station, but a
+    // crossing can occur only briefly between valid endpoint rings.
+    // Its orientation predicates are quadratic, so isolate their exact
+    // event heights instead of trusting a single midpoint sample.
     for (let i = 1; i < rings.length; i++) {
-        const lower = rings[i - 1]!;
-        const upper = rings[i]!;
-        const middle = lower.outline.map((point, index) =>
-            point.clone().lerp(upper.outline[index]!, 0.5)
+        validateInterpolation(
+            rings[i - 1]!.outline, rings[i]!.outline, tolerance
         );
-        validateRing(middle, tolerance);
-        if (signedArea(middle) <= tolerance * tolerance) {
-            fail("invalid-topology", "Cavity sections invert between levels");
-        }
     }
 
     return rings;
