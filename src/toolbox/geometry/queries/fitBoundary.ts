@@ -212,6 +212,7 @@ export function fitBoundary(
         ? new THREE.Ray(new THREE.Vector3(), direction)
         : undefined;
     const projected = new Map<number, THREE.Vector3>();
+    const contacts = new Map<number, THREE.Vector3>();
 
     for (const id of ids) {
         const from = original[id]!;
@@ -232,6 +233,7 @@ export function fitBoundary(
             fail("outside-contact-patch", "Boundary travel exceeds its range", id);
         }
 
+        contacts.set(id, destination.clone());
         projected.set(id, destination.sub(from));
     }
 
@@ -344,6 +346,29 @@ export function fitBoundary(
     const transformed = result.geometry.vertices.map(vertex =>
         vertex.clone().applyMatrix4(transform)
     );
+    const extent = new THREE.Box3().setFromPoints(original)
+        .getSize(new THREE.Vector3()).length();
+    const tolerance = lengthTolerance(policy, extent);
+
+    for (const [id, expected] of contacts) {
+        if (transformed[id]!.distanceTo(expected) > tolerance) {
+            fail(
+                "outside-contact-patch",
+                "Fitted boundary exceeded world-space contact tolerance",
+                id
+            );
+        }
+    }
+
+    for (const id of protectedVertices) {
+        if (transformed[id]!.distanceTo(original[id]!) > tolerance) {
+            fail(
+                "invalid-topology",
+                "Fitting displaced an independent boundary",
+                id
+            );
+        }
+    }
 
     for (const corners of faces) {
         const before = new THREE.Vector3()
