@@ -59,30 +59,43 @@ function remap(
 
     const boundaries: Record<string, BoundaryRef[]> = Object.create(null);
     for (const [name, loops] of Object.entries(source.boundaries)) {
-        boundaries[name] = loops.map(loop => ({
-            owner: snapshot.id,
-            vertices: reverseBoundaries
-                ? [...loop.vertices].reverse() : [...loop.vertices],
-            closed: loop.closed
-        }));
+        const mapped = loops.flatMap(loop =>
+            transferBoundary(source, snapshot, loop, id => id)
+        );
+
+        if (mapped.length) {
+            boundaries[name] = reverseBoundaries
+                ? mapped.map(loop => ({
+                    ...loop,
+                    vertices: [...loop.vertices].reverse()
+                }))
+                : mapped;
+        }
     }
 
-    let mappedPatches: Record<string, SurfacePatchRef[]> | undefined;
-    if (patches === "keep" && source.patches) {
-        mappedPatches = Object.create(null) as Record<string, SurfacePatchRef[]>;
-        for (const [name, list] of Object.entries(source.patches)) {
-            mappedPatches[name] = list.map(patch => ({
-                owner: snapshot.id,
-                faces: patch.faces.map((face: FaceRef) => ({ ...face })),
-                chart: chartTransform ? chartTransform(patch.chart) : patch.chart
-            }));
+    const mappedPatches: Record<string, SurfacePatchRef[]> =
+        Object.create(null);
+
+    if (patches === "keep") {
+        for (const [name, list] of Object.entries(source.patches ?? {})) {
+            for (const patch of list) {
+                assertSelectionOwner(source, patch);
+                const candidate: SurfacePatchRef = {
+                    owner: snapshot.id,
+                    faces: patch.faces.map((face: FaceRef) => ({ ...face })),
+                    chart: chartTransform ? chartTransform(patch.chart) : patch.chart
+                };
+                if (patchChartMatches(snapshot, candidate)) {
+                    (mappedPatches[name] ??= []).push(candidate);
+                }
+            }
         }
     }
 
     return {
         ...snapshot,
         boundaries,
-        ...(mappedPatches === undefined ? {} : { patches: mappedPatches })
+        ...(Object.keys(mappedPatches).length ? { patches: mappedPatches } : {})
     };
 }
 
@@ -114,11 +127,12 @@ export function transformGeometry(
 ): GeometryResult {
     const policy = resolvePrecision(precision);
     assertAffineTransform(localToDestination, "transformGeometry", policy);
+    const transform = localToDestination.clone();
     const result = copy(source, policy);
-    const reflection = localToDestination.determinant() < 0;
+    const reflection = transform.determinant() < 0;
 
     for (const vertex of result.geometry.vertices) {
-        vertex.applyMatrix4(localToDestination);
+        vertex.applyMatrix4(transform);
     }
 
     if (reflection) {
@@ -131,12 +145,12 @@ export function transformGeometry(
         }
     }
 
-    const inverse = localToDestination.clone().invert();
-    const normalMatrix = new THREE.Matrix3().getNormalMatrix(localToDestination);
+    const inverse = transform.clone().invert();
+    const normalMatrix = new THREE.Matrix3().getNormalMatrix(transform);
     const output = validated(result.geometry, "transformGeometry", policy);
     return remap(
         source, output, "keep",
-        chart => transformedChart(chart, localToDestination, inverse, normalMatrix),
+        chart => transformedChart(chart, transform, inverse, normalMatrix),
         reflection
     );
 }
