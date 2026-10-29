@@ -340,8 +340,16 @@ dynamic cavity behavior.
       and 90% serving height agree with the existing fill behavior.
       Verified in `tests/geometry/queries/cavity-sections.test.mjs`
       (`c6efaf8` through `c5b84f2`).
-- [ ] **4.8** Preserve the existing fixed-topology morph targets,
+- [x] **4.8** Preserve the existing fixed-topology morph targets,
       controller and serving-volume calibration through GLB/Godot.
+      The wooden mug now builds its serving cavity from the authored
+      twelve-stave sections provided by `cavitySectionsFromSurfaces`.
+      All eight named morph targets, neutral full mesh, 0–1 controller,
+      90% serving calibration, runtime clone and binary glTF target
+      names/weights are covered by the integrated tankard test.
+      Godot consumes the exported blend shapes; engine-side inspection
+      remains part of the 4.9 complete-mug proof.
+      Commits: `5876f20`, `4aa0346`.
 - [ ] **4.9** Demonstrate fitted chair rails, trestle braces, mug
       handle contact, barrel bands and the complete filled mug.
 
