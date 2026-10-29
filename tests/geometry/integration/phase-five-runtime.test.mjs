@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
+import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
 import { sourceModule } from "../../support/toolbox.mjs";
 
@@ -8,7 +9,34 @@ const { prepareRuntimeModel } = await sourceModule(
     "core/export/prepareRuntimeModel.ts"
 );
 
-test("static batching leaves instances and morph controls intact", () => {
+async function exportJson(root) {
+    const previousReader = globalThis.FileReader;
+    globalThis.FileReader = class {
+        result = null;
+        onloadend = null;
+
+        async readAsArrayBuffer(blob) {
+            this.result = await blob.arrayBuffer();
+            this.onloadend?.();
+        }
+    };
+
+    try {
+        const bytes = await new GLTFExporter().parseAsync(
+            root, {binary: true}
+        );
+        const header = new DataView(bytes);
+        assert.equal(header.getUint32(0, true), 0x46546c67);
+        return JSON.parse(new TextDecoder().decode(
+            new Uint8Array(bytes, 20, header.getUint32(12, true))
+        ));
+    } finally {
+        if (previousReader === undefined) delete globalThis.FileReader;
+        else globalThis.FileReader = previousReader;
+    }
+}
+
+test("static batching leaves instances and morph controls intact", async () => {
     const scene = new THREE.Group();
     const oak = new THREE.MeshStandardMaterial({color: 0x876543});
 
@@ -70,6 +98,25 @@ test("static batching leaves instances and morph controls intact", () => {
 
         morph.morphTargetInfluences[0] = 0.7;
         assert.deepEqual(shape.morphTargetInfluences, [0.35]);
+
+        const document = await exportJson(runtime.root);
+        assert.ok(document.extensionsUsed?.includes("EXT_mesh_gpu_instancing"));
+        const instanceNode = document.nodes.find(node =>
+            node.name === "RepeatedPins"
+        );
+        assert.ok(instanceNode?.extensions?.EXT_mesh_gpu_instancing);
+        const attributes =
+            instanceNode.extensions.EXT_mesh_gpu_instancing.attributes;
+        assert.ok(Number.isInteger(attributes.TRANSLATION));
+        assert.ok(Number.isInteger(attributes._COLOR_0));
+
+        const morphNode = document.nodes.find(node =>
+            node.name === "ShapeWithMorph"
+        );
+        assert.ok(Number.isInteger(morphNode?.mesh));
+        const exportedMorph = document.meshes[morphNode.mesh];
+        assert.equal(exportedMorph.primitives[0].targets.length, 1);
+        assert.ok(Math.abs(exportedMorph.weights[0] - 0.35) < 1e-6);
     } finally {
         runtime.dispose();
         scene.traverse(object => {
@@ -79,7 +126,7 @@ test("static batching leaves instances and morph controls intact", () => {
     }
 });
 
-test("skinned export clones the whole rig instead of merging its meshes", () => {
+test("skinned export clones the whole rig instead of merging its meshes", async () => {
     const scene = new THREE.Group();
     const bone = new THREE.Bone();
     bone.name = "RootBone";
@@ -124,6 +171,16 @@ test("skinned export clones the whole rig instead of merging its meshes", () => 
             runtime.root.getObjectByName("NearbyStaticPart").geometry,
             ordinary.geometry
         );
+
+        const document = await exportJson(runtime.root);
+        assert.equal(document.skins.length, 1);
+        const skinNode = document.nodes.find(node =>
+            node.name === "RiggedPart"
+        );
+        assert.ok(Number.isInteger(skinNode?.skin));
+        const exportedSkin = document.skins[skinNode.skin];
+        assert.equal(exportedSkin.joints.length, 1);
+        assert.equal(document.nodes[exportedSkin.joints[0]].name, "RootBone");
     } finally {
         runtime.dispose();
         geometry.dispose();
