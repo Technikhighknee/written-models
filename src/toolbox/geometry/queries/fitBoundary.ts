@@ -26,6 +26,8 @@ export interface BoundaryFitOptions {
             kind: "ray";
             direction: THREE.Vector3Like;
             maxDistance: number;
+            /** Begin the ray outside the source, opposite the cast direction. */
+            originOffset?: number;
         }
         | {
             kind: "closest";
@@ -141,6 +143,10 @@ export function fitBoundary(
         (projection.kind !== "ray" && projection.kind !== "closest") ||
         !Number.isFinite(projection.maxDistance) ||
         projection.maxDistance <= 0 ||
+        (projection.kind === "ray" && (
+            !Number.isFinite(projection.originOffset ?? 0) ||
+            (projection.originOffset ?? 0) < 0
+        )) ||
         !Number.isFinite(options.clearance) ||
         !Number.isInteger(options.falloffRings) ||
         options.falloffRings < 0 ||
@@ -216,7 +222,12 @@ export function fitBoundary(
 
     for (const id of ids) {
         const from = original[id]!;
-        if (ray) ray.origin.copy(from);
+        if (ray) {
+            ray.origin.copy(from).addScaledVector(
+                direction!, -(projection.kind === "ray"
+                    ? projection.originOffset ?? 0 : 0)
+            );
+        }
 
         const contact = queryContact(
             from, triangles, projection, ray, policy, id
