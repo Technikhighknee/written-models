@@ -618,6 +618,8 @@ export function shapeSurfaceRelief(
     for (let iteration = 0; iteration < 12; iteration++) {
         const marked = new Set<number>();
         const split = new Map<string, [number, number]>();
+        let maxError = 0;
+        let worstPoint = new THREE.Vector2();
 
         for (let i = 0; i < triangles.length; i++) {
             const [a, b, c] = triangles[i]!;
@@ -627,7 +629,12 @@ export function shapeSurfaceRelief(
             const estimated = charted(uv[a]!).add(charted(uv[b]!))
                 .add(charted(uv[c]!)).multiplyScalar(1 / 3);
 
-            if (actual.distanceTo(estimated) > maxDeviation) {
+            const centroidError = actual.distanceTo(estimated);
+            if (centroidError > maxError) {
+                maxError = centroidError;
+                worstPoint = center;
+            }
+            if (centroidError > maxDeviation) {
                 marked.add(i);
             }
 
@@ -659,7 +666,7 @@ export function shapeSurfaceRelief(
             triangles.length * 4 > 60000) {
             fail(
                 "sampling-limit",
-                `Relief refinement stalled at pass ${iteration}: ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} split edges`
+                `Relief refinement stalled at pass ${iteration}: ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} split edges, worst=${maxError} at (${worstPoint.x},${worstPoint.y})`
             );
         }
 
