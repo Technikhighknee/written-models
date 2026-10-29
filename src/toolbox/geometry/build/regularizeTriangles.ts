@@ -8,7 +8,7 @@ function edgeKey(a: number, b: number): string {
 }
 
 /** Improve internal chart-space triangles without splitting authored rims. */
-export export function regularizeTriangles(
+export function regularizeTriangles(
     uv: readonly THREE.Vector2[],
     triangles: Triangle[],
     protectedEdges: ReadonlySet<string>,
