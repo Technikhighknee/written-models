@@ -133,8 +133,10 @@ export function bevelArticulatedChain(
     }
 
     const sections: EdgeSection[] = edges.map(edge => {
-        const tangent = positions[edge.to]!.clone()
-            .sub(positions[edge.from]!).normalize();
+        const length = positions[edge.to]!.distanceTo(positions[edge.from]!);
+        if (!(length > tolerance)) {
+            fail("degenerate-geometry", "Selected edge has collapsed length");
+        }
         const sides = topology.edgeUses(edge.from, edge.to).map(use => {
             const face = faceOf(source, use.face);
             const normal = normalOf(positions, face, tolerance);
@@ -154,9 +156,6 @@ export function bevelArticulatedChain(
             angle <= -1 + policy.angle ||
             first!.inward.dot(second!.normal) >= -Math.sin(policy.angle)) {
             fail("unsupported-topology", "Selected edge has no convex dihedral");
-        }
-        if (tangent.length() <= tolerance) {
-            fail("degenerate-geometry", "Selected edge collapsed");
         }
         return {first: first!, second: second!};
     });
@@ -573,21 +572,24 @@ export function bevelArticulatedChain(
     // The two rails may change face labels at each articulated corner.
     // Keep each panel's exact edge selection when one continuous rail
     // cannot be identified without crossing a panel.
-    boundaries["bevel-rails"] = sections.flatMap((section, index) => {
-        const start = at(index, false);
-        const end = at(index, true);
-        return [section.first, section.second].map(side => ({
-            owner: result.id,
-            vertices: [start.get(key(side.ref))!, end.get(key(side.ref))!],
-            closed: false
-        }));
-    });
-    boundaries["bevel-upper"] = [{
+    (boundaries["bevel-rails"] ??= []).push(
+        ...sections.flatMap((section, index) => {
+            const start = at(index, false);
+            const end = at(index, true);
+            return [section.first, section.second].map(side => ({
+                owner: result.id,
+                vertices: [start.get(key(side.ref))!,
+                    end.get(key(side.ref))!],
+                closed: false
+            }));
+        })
+    );
+    (boundaries["bevel-upper"] ??= []).push({
         owner: result.id, vertices: upper, closed: false
-    }];
-    boundaries["bevel-lower"] = [{
+    });
+    (boundaries["bevel-lower"] ??= []).push({
         owner: result.id, vertices: lower, closed: false
-    }];
+    });
 
     const patches: Record<string, SurfacePatchRef[]> = Object.create(null);
     for (const [name, selections] of Object.entries(source.patches ?? {})) {
