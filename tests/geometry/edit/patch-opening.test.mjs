@@ -269,7 +269,7 @@ test("the opening cannot enclose an existing void", () => {
     );
 });
 
-test("a curved chart with a planar perimeter is not treated as a planar patch", () => {
+test("a curved chart with a planar perimeter can now be opened", () => {
     const chart = {
         at: uv => new THREE.Vector3(
             uv.x, uv.y, 0.12 * (1 - uv.x ** 2) * (1 - uv.y ** 2)
@@ -291,8 +291,117 @@ test("a curved chart with a planar perimeter is not treated as a planar patch", 
             }
         }
     });
-    assert.throws(
-        () => openPatch(source, source.patches.curved[0], outline(0.2)),
-        error => error.reason === "unsupported-topology"
+    const opened = openPatch(source, source.patches.curved[0], outline(0.2));
+    assert.equal(topologyOf(opened).openBoundaries().length, 2);
+    assert.equal(opened.boundaries.opening[0].vertices.length, 4);
+    assert.ok(opened.patches.curved.length === 1);
+});
+
+function parabolicPatch() {
+    const chart = {
+        at: uv => new THREE.Vector3(
+            uv.x, uv.y, 0.08 * (uv.x ** 2 + uv.y ** 2)
+        ),
+        parameterOf: point => new THREE.Vector2(point.x, point.y),
+        normalAt: uv => new THREE.Vector3(
+            -0.16 * uv.x, -0.16 * uv.y, 1
+        ).normalize()
+    };
+    const border = half => {
+        const corners = [
+            p(-half, -half), p(-half, half),
+            p(half, half), p(half, -half)
+        ];
+        const steps = 12;
+        return corners.flatMap((point, side) =>
+            Array.from({length: steps}, (_, i) =>
+                point.clone().lerp(
+                    corners[(side + 1) % corners.length], i / steps
+                )
+            )
+        );
+    };
+    const outside = border(1);
+    const source = fillSurfacePatch({
+        region: "curved-timber",
+        chart,
+        profile: {
+            outer: {
+                points: outside,
+                parameters: outside.map((_, i) => i / outside.length)
+            }
+        },
+        maxDeviation: 0.005
+    });
+    return {
+        source, chart,
+        inner: {closed: true, points: border(0.4)}
+    };
+}
+
+test("curved opening preserves every authored outer station and returns its chart", () => {
+    const {source, chart, inner} = parabolicPatch();
+    const before = source.geometry.vertices.map(v => v.clone());
+    const opened = openPatch(
+        source, source.patches["curved-timber"][0], inner
     );
+    assert.deepEqual(source.geometry.vertices, before);
+    assert.equal(topologyOf(opened).openBoundaries().length, 2);
+    assert.equal(topologyOf(opened).connectedComponents().length, 1);
+    assert.equal(opened.boundaries.outer[0].vertices.length,
+        source.boundaries.outer[0].vertices.length);
+    assert.equal(opened.boundaries.opening[0].vertices.length,
+        inner.points.length);
+    assert.equal(opened.patches["curved-timber"].length, 1);
+
+    const rim = opened.boundaries.opening[0].vertices.map(id =>
+        opened.geometry.vertices[id]
+    );
+    assert.ok(rim.every(v =>
+        v.distanceTo(chart.at(chart.parameterOf(v))) < 1e-9
+    ));
+    assert.ok(rim.some(v => Math.abs(v.z - rim[0].z) > 0.01));
+    assert.ok(opened.geometry.triangles.length > source.geometry.triangles.length / 2);
+    assertSelectionOwner(opened, opened.patches["curved-timber"][0]);
+});
+
+test("curved recess offsets along local normals and returns a usable floor chart", () => {
+    const {source, chart, inner} = parabolicPatch();
+    const result = recessPatch(
+        source, source.patches["curved-timber"][0], inner, {
+            depth: 0.12,
+            wallRegion: "cut-side",
+            floorRegion: "curved-floor"
+        }
+    );
+
+    assert.equal(topologyOf(result).openBoundaries().length, 1);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions["cut-side"].length, inner.points.length);
+    assert.ok(result.regions["curved-floor"].length > 2);
+    assert.ok(result.patches["curved-floor"].length === 1);
+    assertSelectionOwner(result, result.patches["curved-floor"][0]);
+
+    const floor = result.patches["curved-floor"][0].chart;
+    for (const point of [p(0, 0), p(0.15, 0.25), p(-0.3, 0.1)]) {
+        const expected = chart.at(point);
+        const normal = chart.normalAt(point);
+        const actual = floor.at(point);
+        assert.ok(actual.distanceTo(
+            expected.clone().addScaledVector(normal, -0.12)
+        ) < 1e-8);
+        assert.ok(new THREE.Vector2().copy(floor.parameterOf(actual))
+            .distanceTo(point) < 1e-7);
+    }
+    const roof = result.boundaries.opening[0].vertices;
+    const bottom = result.boundaries["floor-rim"][0].vertices;
+    for (let i = 0; i < roof.length; i++) {
+        const topPosition = result.geometry.vertices[roof[i]];
+        const floorPosition = result.geometry.vertices[bottom[i]];
+        const uv = chart.parameterOf(topPosition);
+        const expectedNormal = chart.normalAt(uv);
+        assert.ok(Math.abs(topPosition.distanceTo(floorPosition) - 0.12) < 1e-8);
+        assert.ok(topPosition.clone().sub(floorPosition)
+            .normalize().dot(expectedNormal) > 0.999999);
+    }
 });
