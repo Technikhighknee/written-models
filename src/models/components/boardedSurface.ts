@@ -1,7 +1,9 @@
 import * as THREE from "three";
 
 import { loftBoard } from "../../toolbox/geometry/construction/loftBoard";
-import { geometryResult, type GeometryResult } from "../../toolbox/geometry/kernel/GeometryResult";
+import {
+    geometryResult, type GeometryResult
+} from "../../toolbox/geometry/kernel/GeometryResult";
 import { adaptiveStations } from "../../toolbox/geometry/topology/adaptiveStations";
 import { weightedCuts } from "../../toolbox/spatial/layout/weightedCuts";
 import { seededVariation } from "../../toolbox/spatial/layout/seededVariation";
@@ -64,10 +66,10 @@ export function boardedSurface({
     const widths = cuts.slice(1).map((cut, i) => cut - cuts[i]!);
     const minWidth = Math.min(...widths);
     if (
-        edgeWander >= minWidth * 0.1 ||
-        endStagger >= length * 0.08 ||
-        cornerWear >= minWidth * 0.08 ||
-        thicknessVariation >= thickness * 0.1
+        edgeWander < 0 || edgeWander >= minWidth * 0.1 ||
+        endStagger < 0 || endStagger >= length * 0.08 ||
+        cornerWear < 0 || cornerWear >= minWidth * 0.08 ||
+        thicknessVariation < 0 || thicknessVariation >= thickness * 0.1
     ) {
         throw new RangeError("Board wear exceeds the available material");
     }

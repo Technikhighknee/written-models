@@ -409,8 +409,28 @@ while keeping its visual and runtime behavior.
       Native Godot appearance is part of model acceptance in 5.11.
       Commits: `ac8972f`, `e744fce`, `8edab2f`, `dd9fdc1`,
       `cd19c92`.
-- [ ] **5.3** Migrate `table.ts`, preserving the four worn planks,
+- [x] **5.3** Migrate `table.ts`, preserving the four worn planks,
       two trestles and fitted stretcher.
+      The tabletop no longer calls `boardPanel`. Its model-owned
+      `boardedSurface` recipe uses shared weighted cuts, seeded seam
+      profiles, adaptive station union and the common loft engine.
+      All four independent oak boards retain the earlier exact vertex
+      positions, control quads, UVs, irregular gaps, wear, end grain,
+      tint and surface-material layout.
+      `tableTimberGeometry` authors square-cut trestle members as
+      owned boxes and normal-fitted members as owned section solids;
+      the original transform hierarchy and seeded oak variation
+      remain. Both diagonals and the full longitudinal stretcher
+      now use `fitBetweenSurfaces` against their actual finite foot
+      and post meshes. Invalid full-section contacts fail instead
+      of silently extending beyond a bearing face.
+      `phase-five-table.test.mjs` checks the original boards against
+      the new geometry, closed trestle topology, material groups,
+      Quad View, transform hierarchy and finite-contact rejection.
+      Native visual and GLB/Godot acceptance remain under 5.9–5.11.
+      Commits: `03766f1`, `29a2a91`, `e5d1430`, `ba2c4f2`,
+      `64e7dec`, `7897fd1`, `38c4a32`, `18d2d13`,
+      `3eef5d7`.
 - [ ] **5.4** Migrate `barrel.ts`, preserving the 24 staves, five
       head planks per end, four hoops, laps and rivets.
 - [ ] **5.5** Migrate `beerMug.ts`, preserving twelve staves,
