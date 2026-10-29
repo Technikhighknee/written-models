@@ -57,3 +57,8 @@ export type {
     AuthoredFaceInfo,
     FaceMetadata
 } from "../materials/classifyAuthoredFaces";
+export { projectAuthoredUvs, planarUvProjector } from "../uv/projectAuthoredUvs";
+export type {
+    AuthoredUvProjector,
+    AuthoredUvProjectionOptions
+} from "../uv/projectAuthoredUvs";
