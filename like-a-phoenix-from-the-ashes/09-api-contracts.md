@@ -350,6 +350,40 @@ required stations before their faces are built.
 
 The geometric controls are explicit. All dimensions below are meters.
 
+Construction-time section shaping uses the following implemented
+contract, independent of any board or other model:
+
+```ts
+interface CornerTransition {
+  corner: number; // original closed-contour vertex index
+  before: number; // metres along the incoming edge
+  after: number;  // metres along the outgoing edge
+  kind: "chamfer" | "round";
+  segments?: number; // round: 2..64, chamfer: omitted or 1
+}
+
+type SectionEdgeOrigin =
+  | { kind: "source"; edge: number }
+  | { kind: "transition"; corner: number; segment: number };
+
+interface ShapedSectionContour {
+  contour: Contour2;
+  edges: readonly SectionEdgeOrigin[]; // ordered, one per emitted edge
+}
+
+shapeSectionCorners(
+  contour: Contour2,
+  transitions: readonly CornerTransition[],
+  precision?: GeometryPrecision
+): ShapedSectionContour;
+```
+
+A selected corner must turn strictly convexly. Adjacent corner
+transitions cannot consume the shared edge. Round corners use equal
+incoming/outgoing cuts and an actual tangent circular arc. The
+operation preserves untouched corners and the source contour winding,
+and does not directly edit previously authored mesh topology.
+
 ```ts
 interface ExtrudeOptions extends PrecisionOptions {
   frame: THREE.Matrix4; // rigid local XY→construction; depth along local +Z

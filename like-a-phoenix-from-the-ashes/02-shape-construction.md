@@ -146,6 +146,17 @@ Mitered offsets are local contour operations. A general polygon
 offset with guaranteed global intersection resolution is a
 separate editing problem, not an implicit promise of extrusion.
 
+`shapeSectionCorners` is the shared construction-time treatment for
+specific convex section corners. It produces exact straight chamfer
+edges or sampled tangent circular arcs, and an ordered edge-provenance
+array. The resulting planar contour can be placed in any section
+frame, used for a longitudinal loft or extruded directly, and can be
+sampled once for a separate charted end patch. The same contour on
+both sides of a join guarantees matching authored rim vertices;
+material regions follow provenance rather than hard-coded point
+indices. It changes a *source profile*, not an already built mesh.
+General post-hoc beveling belongs to Phase 6.
+
 ### Lofting
 
 `loftRings()` already builds arbitrary 3D closed contours with

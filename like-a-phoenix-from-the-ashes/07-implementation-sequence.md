@@ -166,9 +166,17 @@ independent pieces with precise adjoining geometry.
       holes: `69628b5` through `2463128`.
       General continuous-surface self-intersection guarantees belong
       to the later editing/Boolean phases.
-- [ ] **3.6** Compose construction-time chamfers using section
+- [x] **3.6** Compose construction-time chamfers using section
       profiles and patch-boundary shaping, without requiring the
       general post-hoc edge-beveling algorithm from Phase 6.
+      `shapeSectionCorners` makes selected convex corner cuts into
+      straight chamfers or tangent circular arcs, retaining the source
+      edge/transition provenance for loft regions. One authored shaped
+      profile composes with multi-station `loftSectionWalls`, caps,
+      `extrudeContour`, and a separately charted `fillSurfacePatch`
+      welded by `joinGeometry` (`34f0a49`, `da85cc9`). Existing
+      per-model edge detail remains until full model migration;
+      general mesh-edge beveling stays in Phase 6.
 - [ ] **3.7** Implement the result/selection lifecycle: preserve
       face and edge chains with new owners where still valid; consume
       closed rims; retain patch charts only with valid round-trip

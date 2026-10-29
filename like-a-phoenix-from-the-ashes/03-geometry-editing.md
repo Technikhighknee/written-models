@@ -251,6 +251,26 @@ needing extra boundary subdivisions return `sampling-limit` instead
 of silently changing interfaces. Relief requires one connected,
 single-region source patch; unrelated source faces are preserved.
 
+Construction-time corner shaping is handled by
+`shapeSectionCorners(contour, transitions)`. It replaces explicitly
+selected convex corners of any closed planar section with either a
+straight cut or a tangent circular arc, in physical metres. Round
+transitions specify equal cuts on their incoming/outgoing edges and
+an authored number of arc segments. Different sections may vary their
+cut dimensions while retaining corresponding corner indices and
+segment counts.
+
+The returned contour can feed extrusions, loft sections and
+independently filled patch boundaries. Each emitted edge carries
+provenance: the source contour edge index, or the selected corner
+and transition segment. Loft consumers use this provenance for
+material and smoothing assignments, without a board-specific
+construction primitive. Untouched corners retain their coordinates.
+Inverting contours, intersecting cut intervals, nonconvex selected
+corners and collapsed geometry are rejected. Separately generated
+mating surfaces must use the same shaped contour and compatible
+face orientation before they can be welded.
+
 The edge/corner work in `profiledBoard`,
 `seamedPlankExtrusion`, and `circularPlankPanel` first becomes
 construction-time section shaping plus patch relief. General
