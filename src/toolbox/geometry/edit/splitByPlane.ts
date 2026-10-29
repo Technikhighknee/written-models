@@ -90,7 +90,8 @@ function asResult(
     faces: readonly PieceFace[],
     positions: readonly THREE.Vector3[],
     side: Side,
-    indices: readonly number[]
+    indices: readonly number[],
+    precision: GeometryPrecision
 ): Piece[] {
     if (faces.length === 0) return [];
     const quads: QuadFace[] = [];
@@ -121,7 +122,7 @@ function asResult(
         vertices: positions.map(v => v.clone()),
         quads,
         triangles
-    });
+    }, precision);
     const connected = topologyOf(entire).connectedComponents();
     const parts: Piece[] = [];
 
@@ -166,7 +167,7 @@ function asResult(
             side,
             geometry: geometryResult({
                 vertices, quads: localQuads, triangles: localTriangles
-            }),
+            }, precision),
             sourceIds,
             cuts: []
         });
@@ -360,8 +361,8 @@ export function splitByPlane(
     }
 
     const parts = [
-        ...asResult(faces.negative, positions, "negative", sharedIds),
-        ...asResult(faces.positive, positions, "positive", sharedIds)
+        ...asResult(faces.negative, positions, "negative", sharedIds, policy),
+        ...asResult(faces.positive, positions, "positive", sharedIds, policy)
     ];
 
     const frameFor = (side: Side): THREE.Matrix4 => {
