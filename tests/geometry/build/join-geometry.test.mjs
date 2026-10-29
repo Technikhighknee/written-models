@@ -139,8 +139,10 @@ test("multiple declarations compose three open tubes without welding twice", () 
     assert.equal(joined.boundaries["0:start-outer"][0].owner, joined.id);
     assert.equal(joined.boundaries["2:end-outer"][0].owner, joined.id);
 
+    const competing = tube(1, 3);
+
     assert.throws(
-        () => joinGeometry([a, b, c], {
+        () => joinGeometry([a, b, competing], {
             weld: [
                 {
                     firstPart: 0, first: a.boundaries["end-outer"][0],
@@ -148,7 +150,7 @@ test("multiple declarations compose three open tubes without welding twice", () 
                 },
                 {
                     firstPart: 0, first: a.boundaries["end-outer"][0],
-                    secondPart: 2, second: c.boundaries["start-outer"][0]
+                    secondPart: 2, second: competing.boundaries["start-outer"][0]
                 }
             ]
         }),
