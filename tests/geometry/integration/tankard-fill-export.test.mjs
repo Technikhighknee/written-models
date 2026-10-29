@@ -37,7 +37,7 @@ function makeTankardContents() {
 test("the tankard's authored cavity retains the original serving calibration", () => {
     const { parts, cavity, contents } = makeTankardContents();
     try {
-        const physical = cavityFromMeshSurfaces(parts.staves).between(
+        const physical = cavityFromMeshSurfaces(parts.staves.map(part => part.geometry)).between(
             0.0192, 0.150
         );
         near(cavity.bottom, physical.bottom);
@@ -87,7 +87,6 @@ test("the tankard's authored cavity retains the original serving calibration", (
     } finally {
         contents.mesh.geometry.dispose();
         contents.mesh.material.dispose();
-        for (const band of parts.bands) band.dispose();
     }
 });
 
@@ -118,7 +117,6 @@ test("runtime compilation keeps every fill morph and its current weights", () =>
         compiled?.dispose();
         contents.mesh.geometry.dispose();
         contents.mesh.material.dispose();
-        for (const band of parts.bands) band.dispose();
     }
 });
 
@@ -174,6 +172,5 @@ test("binary glTF contains the named fill targets and initial weights", async ()
         compiled.dispose();
         contents.mesh.geometry.dispose();
         contents.mesh.material.dispose();
-        for (const band of parts.bands) band.dispose();
     }
 });

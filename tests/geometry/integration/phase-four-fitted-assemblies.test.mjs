@@ -338,10 +338,10 @@ test("the barrel's real iron band remains outside its faceted staves", () => {
 
 test("both real tankard handle mounts meet the staves and the full mug exports", async () => {
     const parts = buildTankardGeometry();
-    const handle = geometryResult(parts.handle);
+    const handle = parts.handle;
     const topology = topologyOf(handle);
     const target = {
-        geometry: parts.staves[0],
+        geometry: parts.staves[0].geometry,
         localToWorld: new THREE.Matrix4()
     };
 
@@ -397,8 +397,12 @@ test("both real tankard handle mounts meet the staves and the full mug exports",
         add(parts.handle, {
             side: 0, "cap-start": 0, "cap-end": 0
         }, wood);
-        for (const geometry of parts.bands) {
-            tankard.add(new THREE.Mesh(geometry, iron));
+        for (const band of parts.bands) {
+            add(band, {
+                bottom: 0, "lower-bevel": 0, outside: 0,
+                "upper-bevel": 0, top: 0, inside: 0,
+                "cap-start": 0, "cap-end": 0
+            }, iron);
         }
         tankard.add(beer.mesh);
 
@@ -447,7 +451,6 @@ test("both real tankard handle mounts meet the staves and the full mug exports",
         }
     } finally {
         for (const geometry of owned) geometry.dispose();
-        for (const geometry of parts.bands) geometry.dispose();
         beer.mesh.geometry.dispose();
         wood.dispose();
         iron.dispose();
