@@ -102,10 +102,6 @@ export function cutBoard({
             );
         })
     );
-    const occupied = (i: number, j: number) =>
-        i >= 0 && i < nx - 1 && j >= 0 && j < nz - 1 &&
-        filled[i]![j]!;
-
     // The cut sketch determines which layered cells exist; the shared
     // grid operation owns the corresponding patches and exposed walls.
     return layeredGridSolid({
