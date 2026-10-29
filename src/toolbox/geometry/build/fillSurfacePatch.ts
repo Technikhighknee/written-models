@@ -17,6 +17,7 @@ import {
 } from "../kernel/precision";
 import { topologyOf } from "../kernel/topology";
 import { triangulateProfile } from "./triangulateProfile";
+import { regularizeTriangles } from "./regularizeTriangles";
 
 export interface SurfaceFillOptions {
     profile: SampledProfile2;
@@ -531,6 +532,7 @@ export function fillSurfacePatch({
                     [ca, bc, c], [ab, bc, ca]);
             });
             triangles = refined;
+            regularizeTriangles(uv, triangles, boundary, policy);
         }
 
         if (!converged) {
