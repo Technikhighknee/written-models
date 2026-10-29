@@ -55,7 +55,7 @@ interface Piece {
     side: Side;
     geometry: GeometryResult;
     sourceIds: number[];
-    cuts: { ids: number[]; signature: string }[];
+    cuts: { ids: number[]; signature: string; closed: boolean }[];
 }
 
 function fail(
@@ -70,8 +70,8 @@ function key(a: number, b: number): string {
     return Math.min(a, b) + ":" + Math.max(a, b);
 }
 
-function loopSignature(ids: readonly number[]): string {
-    return ids.map((from, index) =>
+function loopSignature(ids: readonly number[], closed: boolean): string {
+    return ids.slice(0, closed ? ids.length : -1).map((from, index) =>
         key(from, ids[(index + 1) % ids.length]!)
     ).sort().join("|");
 }
@@ -203,6 +203,12 @@ export function splitByPlane(
     if (options.cap && open.length) {
         fail("unsupported-topology", "Capped plane splitting requires a closed manifold source");
     }
+    const originalOpenEdges = new Set(open.flatMap(rim =>
+        rim.vertices.slice(0, rim.closed ? rim.vertices.length : -1)
+            .map((id, i) => key(id, rim.vertices[
+                (i + 1) % rim.vertices.length
+            ]!))
+    ));
 
     const box = new THREE.Box3().setFromPoints(mesh.vertices);
     const tolerance = lengthTolerance(
@@ -378,38 +384,93 @@ export function splitByPlane(
         return result;
     }
 
-    for (const part of parts) {
+    // An open shell can meet the split plane in an open chain rather than
+    // a complete loop. Only plane edges are selected; pre-existing source
+    // boundary edges outside the plane stay outside the cut selection.
+    function cutChains(part: Piece): Piece["cuts"] {
+        const result: Piece["cuts"] = [];
         const rims = topologyOf(part.geometry).openBoundaries();
-        const cutRims = rims.filter(rim =>
-            rim.vertices.every(id =>
-                Math.abs(part.geometry.geometry.vertices[id]!
-                    .clone().sub(origin).dot(normal)) <= tolerance
-            )
-        );
-        if (options.cap && cutRims.length !== rims.length) {
-            fail("invalid-topology", "The split left a nonplanar open rim");
-        }
-        if (!cutRims.length) continue;
 
+        for (const rim of rims) {
+            const ids = rim.vertices;
+            const count = rim.closed ? ids.length : ids.length - 1;
+            const onPlane = Array.from({length: count}, (_, i) => {
+                const a = part.geometry.geometry.vertices[ids[i]!]!;
+                const b = part.geometry.geometry.vertices[
+                    ids[(i + 1) % ids.length]!
+                ]!;
+                return Math.abs(a.clone().sub(origin).dot(normal)) <= tolerance &&
+                    Math.abs(b.clone().sub(origin).dot(normal)) <= tolerance;
+            });
+
+            if (options.cap && !onPlane.every(Boolean)) {
+                fail("invalid-topology", "The split left a nonplanar open rim");
+            }
+            if (onPlane.every(Boolean)) {
+                result.push({
+                    ids: [...ids],
+                    closed: rim.closed,
+                    signature: loopSignature(
+                        ids.map(id => part.sourceIds[id]!), rim.closed
+                    )
+                });
+                continue;
+            }
+
+            const first = rim.closed
+                ? (onPlane.indexOf(false) + 1) % count : 0;
+            let chain: number[] = [];
+            const append = (): void => {
+                if (chain.length < 2) return;
+                result.push({
+                    ids: chain,
+                    closed: false,
+                    signature: loopSignature(
+                        chain.map(id => part.sourceIds[id]!), false
+                    )
+                });
+            };
+
+            for (let step = 0; step < count; step++) {
+                const i = (first + step) % count;
+                if (!onPlane[i]) {
+                    append();
+                    chain = [];
+                } else {
+                    if (!chain.length) chain.push(ids[i]!);
+                    chain.push(ids[(i + 1) % ids.length]!);
+                }
+            }
+            append();
+        }
+        return result;
+    }
+
+    for (const part of parts) {
+        part.cuts = cutChains(part);
+        if (!options.cap || !part.cuts.length) continue;
+
+        if (part.cuts.some(cut => !cut.closed)) {
+            fail("unsupported-topology", "A capped cut needs closed intersection loops");
+        }
         const frame = frameFor(part.side);
         const inverse = frame.clone().invert();
-        const contours = cutRims.map(rim =>
-            rim.vertices.map(id => {
+        const entries = part.cuts.map(cut => {
+            const polygon = cut.ids.map(id => {
                 const point = part.geometry.geometry.vertices[id]!
                     .clone().applyMatrix4(inverse);
                 return new THREE.Vector2(point.x, point.y);
-            })
-        );
-        const entries = cutRims.map((rim, i) => ({
-            ids: [...rim.vertices],
-            global: rim.vertices.map(id => part.sourceIds[id]!),
-            polygon: contours[i]!,
-            area: THREE.ShapeUtils.area(contours[i]!)
-        }));
+            });
+            return {
+                ids: cut.ids,
+                polygon,
+                area: THREE.ShapeUtils.area(polygon)
+            };
+        });
         const outer = entries.filter(entry => entry.area < 0);
         const holes = entries.filter(entry => entry.area > 0);
 
-        if (options.cap && !outer.length) {
+        if (!outer.length) {
             fail("invalid-topology", "Cut loops have inconsistent winding");
         }
         const grouped = new Map<(typeof entries)[number], (typeof entries)[number][]>();
@@ -424,47 +485,27 @@ export function splitByPlane(
             grouped.get(owners[0]!)!.push(hole);
         }
 
-        if (options.cap) {
-            for (const [parent, inner] of grouped) {
-                const current = part.geometry;
-                const ref = (entry: (typeof entries)[number]): BoundaryRef => ({
-                    owner: current.id, closed: true, vertices: entry.ids
-                });
-                part.geometry = capSectionEnd(
-                    current, ref(parent), inner.map(ref), {
-                        region: options.cutRegion,
-                        uvFrame: frame,
-                        tessellation: "quad-if-planar",
-                        precision: policy
-                    }
-                );
-            }
-            if (topologyOf(part.geometry).openBoundaries().length) {
-                fail("invalid-topology", "Capped split still has open boundaries");
-            }
+        for (const [parent, inner] of grouped) {
+            const current = part.geometry;
+            const ref = (entry: (typeof entries)[number]): BoundaryRef => ({
+                owner: current.id, closed: true, vertices: entry.ids
+            });
+            part.geometry = capSectionEnd(
+                current, ref(parent), inner.map(ref), {
+                    region: options.cutRegion,
+                    uvFrame: frame,
+                    tessellation: "quad-if-planar",
+                    precision: policy
+                }
+            );
         }
-
-        part.cuts = entries.map(entry => ({
-            ids: entry.ids, signature: loopSignature(entry.global)
-        }));
-        part.geometry = {
-            ...part.geometry,
-            boundaries: {
-                ...part.geometry.boundaries,
-                cut: entries.map(entry => ({
-                    owner: part.geometry.id,
-                    closed: true, vertices: [...entry.ids]
-                }))
-            }
-        };
+        if (topologyOf(part.geometry).openBoundaries().length) {
+            fail("invalid-topology", "Capped split still has open boundaries");
+        }
     }
 
-    const result: PartitionResult = {
-        parts: parts.map(part => part.geometry),
-        sideOfPart: parts.map(part => part.side),
-        interfaces: []
-    };
     const interfaceList: PartitionInterface[] = [];
+    const pairedCuts = new Map<number, Piece["cuts"]>();
     const positive = new Map<string, {part: number; cut: Piece["cuts"][number]}>();
     parts.forEach((part, partIndex) => {
         if (part.side !== "positive") return;
@@ -482,14 +523,30 @@ export function splitByPlane(
         for (const cut of part.cuts) {
             const peer = positive.get(cut.signature);
             if (!peer) {
-                fail("invalid-topology", "Cut loop has no counterpart");
+                if (!options.cap && cut.ids.slice(0,
+                    cut.closed ? cut.ids.length : -1
+                ).every((id, index) =>
+                    originalOpenEdges.has(key(
+                        part.sourceIds[id]!,
+                        part.sourceIds[cut.ids[(index + 1) % cut.ids.length]!]!
+                    ))
+                )) continue;
+                fail("invalid-topology", "Cut chain has no counterpart");
             }
+            if (cut.closed !== peer.cut.closed) {
+                fail("invalid-topology", "Cut counterparts have different closure");
+            }
+            (pairedCuts.get(i) ?? (pairedCuts.set(i, []), pairedCuts.get(i)!))
+                .push(cut);
+            (pairedCuts.get(peer.part) ?? (pairedCuts.set(peer.part, []),
+                pairedCuts.get(peer.part)!)).push(peer.cut);
             const firstIds = cut.ids;
             const points = firstIds.map(id =>
                 part.geometry.geometry.vertices[id]!.clone()
             );
             const length: number[] = [0];
-            for (let j = 1; j <= points.length; j++) {
+            const edgeCount = cut.closed ? points.length : points.length - 1;
+            for (let j = 1; j <= edgeCount; j++) {
                 length.push(length.at(-1)! +
                     points[j % points.length]!.distanceTo(points[j - 1]!)
                 );
@@ -500,17 +557,18 @@ export function splitByPlane(
                 first: {
                     owner: part.geometry.id,
                     vertices: [...firstIds],
-                    closed: true
+                    closed: cut.closed
                 },
                 secondPart: peer.part,
                 second: {
                     owner: parts[peer.part]!.geometry.id,
                     vertices: [...peer.cut.ids],
-                    closed: true
+                    closed: peer.cut.closed
                 },
                 source: {
-                    closed: true,
-                    parameters: length.slice(0, -1).map(value => value / total),
+                    closed: cut.closed,
+                    parameters: (cut.closed ? length.slice(0, -1) : length)
+                        .map(value => value / total),
                     points
                 }
             });
@@ -518,8 +576,37 @@ export function splitByPlane(
         }
     }
     if (positive.size) {
-        fail("invalid-topology", "Unmatched positive cut loop");
+        const unmatched = [...positive.values()].filter(({part, cut}) =>
+            options.cap || !cut.ids.slice(0,
+                cut.closed ? cut.ids.length : -1
+            ).every((id, index) => originalOpenEdges.has(key(
+                parts[part]!.sourceIds[id]!,
+                parts[part]!.sourceIds[cut.ids[(index + 1) % cut.ids.length]!]!
+            )))
+        );
+        if (unmatched.length) {
+            fail("invalid-topology", "Unmatched positive cut chain");
+        }
     }
 
-    return {...result, interfaces: interfaceList};
+    for (const [partIndex, cuts] of pairedCuts) {
+        const part = parts[partIndex]!;
+        part.geometry = {
+            ...part.geometry,
+            boundaries: {
+                ...part.geometry.boundaries,
+                cut: cuts.map(cut => ({
+                    owner: part.geometry.id,
+                    vertices: [...cut.ids],
+                    closed: cut.closed
+                }))
+            }
+        };
+    }
+
+    return {
+        parts: parts.map(part => part.geometry),
+        sideOfPart: parts.map(part => part.side),
+        interfaces: interfaceList
+    };
 }
