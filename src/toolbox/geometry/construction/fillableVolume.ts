@@ -131,6 +131,46 @@ export function createFillableVolume(
         return positions;
     }
 
+    // Every blend shape reuses the neutral mesh's UVs. Give the vessel
+    // walls cylindrical coordinates and each cap planar coordinates so
+    // importers can generate tangents without altering any fill shape.
+    const fullPositions = positionsAtFill(1);
+    const uvs = new Float32Array(vertexCount * 2);
+    const height = cavity.top - cavity.bottom;
+
+    for (let row = 0; row < rows; row++) {
+        const v = (cavity.rings[row]!.y - cavity.bottom) / height;
+        for (let j = 0; j < count; j++) {
+            const index = row * count + j;
+            uvs[index * 2] = j / count;
+            uvs[index * 2 + 1] = v;
+        }
+    }
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const ring of cavity.rings) {
+        for (const point of ring.outline) {
+            minX = Math.min(minX, point.x);
+            maxX = Math.max(maxX, point.x);
+            minZ = Math.min(minZ, point.y);
+            maxZ = Math.max(maxZ, point.y);
+        }
+    }
+
+    const spanX = maxX - minX;
+    const spanZ = maxZ - minZ;
+    for (const start of [topStart, bottomStart]) {
+        for (let j = 0; j < count; j++) {
+            const index = start + j;
+            uvs[index * 2] = (fullPositions[index * 3]! - minX) / spanX;
+            uvs[index * 2 + 1] =
+                (fullPositions[index * 3 + 2]! - minZ) / spanZ;
+        }
+    }
+
     const geometry = new THREE.BufferGeometry();
     geometry.setIndex(indices);
 
@@ -138,8 +178,9 @@ export function createFillableVolume(
     // importers may discard its collapsed faces before reading blend shapes.
     geometry.setAttribute(
         "position",
-        new THREE.BufferAttribute(positionsAtFill(1), 3)
+        new THREE.BufferAttribute(fullPositions, 3)
     );
+    geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
     geometry.computeVertexNormals();
 
     geometry.morphAttributes.position = Array.from({length: steps}, (_, i) => {

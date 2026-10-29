@@ -57,6 +57,23 @@ test("the tankard's authored cavity retains the original serving calibration", (
         assert.ok(mesh.geometry.morphAttributes.position.every(
             target => target.count === count
         ));
+
+        // The neutral UV layout also belongs to all eight blend shapes.
+        // Nonzero UV triangles let Godot generate tangents on import.
+        const uv = mesh.geometry.getAttribute("uv");
+        assert.equal(uv.count, count);
+        const indices = mesh.geometry.getIndex();
+        for (let i = 0; i < indices.count; i += 3) {
+            const a = indices.getX(i);
+            const b = indices.getX(i + 1);
+            const c = indices.getX(i + 2);
+            const abU = uv.getX(b) - uv.getX(a);
+            const abV = uv.getY(b) - uv.getY(a);
+            const acU = uv.getX(c) - uv.getX(a);
+            const acV = uv.getY(c) - uv.getY(a);
+            assert.ok(Math.abs(abU * acV - abV * acU) > 1e-10);
+        }
+
         const base = mesh.geometry.getAttribute("position");
         const bottom = cavity.bottom;
 
@@ -157,7 +174,13 @@ test("binary glTF contains the named fill targets and initial weights", async ()
         assert.ok(node && Number.isInteger(node.mesh));
         const mesh = gltf.meshes[node.mesh];
         assert.ok(mesh);
-        assert.equal(mesh.primitives[0].targets.length, 8);
+        const primitive = mesh.primitives[0];
+        assert.ok(Number.isInteger(primitive.attributes.TEXCOORD_0));
+        assert.equal(
+            gltf.accessors[primitive.attributes.TEXCOORD_0].count,
+            contents.mesh.geometry.getAttribute("position").count
+        );
+        assert.equal(primitive.targets.length, 8);
         assert.deepEqual(mesh.extras.targetNames,
             Object.keys(contents.mesh.morphTargetDictionary));
         near(mesh.weights[5], 0.8, 1e-6);
