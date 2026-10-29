@@ -19,6 +19,8 @@ export interface LoftWallFace {
 export interface LoftSectionWallsOptions {
     outerRegion?: string;
     innerRegions?: readonly string[];
+    /** Continuous perimeter distance or a fresh U origin at each contour edge. */
+    uvMode?: "perimeter" | "edge";
     surfaceAt?: (face: LoftWallFace) => string;
     smoothingGroupAt?: (face: LoftWallFace) => string | undefined;
     precision?: GeometryPrecision;
@@ -52,6 +54,7 @@ export function loftSectionWalls(
     {
         outerRegion = "outer",
         innerRegions = [],
+        uvMode = "perimeter",
         surfaceAt,
         smoothingGroupAt,
         precision
@@ -118,7 +121,7 @@ export function loftSectionWalls(
 
         const strips = loftSideQuads({
             rings,
-            uvMode: "perimeter",
+            uvMode,
             surface: (edge, interval) =>
                 surfaceAt?.({ loop, edge, interval }) ?? defaultRegion,
             smoothingGroup: (edge, interval) =>

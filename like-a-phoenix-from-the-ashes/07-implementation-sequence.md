@@ -381,8 +381,17 @@ surfaces; the mug's editor/runtime fill still works.
 **Result:** Every current model uses the shared geometry operations
 while keeping its visual and runtime behavior.
 
-- [ ] **5.1** Migrate `plank.ts` and `sandingpaper.ts`, including
+- [x] **5.1** Migrate `plank.ts` and `sandingpaper.ts`, including
       deformation, distinct surface materials and actual bounds.
+      The plank now composes `loftSectionWalls` with two authored
+      `capBoundary` calls. The shared loft accepts the already-supported
+      per-edge UV mode so its previous five-section form and physical
+      UVs remain unchanged. The sanding sheet uses nonmutating
+      `deformVertices` on an authored, subdivided box and is placed
+      using its actual deformed bounds. Both compile through
+      `surfaceMesh` with original surface-material distinctions.
+      `phase-five-simple-models.test.mjs` checks the migrated forms,
+      quads, UVs, material regions and bounds. Commit: pending.
 - [ ] **5.2** Migrate `dagger.ts`, including continuous profile
       transitions, faceted edges, guard tips and grip materials.
 - [ ] **5.3** Migrate `table.ts`, preserving the four worn planks,

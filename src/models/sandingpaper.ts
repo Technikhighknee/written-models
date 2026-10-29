@@ -1,9 +1,9 @@
-
 import * as THREE from "three";
 
 import { mm, cm } from "../toolbox/units/length";
 import { boxMesh } from "../toolbox/geometry/construction/boxMesh";
-import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
+import { deformVertices } from "../toolbox/geometry/edit/geometryEdits";
+import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 
 export default {
     create,
@@ -12,81 +12,71 @@ export default {
     description: "The backbone of modern society."
 };
 
-function create(): THREE.Group {
-    const sandingpaper = new THREE.Group();
-    sandingpaper.name = "SandingPaper";
+const WIDTH = cm(23);
+const DEPTH = cm(28);
+const THICKNESS = mm(0.8);
 
-    const width = cm(23);
-    const depth = cm(28);
-    const thickness = mm(0.8);
-
-    const backing = new THREE.MeshStandardMaterial({
-        color: "#c8b291",
-        roughness: 1
-    });
-
-    const abrasive = new THREE.MeshStandardMaterial({
-        color: "#554d40",
-        roughness: 1,
-    });
-
-    // The shape is authored first; render triangles and control faces
-    // derive from the very same displaced vertices.
-    const mesh = boxMesh({
-        width,
-        height: thickness,
-        depth,
+/** One authored deformation field for the sheet and all its side faces. */
+export function buildSandingPaperGeometry() {
+    const sheet = boxMesh({
+        width: WIDTH,
+        height: THICKNESS,
+        depth: DEPTH,
         widthSegments: 12,
         heightSegments: 1,
         depthSegments: 16
     });
 
-    for (const point of mesh.vertices) {
-        const u = point.x / width;
-        const v = point.z / depth;
+    return deformVertices(sheet, point => {
+        const u = point.x / WIDTH;
+        const v = point.z / DEPTH;
 
-        // Gentle curvature across the sheet.
-        const bow = 
-            mm(2) *
+        const bow = mm(2) *
             Math.sin(Math.PI * (u + 0.5)) *
             Math.sin(Math.PI * (v + 0.5));
-        
-        // Slight fold
-        const foldLine =
-            point.z - 0.3 * point.x - cm(2);
-        
-        const fold = 
-            Math.tan(7 * Math.PI / 180) *
-            Math.max(0, foldLine);
-        
-        // One slightly curled corner.
-        const corner = Math.max(
-            0, (u + v - 0.35) / 0.65
-        );
 
+        const foldLine = point.z - 0.3 * point.x - cm(2);
+        const fold = Math.tan(7 * Math.PI / 180) * Math.max(0, foldLine);
+
+        const corner = Math.max(0, (u + v - 0.35) / 0.65);
         const curl = mm(12) * corner ** 2;
 
-        // Subtle unevenness.
-        const wave =
-            mm(1.2) *
+        const wave = mm(1.2) *
             Math.sin(Math.PI * 2 * (1.3 * u - 0.7 * v));
-        
-        point.y += fold + bow + curl + wave;
-    }
 
-    const geometry = toBufferGeometry(mesh, {
-        px: 1, nx: 1, py: 0, ny: 1, pz: 1, nz: 1
+        return new THREE.Vector3(0, fold + bow + curl + wave, 0);
+    });
+}
+
+function create(): THREE.Group {
+    const sandingpaper = new THREE.Group();
+    sandingpaper.name = "SandingPaper";
+
+    const backing = new THREE.MeshStandardMaterial({
+        color: "#c8b291",
+        roughness: 1
+    });
+    const abrasive = new THREE.MeshStandardMaterial({
+        color: "#554d40",
+        roughness: 1
     });
 
-    const paper = new THREE.Mesh(
-        geometry,
-        [abrasive, backing]
-    );
+    const paper = surfaceMesh({
+        name: "Paper",
+        geometry: buildSandingPaperGeometry(),
+        materials: {
+            px: backing,
+            nx: backing,
+            py: abrasive,
+            ny: backing,
+            pz: backing,
+            nz: backing
+        }
+    });
 
-    // Keep the lowest part slightly above the ground.
-    paper.position.y = 
-        mm(1) - geometry.boundingBox!.min.y;
-
+    // Position from the deformed geometry's actual minimum, not an
+    // undeformed box or an assumed fold height.
+    paper.position.y = mm(1) - paper.geometry.boundingBox!.min.y;
     sandingpaper.add(paper);
 
     return sandingpaper;

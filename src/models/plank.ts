@@ -1,8 +1,10 @@
 import * as THREE from "three";
 
 import { cm, m } from "../toolbox/units/length";
-import { loftSections } from "../toolbox/geometry/construction/loftSections";
-import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
+import { loftSectionWalls } from "../toolbox/geometry/build/loftSectionWalls";
+import { capBoundary } from "../toolbox/geometry/build/finishBoundaries";
+import type { GeometryResult } from "../toolbox/geometry/kernel/GeometryResult";
+import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { oakVariant } from "../materials/wood/oak";
 
 export default {
@@ -12,56 +14,76 @@ export default {
     description: "A humble piece of wood."
 };
 
+const LENGTH = m(1.2);
+const WIDTH = cm(22);
+const THICKNESS = cm(3);
+
+/** Five authored sections form one curved board with true quad end grain. */
+export function buildPlankGeometry(): GeometryResult {
+    function section(z: number, lift = 0): THREE.Vector3[] {
+        return [
+            new THREE.Vector3(-WIDTH / 2, -THICKNESS / 2 + lift, z),
+            new THREE.Vector3(WIDTH / 2, -THICKNESS / 2 + lift, z),
+            new THREE.Vector3(WIDTH / 2, THICKNESS / 2 + lift, z),
+            new THREE.Vector3(-WIDTH / 2, THICKNESS / 2 + lift, z)
+        ];
+    }
+
+    const slices = [
+        section(-LENGTH / 2),
+        section(-LENGTH / 4, cm(0.4)),
+        section(0, cm(0.7)),
+        section(LENGTH / 4, cm(0.4)),
+        section(LENGTH / 2)
+    ];
+
+    let result = loftSectionWalls(
+        slices.map(points => ({
+            outer: { points, closed: true }
+        })),
+        {
+            uvMode: "edge",
+            surfaceAt: ({ edge }) => `side-${edge}`,
+            smoothingGroupAt: ({ edge }) => `side-${edge}`
+        }
+    );
+
+    // End-grain UVs retain the same physical origin as the original
+    // section caps, independently of their outward winding.
+    const frame = new THREE.Matrix4();
+    for (const [end, z] of [
+        ["start", -LENGTH / 2],
+        ["end", LENGTH / 2]
+    ] as const) {
+        result = capBoundary(result, result.boundaries[`${end}-outer`]![0]!, {
+            region: `cap-${end}`,
+            uvFrame: frame.makeTranslation(
+                -WIDTH / 2, -THICKNESS / 2, z
+            ),
+            tessellation: "quad-if-planar"
+        });
+    }
+
+    return result;
+}
+
 function create(): THREE.Group {
     const group = new THREE.Group();
     group.name = "WoodenPlank";
 
-    const length = m(1.2);
-    const width = cm(22);
-    const thickness = cm(3);
-
     const wood = oakVariant(6);
-
-    function section(
-        z: number,
-        lift: number = 0
-    ): THREE.Vector3[] {
-        const halfWidth = width / 2;
-        const halfThickness = thickness / 2;
-
-        return [
-            new THREE.Vector3(-halfWidth, -halfThickness + lift, z),
-            new THREE.Vector3( halfWidth, -halfThickness + lift, z),
-            new THREE.Vector3( halfWidth,  halfThickness + lift, z),
-            new THREE.Vector3(-halfWidth,  halfThickness + lift, z),
-        ];
-    }
-
-    const sections = [
-        section(-length / 2),
-        section(-length / 4, cm(0.4)),
-        section(0, cm(0.7)),
-        section(length / 4, cm(0.4)),
-        section(length / 2)
-    ];
-
-    const meshData = loftSections(sections);
-
-    const geometry = toBufferGeometry(meshData, {
-        "side-0": 0,
-        "side-1": 0,
-        "side-2": 0,
-        "side-3": 0,
-        "cap-start": 1,
-        "cap-end": 1
+    const plank = surfaceMesh({
+        name: "Plank",
+        geometry: buildPlankGeometry(),
+        materials: {
+            "side-0": wood.face,
+            "side-1": wood.face,
+            "side-2": wood.face,
+            "side-3": wood.face,
+            "cap-start": wood.endGrain,
+            "cap-end": wood.endGrain
+        }
     });
-
-    const plank = new THREE.Mesh(
-        geometry,
-        [wood.face, wood.endGrain]
-    );
-
-    plank.name = "Plank";
     group.add(plank);
 
     return group;
