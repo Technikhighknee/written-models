@@ -5,7 +5,7 @@ import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
 import {toolbox} from "../../support/toolbox.mjs";
 
-const {solidBoolean} = await toolbox("geometry/edit/solidBoolean.ts");
+const {booleanSolids} = await toolbox("geometry/edit/booleanSolids.ts");
 const {boxMesh} = await toolbox("geometry/construction/boxMesh.ts");
 const {geometryResult} = await toolbox("geometry/kernel/GeometryResult.ts");
 const {topologyOf} = await toolbox("geometry/kernel/topology.ts");
@@ -70,7 +70,7 @@ test("intersecting authored boxes preserve actual union, intersection and differ
         ["difference", 4]
     ];
     for (const [operation, volume] of expected) {
-        const result = await solidBoolean(first, second, operation);
+        const result = await booleanSolids(first, second, operation);
         closed(result);
         assert.equal(topologyOf(result).connectedComponents().length, 1);
         assert.ok(Math.abs(physicalVolume(result) - volume) < 1e-4);
@@ -95,7 +95,7 @@ test("intersecting authored boxes preserve actual union, intersection and differ
 test("a smaller cutter produces a fully closed interior with separate cut region", async () => {
     const first = box();
     const cutter = box(0, 0, 0, 0.8);
-    const result = await solidBoolean(first, cutter, "difference");
+    const result = await booleanSolids(first, cutter, "difference");
     closed(result);
     assert.ok(Math.abs(physicalVolume(result) - (8 - 0.8 ** 3)) < 1e-4);
     assert.equal(topologyOf(result).connectedComponents().length, 2);
@@ -106,7 +106,7 @@ test("a smaller cutter produces a fully closed interior with separate cut region
 });
 
 test("disjoint intersection is an owned empty geometry result", async () => {
-    const result = await solidBoolean(box(), box(10), "intersection");
+    const result = await booleanSolids(box(), box(10), "intersection");
     assert.equal(result.geometry.vertices.length, 0);
     assert.equal(result.geometry.triangles.length, 0);
     assert.deepEqual(Object.keys(result.regions), []);
@@ -114,15 +114,15 @@ test("disjoint intersection is an owned empty geometry result", async () => {
 });
 
 test("non-overlapping union keeps both disconnected closed components", async () => {
-    const result = await solidBoolean(box(), box(10), "union");
+    const result = await booleanSolids(box(), box(10), "union");
     closed(result);
     assert.equal(topologyOf(result).connectedComponents().length, 2);
     assert.ok(Math.abs(physicalVolume(result) - 16) < 1e-4);
 });
 
 test("a boolean result can be used as a new boolean operand", async () => {
-    const first = await solidBoolean(box(), box(1), "union");
-    const result = await solidBoolean(first, box(0, 0, 1), "difference");
+    const first = await booleanSolids(box(), box(1), "union");
+    const result = await booleanSolids(first, box(0, 0, 1), "difference");
     closed(result);
     assert.ok(physicalVolume(result) > 0);
     assert.ok(Object.keys(result.regions).some(name =>
@@ -138,11 +138,11 @@ test("invalid open surfaces and invalid operations fail explicitly", async () =>
         triangles: []
     });
     await assert.rejects(
-        solidBoolean(unclosed, source, "union"),
+        booleanSolids(unclosed, source, "union"),
         error => error.reason === "invalid-topology"
     );
     await assert.rejects(
-        solidBoolean(source, source, "bogus"),
+        booleanSolids(source, source, "bogus"),
         error => error.reason === "invalid-input"
     );
 });
@@ -150,7 +150,7 @@ test("invalid open surfaces and invalid operations fail explicitly", async () =>
 test("Float32-collapse in a far-away small solid is rejected", async () => {
     const source = box(1e8, 0, 0, 0.002);
     await assert.rejects(
-        solidBoolean(source, box(), "union"),
+        booleanSolids(source, box(), "union"),
         error => error.reason === "precision-loss"
     );
 });
@@ -163,7 +163,7 @@ test("a rotated rectangular operand retains closed triangulation and real source
         vertices: original.vertices.map(point => point.clone()
             .applyMatrix4(rotation).add(new THREE.Vector3(0.7, 0.1, 0.15)))
     });
-    const result = await solidBoolean(box(), second, "intersection");
+    const result = await booleanSolids(box(), second, "intersection");
     closed(result);
     assert.equal(topologyOf(result).connectedComponents().length, 1);
     const volume = physicalVolume(result);
@@ -182,7 +182,7 @@ test("a rotated rectangular operand retains closed triangulation and real source
 });
 
 test("Boolean face region provenance and smoothing survive per-UV seam separation", async () => {
-    const result = await solidBoolean(box(), box(1), "difference");
+    const result = await booleanSolids(box(), box(1), "difference");
     closed(result);
 
     assert.ok(result.regions["first:px"] === undefined ||
@@ -205,7 +205,7 @@ test("Boolean face region provenance and smoothing survive per-UV seam separatio
 });
 
 test("Boolean output can serialize as a real material-grouped GLB with UV attributes", async () => {
-    const result = await solidBoolean(box(), box(1), "difference");
+    const result = await booleanSolids(box(), box(1), "difference");
     const materials = Object.fromEntries(
         Object.keys(result.regions).map((region, index) =>
             [region, new THREE.MeshStandardMaterial({

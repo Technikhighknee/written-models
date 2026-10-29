@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import Module from "manifold-3d";
 
-import type { TriangleFace } from "../mesh/MeshData";
+import type { MeshData, TriangleFace } from "../mesh/MeshData";
 import {
     geometryResult,
     GeometryOperationError,
@@ -14,7 +14,19 @@ import {
     type GeometryPrecision
 } from "../kernel/precision";
 
-export type SolidBooleanOperation = "union" | "intersection" | "difference";
+export type BooleanOperation = "union" | "intersection" | "difference";
+
+export interface BooleanOptions {
+    precision?: GeometryPrecision;
+    /** Overrides the source-derived material region on every output face. */
+    regionAt?(point: THREE.Vector3Like, normal: THREE.Vector3Like): string;
+    /** Overrides interpolated source UVs on every output corner. */
+    uvAt?(
+        point: THREE.Vector3Like,
+        normal: THREE.Vector3Like,
+        region: string
+    ): THREE.Vector2Like;
+}
 
 type Kernel = Awaited<ReturnType<typeof Module>>;
 let kernelPromise: Promise<Kernel> | undefined;
@@ -35,7 +47,7 @@ function fail(
         "degenerate-geometry" | "precision-loss" | "unsupported-topology",
     message: string
 ): never {
-    throw new GeometryOperationError("solidBoolean", reason, message);
+    throw new GeometryOperationError("booleanSolids", reason, message);
 }
 
 function assertFloat32Triangle(
@@ -158,7 +170,8 @@ function inputMesh(
 function resultMesh(
     mesh: InstanceType<Kernel["Mesh"]>,
     sourceRegions: Map<number, {region: string; smoothingGroup?: string}>,
-    precision: GeometryPrecision
+    precision: GeometryPrecision,
+    options: BooleanOptions
 ): GeometryResult {
     const parents = Array.from({length: mesh.numVert}, (_, i) => i);
     function find(index: number): number {
@@ -229,9 +242,31 @@ function resultMesh(
             const uvs = ids.map(id => new THREE.Vector2(
                 prop[id * stride + 3]!, prop[id * stride + 4]!
             )) as TriangleFace["uvs"];
+            const a = vertices[corners[0]!]!;
+            const b = vertices[corners[1]!]!;
+            const c = vertices[corners[2]!]!;
+            const normal = b.clone().sub(a).cross(c.clone().sub(a))
+                .normalize();
+            const center = a.clone().add(b).add(c).multiplyScalar(1 / 3);
+            const region = options.regionAt
+                ? options.regionAt(center, normal)
+                : original.region;
+            if (typeof region !== "string" || !region.trim()) {
+                fail("invalid-input", "Boolean region classifier returned no region");
+            }
+            const projectedUVs = options.uvAt
+                ? corners.map(id => {
+                    const projected = options.uvAt!(vertices[id]!, normal, region);
+                    if (!projected || ![projected.x, projected.y]
+                        .every(Number.isFinite)) {
+                        fail("invalid-input", "Boolean UV projector returned invalid coordinates");
+                    }
+                    return new THREE.Vector2(projected.x, projected.y);
+                }) as TriangleFace["uvs"]
+                : uvs;
             triangles.push({
-                corners, uvs,
-                surface: original.region,
+                corners, uvs: projectedUVs,
+                surface: region,
                 ...(original.smoothingGroup === undefined ? {} :
                     {smoothingGroup: original.smoothingGroup})
             });
@@ -252,22 +287,26 @@ function resultMesh(
  * property runs. Boolean output is newly triangulated, so previous face
  * and boundary selections intentionally do not survive as stale indices.
  *
- * Output region names are prefixed with "first:" and "second:"; cutter
- * faces in a difference use "cut:" to distinguish the interior surface.
+ * By default, output region names are prefixed "first:" / "second:";
+ * difference cutter faces use "cut:". Callers can instead provide
+ * regionAt / uvAt to classify and project all actual generated triangles.
  * Empty intersections return a valid empty GeometryResult.
+ * The WASM kernel initializes asynchronously on the first call.
  */
-export async function solidBoolean(
-    first: GeometryResult,
-    second: GeometryResult,
-    operation: SolidBooleanOperation,
-    precision?: GeometryPrecision
+export async function booleanSolids(
+    first: MeshData | GeometryResult,
+    second: MeshData | GeometryResult,
+    operation: BooleanOperation,
+    options: BooleanOptions = {}
 ): Promise<GeometryResult> {
-    const policy = resolvePrecision(precision);
+    const policy = resolvePrecision(options.precision);
+    const leftSource = "geometry" in first ? first : geometryResult(first, policy);
+    const rightSource = "geometry" in second ? second : geometryResult(second, policy);
     if (!["union", "intersection", "difference"].includes(operation)) {
         fail("invalid-input", "Unknown boolean operation");
     }
-    validateSolid(first);
-    validateSolid(second);
+    validateSolid(leftSource);
+    validateSolid(rightSource);
 
     let left: InstanceType<Kernel["Manifold"]> | undefined;
     let right: InstanceType<Kernel["Manifold"]> | undefined;
@@ -278,10 +317,10 @@ export async function solidBoolean(
             region: string; smoothingGroup?: string
         }>();
         left = new wasm.Manifold(inputMesh(
-            first, wasm, regions, "first:"
+            leftSource, wasm, regions, "first:"
         ));
         right = new wasm.Manifold(inputMesh(
-            second, wasm, regions,
+            rightSource, wasm, regions,
             operation === "difference" ? "cut:" : "second:"
         ));
         output = operation === "union"
@@ -296,10 +335,10 @@ export async function solidBoolean(
                 vertices: [], quads: [], triangles: []
             }, policy);
         }
-        return resultMesh(output.getMesh(), regions, policy);
+        return resultMesh(output.getMesh(), regions, policy, options);
     } catch (error) {
         if (error instanceof GeometryOperationError) throw error;
-        throw new GeometryOperationError("solidBoolean", "invalid-topology",
+        throw new GeometryOperationError("booleanSolids", "invalid-topology",
             "Boolean kernel could not process these solids: " +
                 (error instanceof Error ? error.message : String(error)));
     } finally {
