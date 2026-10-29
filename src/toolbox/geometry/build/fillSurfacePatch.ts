@@ -381,7 +381,7 @@ export function fillSurfacePatch({
         // Refinement is conforming: split marked interior edges in every
         // incident face and use one shared midpoint vertex. A centroid fan
         // handles interior curvature without touching any boundary edge.
-        const maxIterations = 9;
+        const maxIterations = 15;
         const maxFaces = 40_000;
         let converged = false;
 
@@ -444,42 +444,64 @@ export function fillSurfacePatch({
 
             const refined: Triangle[] = [];
             triangles.forEach((face, index) => {
-                const outline: number[] = [];
-                let affected = marked.has(index);
+                const middle = [0, 1, 2].map(i =>
+                    midpoints.get(key(face[i]!, face[(i + 1) % 3]!))
+                );
+                const cut = middle.flatMap((id, i) =>
+                    id === undefined ? [] : [i]
+                );
 
-                for (let corner = 0; corner < 3; corner++) {
-                    const a = face[corner]!;
-                    const b = face[(corner + 1) % 3]!;
-                    outline.push(a);
-
-                    const midpoint = midpoints.get(key(a, b));
-                    if (midpoint !== undefined) {
-                        outline.push(midpoint);
-                        affected = true;
+                if (cut.length === 0) {
+                    if (!marked.has(index)) {
+                        refined.push(face);
+                        return;
                     }
-                }
-
-                if (!affected) {
-                    refined.push(face);
+                    const center = face.reduce(
+                        (point, id) => point.add(uv[id]!),
+                        new THREE.Vector2()
+                    ).multiplyScalar(1 / 3);
+                    const vertex = uv.push(center) - 1;
+                    positions.push(sampleChart(chart, center, tolerance));
+                    const [a, b, c] = face;
+                    refined.push([a, b, vertex], [b, c, vertex],
+                        [c, a, vertex]);
                     return;
                 }
 
-                const centerUv = face.reduce(
-                    (point, id) => point.add(uv[id]!),
-                    new THREE.Vector2()
-                ).multiplyScalar(1 / 3);
-                const centerId = uv.push(centerUv) - 1;
-                positions.push(sampleChart(chart, centerUv, tolerance));
-
-                for (let i = 0; i < outline.length; i++) {
-                    refined.push([
-                        centerId,
-                        outline[i]!,
-                        outline[(i + 1) % outline.length]!
-                    ]);
+                // Shared edge midpoint splits conformingly in each incident
+                // triangle. A centroid fan here would create 4–6 faces even
+                // for a single split and compound aggressively on curved
+                // patches with long, precisely sampled boundary chains.
+                if (cut.length === 1) {
+                    const i = cut[0]!;
+                    const a = face[i]!;
+                    const b = face[(i + 1) % 3]!;
+                    const c = face[(i + 2) % 3]!;
+                    const m = middle[i]!;
+                    refined.push([a, m, c], [m, b, c]);
+                    return;
                 }
-            });
+                if (cut.length === 2) {
+                    const i = [0, 1, 2].find(edge =>
+                        middle[edge] === undefined
+                    )!;
+                    const a = face[i]!;
+                    const b = face[(i + 1) % 3]!;
+                    const c = face[(i + 2) % 3]!;
+                    const bc = middle[(i + 1) % 3]!;
+                    const ca = middle[(i + 2) % 3]!;
+                    refined.push([a, b, bc], [a, bc, ca],
+                        [ca, bc, c]);
+                    return;
+                }
 
+                const [a, b, c] = face;
+                const ab = middle[0]!;
+                const bc = middle[1]!;
+                const ca = middle[2]!;
+                refined.push([a, ab, ca], [ab, b, bc],
+                    [ca, bc, c], [ab, bc, ca]);
+            });
             triangles = refined;
         }
 
