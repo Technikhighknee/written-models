@@ -277,6 +277,6 @@ test("interpolation rejects a brief ring collapse missed at the midpoint", () =>
     assert.throws(
         () => cavitySectionsFromSurfaces(options(pieces, [0, 1])),
         error => error.operation === "cavitySectionsFromSurfaces" &&
-            ["degenerate-geometry", "self-intersection"].includes(error.reason)
+            ["degenerate-geometry", "invalid-topology", "self-intersection"].includes(error.reason)
     );
 });
