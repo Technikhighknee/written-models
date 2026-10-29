@@ -18,9 +18,11 @@ function sectionFrame(section: Section3): THREE.Matrix4 {
     const z = new THREE.Vector3().copy(points[1]!).sub(a)
         .cross(new THREE.Vector3().copy(points[2]!).sub(a)).normalize();
     const y = new THREE.Vector3().crossVectors(z, x).normalize();
-    const center = points.reduce((sum, point) =>
-        sum.add(new THREE.Vector3().copy(point)), new THREE.Vector3()
-    ).multiplyScalar(1 / points.length);
+    const center = new THREE.Vector3();
+    for (const point of points) {
+        center.add(new THREE.Vector3().copy(point));
+    }
+    center.multiplyScalar(1 / points.length);
 
     return new THREE.Matrix4().makeBasis(x, y, z).setPosition(center);
 }
