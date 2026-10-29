@@ -1,5 +1,3 @@
-import * as THREE from "three";
-
 import { partitionConvexPolygon } from "../../toolbox/shapes/operations/clipConvexPolygon";
 import { weightedCuts } from "../../toolbox/spatial/layout/weightedCuts";
 import { seededVariation } from "../../toolbox/spatial/layout/seededVariation";
