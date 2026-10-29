@@ -8,6 +8,16 @@ export { transformGeometry, deformVertices, offsetMeshUvs } from "../edit/geomet
 export type { DeformationField } from "../edit/geometryEdits";
 export { raycastSurface } from "../queries/raycastSurface";
 export type { SurfaceTarget, SurfaceHit, Ray3 } from "../queries/raycastSurface";
+export { surfaceClearance } from "../queries/surfaceClearance";
+export type {
+    ClearanceOptions,
+    ClearanceResult
+} from "../queries/surfaceClearance";
+export { verifyExteriorPlacement } from "../queries/verifyExteriorPlacement";
+export type {
+    ExteriorPlacementOptions,
+    ExteriorPlacementResult
+} from "../queries/verifyExteriorPlacement";
 export { findFacingPatch } from "../queries/findFacingPatch";
 export type { SurfacePatchHit } from "../queries/findFacingPatch";
 export { finiteFootprintContains } from "../queries/finiteFootprint";
