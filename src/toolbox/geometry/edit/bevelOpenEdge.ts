@@ -113,7 +113,10 @@ export function bevelOpenEdge(
     ) || edge.from === edge.to) {
         fail("invalid-input", "Invalid edge endpoint indices");
     }
-    const uses = topology.edgeUses(edge.from, edge.to);
+    const uses = [...topology.edgeUses(edge.from, edge.to)].sort(
+        (a, b) => Number(b.from === edge.from) -
+            Number(a.from === edge.from)
+    );
     if (uses.length !== 2) {
         fail("unsupported-topology", "Open chamfer needs exactly two incident faces");
     }
@@ -153,7 +156,6 @@ export function bevelOpenEdge(
             b.clone().addScaledVector(tangent, -taperEnd)
                 .addScaledVector(intoFace, wEnd)
         ) - 1;
-        const edgeOrientation = use.from === edge.from;
         const polygon = face.corners.map(id => original.vertices[id]!);
         for (const id of [start, end]) {
             const point = vertices[id]!;
@@ -197,8 +199,7 @@ export function bevelOpenEdge(
             start,
             end,
             firstUV: evaluate(vertices[start]!),
-            lastUV: evaluate(vertices[end]!),
-            edgeOrientation
+            lastUV: evaluate(vertices[end]!)
         };
     });
 
