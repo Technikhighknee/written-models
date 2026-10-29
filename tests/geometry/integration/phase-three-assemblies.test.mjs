@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
+import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+
+import { sourceModule } from "../../support/toolbox.mjs";
 
 import { toolbox } from "../../support/toolbox.mjs";
 
@@ -40,6 +43,20 @@ const { surfaceMesh } = await toolbox(
 const { getControlOutline } = await toolbox(
     "geometry/mesh/controlOutline.ts"
 );
+
+const { prepareRuntimeModel } = await sourceModule(
+    "core/export/prepareRuntimeModel.ts"
+);
+
+class BinaryFileReader {
+    result = null;
+    onloadend = null;
+
+    async readAsArrayBuffer(blob) {
+        this.result = await blob.arrayBuffer();
+        this.onloadend?.();
+    }
+}
 
 const p = (x, y, z = 0) => new THREE.Vector3(x, y, z);
 
@@ -234,7 +251,7 @@ function weldLayered({ top, bottom, wall }) {
     });
 }
 
-test("five barrel head planks keep exact seams and independently detailed faces", () => {
+test("five barrel head planks keep exact seams and export distinct materials", async () => {
     const radius = 0.46;
     const circle = disk(radius, 32);
     const cuts = [-0.30, -0.11, 0.14, 0.32].map(
@@ -323,25 +340,80 @@ test("five barrel head planks keep exact seams and independently detailed faces"
         }
     }
 
-    const material = new THREE.MeshBasicMaterial();
+    const materials = Object.fromEntries([
+        ["outer", "#916b42"],
+        ["inner", "#755334"],
+        ["end-grain", "#65472e"],
+        ["groove-floor", "#4a3021"],
+        ["groove-shoulder", "#85603c"]
+    ].map(([region, color]) => [
+        region,
+        new THREE.MeshStandardMaterial({
+            name: `head-${region}`,
+            color,
+            vertexColors: true
+        })
+    ]));
+    const group = new THREE.Group();
+
     for (let index = 0; index < head.length; index++) {
         const result = head[index];
         const mesh = surfaceMesh({
             name: `HeadBoard${index + 1}`,
             geometry: result,
-            materials: material
+            materials,
+            tint: new THREE.Color().setScalar(0.94 + index * 0.01)
         });
-        try {
-            assert.equal(
-                getControlOutline(mesh.geometry).quadCount,
-                result.geometry.quads.length
-            );
-            assert.ok(mesh.geometry.getAttribute("uv").count > 0);
-        } finally {
-            mesh.geometry.dispose();
-        }
+
+        assert.equal(
+            getControlOutline(mesh.geometry).quadCount,
+            result.geometry.quads.length
+        );
+        assert.ok(mesh.geometry.getAttribute("uv").count > 0);
+        group.add(mesh);
     }
-    material.dispose();
+
+    const runtime = prepareRuntimeModel(group);
+    const scene = new THREE.Scene();
+    scene.add(runtime.root);
+    const reader = globalThis.FileReader;
+    globalThis.FileReader = BinaryFileReader;
+
+    try {
+        const bytes = await new GLTFExporter().parseAsync(
+            scene, { binary: true }
+        );
+        assert.ok(bytes instanceof ArrayBuffer);
+
+        const header = new DataView(bytes);
+        assert.equal(header.getUint32(0, true), 0x46546c67);
+
+        const json = JSON.parse(new TextDecoder().decode(
+            new Uint8Array(bytes, 20, header.getUint32(12, true))
+        ).trim());
+        const names = new Set((json.materials ?? []).map(m => m.name));
+        const primitives = (json.meshes ?? []).flatMap(mesh => mesh.primitives);
+
+        for (const region of [
+            "outer", "inner", "end-grain",
+            "groove-floor", "groove-shoulder"
+        ]) {
+            assert.ok(names.has(`head-${region}`));
+        }
+        assert.ok(primitives.length > 1);
+        assert.ok(primitives.some(primitive =>
+            primitive.attributes.TEXCOORD_0 !== undefined &&
+            primitive.attributes.COLOR_0 !== undefined
+        ));
+    } finally {
+        runtime.dispose();
+
+        if (reader === undefined) delete globalThis.FileReader;
+        else globalThis.FileReader = reader;
+
+        for (const mesh of group.children) mesh.geometry.dispose();
+        for (const material of Object.values(materials)) material.dispose();
+    }
 });
 
 function tabletopCrown() {
