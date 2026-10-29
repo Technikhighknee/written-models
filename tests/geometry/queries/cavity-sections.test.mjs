@@ -339,3 +339,34 @@ test("uniquely paired authored triangles preserve the same cavity stations", () 
         );
     }
 });
+
+test("ambiguous planar triangle pairing is rejected rather than guessed", () => {
+    const vertices = [
+        vec(0, 0, 0), vec(1, 0, 0), vec(2, 0, 0),
+        vec(0, 1, 0), vec(1, 1, 0), vec(2, 1, 0)
+    ];
+    const quads = [[0, 1, 4, 3], [1, 2, 5, 4]];
+    const faces = quads.flatMap(([a, b, c, d]) => [{
+        corners: [a, b, c],
+        uvs: [uv(0, 0), uv(1, 0), uv(1, 1)],
+        surface: "inner"
+    }, {
+        corners: [a, c, d],
+        uvs: [uv(0, 0), uv(1, 1), uv(0, 1)],
+        surface: "inner"
+    }]);
+
+    assert.throws(
+        () => cavitySectionsFromSurfaces(options([{
+            geometry: {
+                vertices,
+                quads: [],
+                triangles: faces
+            },
+            localToWorld: new THREE.Matrix4(),
+            regions: ["inner"]
+        }], [0, 1])),
+        error => error.operation === "cavitySectionsFromSurfaces" &&
+            error.reason === "unsupported-topology"
+    );
+});
