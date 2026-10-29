@@ -149,8 +149,10 @@ Open input shells may be cut without automatically becoming solids.
 `SurfacePatchRef` selects a connected collection of authored faces
 and a coordinate chart that maps its local 2D plane to 3D positions.
 
-The first patch-editing operations support planar connected patches with valid
-outer boundary and optional existing holes.
+The implemented first patch-editing operations support planar connected
+patches with valid outer boundary and optional existing holes. The
+selected faces must use one material/smoothing assignment and one
+affine UV mapping; other selected faces are not silently reclassified.
 
 A fully interior cut contour must be simple, closed and contained
 within the selected patch's actual domain. In the first planar

@@ -641,8 +641,34 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       touching coplanar solid faces, open shells, material regions,
       UVs, Quad View, oriented caps and selection ownership.
       Commits: `bdbe63f` through `00077a5`.
-- [ ] **6.3** Implement planar `openPatch` and `recessPatch` with
+- [x] **6.3** Implement planar `openPatch` and `recessPatch` with
       explicit connected patches, new walls/floors and usable rims.
+      A source-owned `SurfacePatchRef` identifies one connected
+      planar footprint. Boundary loops come from its authored face
+      edge uses; existing boundary vertex IDs and neighboring faces
+      remain unchanged. An entirely interior opening joins the
+      footprint as another hole through `triangulateProfile`.
+      The operation recreates the selected patch with physical UVs
+      mapped through its verified global affine texture chart.
+      `openPatch` exposes an actual open rim; `recessPatch` adds
+      four-sided walls, a planar floor, named opening/floor rims and
+      a usable floor chart. Both retain compatible named boundaries,
+      neighboring patches and fresh result ownership. Repeated
+      separate openings and existing holes are supported; intersecting,
+      nested and perimeter-touching openings fail. A patch with
+      multiple surface assignments, discontinuous/nonlinear UVs or
+      nonplanar geometry is explicitly unsupported here. Pocket depth
+      is checked against existing surfaces at the opening's corners,
+      edge midpoints and triangulated interior samples.
+      The shared planar triangulator validates every authored rim
+      and can choose a deterministic alternate 2D orientation when
+      Earcut's horizontal hole bridging loses an edge; source
+      positions and stations never move. CI checks closed box pockets,
+      open sheet holes, repeated openings, neighboring mesh edges,
+      preserved selections, UV continuity, orientation and rejection
+      of unsupported domains. Commits: `4d3efaf`, `13658fb`,
+      `ca028e3`, `037e057`, `bfa5f0e`.
+      All 232 tests, typecheck and build pass.
 - [ ] **6.4** Implement `cutThrough` for matching entry/exit
       contours, with actual inner walls and validity checks.
 - [ ] **6.5** Extend surface edits to curved patches with valid

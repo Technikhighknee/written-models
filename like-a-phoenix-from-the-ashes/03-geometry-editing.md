@@ -194,9 +194,27 @@ const mortise = recessPatch(board, boardTopPatch, outline, {
 });
 ```
 
-Each operation returns selected rims and new surface regions. A
-through-cut requires matching entry/exit contours or an explicit
-solid-volume difference.
+Both planar operations take an owned, connected `SurfacePatchRef`
+and a closed contour in its 2D chart coordinates. The contour must
+remain strictly inside the selected patch and outside its existing
+holes. The patch's outer and inner loops are traced from real authored
+face edges. Rebuilding changes only selected faces, preserving every
+original outer interface vertex and unrelated mesh face. The new
+topological rim appears under `boundaries.opening`; a recess also
+provides `boundaries["floor-rim"]`. A valid new charted patch
+selection remains available to author another opening, and a pocket
+floor has its own region and planar chart.
+
+The initial planar domain requires one material/smoothing assignment
+and one globally affine face-corner UV mapping on the selected patch.
+Discontinuous UV seams, nonplanar patches, boundary-touching cuts,
+holes enclosed by a new opening, and other ambiguous topology
+fail explicitly. Recess depth is tested by inward rays from
+opening corners, edge midpoints and triangulated interior points
+against the untouched surfaces; these samples reject detected
+breakthroughs, but are not a proof against every possible concave
+obstacle. A through-cut requires matching entry/exit contours or
+an explicit solid-volume difference.
 
 A planar patch uses direct contour clipping in a plane-aligned chart.
 A curved patch needs an explicit mapping between chart coordinates
