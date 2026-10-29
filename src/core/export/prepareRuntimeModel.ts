@@ -385,11 +385,15 @@ export function prepareRuntimeModel(model: THREE.Object3D): RuntimeAsset {
         const position = geometry.getAttribute("position");
         const color = geometry.getAttribute("color");
         const uv = geometry.getAttribute("uv");
-        const materials = Array.isArray(object.material)
+        const multiMaterial = Array.isArray(object.material);
+        const materials = multiMaterial
             ? object.material : [object.material];
         const indexCount = geometry.index?.count ?? position?.count ?? 0;
+        // Three.js uses group material indices only for material arrays.
+        // A mesh with one material renders the entire geometry even if
+        // its source carries multi-material groups (e.g. BoxGeometry).
         const groups: { start: number; count: number; materialIndex: number }[] =
-            geometry.groups.length
+            multiMaterial && geometry.groups.length
                 ? geometry.groups.map(group => ({
                     start: group.start,
                     count: group.count,
