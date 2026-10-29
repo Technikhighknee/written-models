@@ -13,8 +13,11 @@ const { samplePolarStripSections } = await toolbox(
 const { loftSectionWalls } = await toolbox(
     "geometry/build/loftSectionWalls.ts"
 );
-const { ProfiledCavity } = await toolbox(
+const { ProfiledCavity, cavityFromMeshSurfaces } = await toolbox(
     "geometry/construction/profiledCavity.ts"
+);
+const { radialStaves } = await toolbox(
+    "geometry/construction/radialStaves.ts"
 );
 
 const vec = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -207,4 +210,39 @@ test("explicit height order and rigid section frames are enforced", () => {
         )),
         error => error.reason === "invalid-input"
     );
+});
+
+test("the existing wooden mug's inner faces agree with its physical cavity", () => {
+    const profile = [
+        uv(0.047, 0),
+        uv(0.0515, 0.071),
+        uv(0.049, 0.152)
+    ];
+    const pieces = radialStaves(profile, {
+        count: 12,
+        thickness: 0.008,
+        edgeRoundover: 0.0008,
+        innerWidthSamples: [0, 1],
+        angleOffset: Math.PI / 2 - Math.PI / 12
+    });
+
+    const sections = cavitySectionsFromSurfaces(options(
+        pieces.map(geometry => ({
+            geometry,
+            regions: ["inner"],
+            localToWorld: new THREE.Matrix4()
+        })),
+        [0, 0.0355, 0.071, 0.1115, 0.152]
+    ));
+
+    const cavity = new ProfiledCavity(sections);
+    const previous = cavityFromMeshSurfaces(pieces);
+
+    assert.ok(cavity.capacity > 0);
+    assert.ok(Math.abs(cavity.capacity - previous.capacity) < 1e-10);
+    assert.ok(Math.abs(
+        cavity.heightAtFill(0.9) - previous.heightAtFill(0.9)
+    ) < 1e-9);
+    assert.equal(sections[0].outline.length, 12);
+    assert.equal(sections.at(-1).outline.length, 12);
 });
