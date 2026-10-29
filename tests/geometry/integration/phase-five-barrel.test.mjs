@@ -17,11 +17,8 @@ const { radialStaves } = await toolbox(
 const { groovedCircularPlankPanel } = await toolbox(
     "geometry/construction/circularPlankPanel.ts"
 );
-const { bandAroundProfileData } = await toolbox(
-    "geometry/construction/bandAroundProfile.ts"
-);
-const { cylinderMesh } = await toolbox(
-    "geometry/construction/cylinderMesh.ts"
+const { buildBarrelHoopGeometry } = await sourceModule(
+    "models/components/barrelHardware.ts"
 );
 const { bulgedProfile } = await toolbox(
     "shapes/profiles/bulged.ts"
@@ -226,55 +223,33 @@ test("barrel's four bands, four forged laps and eight rivets export with the woo
     for (let i = 0; i < ys.length; i++) {
         const y = ys[i];
         const width = i === 0 || i === 3 ? 0.028 : 0.022;
-        const band = bandAroundProfileData(profile, {
-            y, width, thickness: 0.0038,
-            clearance: 0.001, bevel: 0.00075,
-            radialSegments: 48
-        });
+        const geometry = buildBarrelHoopGeometry(
+            profile, y, width, 24, i
+        );
+
         const hoop = new THREE.Group();
         hoop.name = `IronHoop${i + 1}`;
         scene.add(hoop);
-        add(hoop, "ClosedForgedBand", band, iron);
+        add(hoop, "ClosedForgedBand", geometry.band, iron);
+        add(hoop, "OverlappingStrapJoint", geometry.lap, iron);
 
-        const lapProfile = profile.map(point => new THREE.Vector2(
-            point.x / Math.cos(Math.PI / 48) +
-                0.001 + 0.0038 + 0.00035,
-            point.y
-        ));
-        const sweep = 0.26;
-        const lapSegments = 8;
-        const centerAngle = 0.57 + i * 0.14;
-        add(hoop, "OverlappingStrapJoint", bandAroundProfileData(
-            lapProfile, {
-                y, width: width - 0.004, thickness: 0.0012,
-                clearance: 0.00022, bevel: 0.0003,
-                radialSegments: lapSegments,
-                arc: {
-                    startAngle: centerAngle - sweep / 2,
-                    sweepAngle: sweep
-                }
-            }
-        ), iron);
+        for (const fastener of geometry.rivets) {
+            const rivet = add(hoop, fastener.name,
+                fastener.geometry, iron);
+            rivet.position.copy(fastener.position);
+            rivet.quaternion.copy(fastener.quaternion);
 
-        const rivet = cylinderMesh({
-            radiusTop: 0.0031,
-            radiusBottom: 0.0037,
-            height: 0.0016,
-            radialSegments: 10
-        });
-        for (const [index, sign] of [-1, 1].entries()) {
-            const theta = centerAngle + sign * sweep * 0.29;
-            const point = new THREE.Vector3(
-                Math.sin(theta), 0, Math.cos(theta)
-            );
-            const fastener = add(hoop,
-                index === 0 ? "JointRivetA" : "JointRivetB",
-                rivet, iron);
-            fastener.position.copy(point).multiplyScalar(0.3);
-            fastener.position.y = y;
-            fastener.quaternion.setFromUnitVectors(
-                new THREE.Vector3(0, 1, 0), point
-            );
+            const length = rivet.position.length();
+            assert.ok(length > profile[0].x);
+            assert.ok(length < profile[4].x + 0.02);
+        }
+
+        for (const part of [
+            geometry.band, geometry.lap,
+            ...geometry.rivets.map(rivet => rivet.geometry)
+        ]) {
+            assert.equal(topologyOf(part).openBoundaries().length, 0);
+            assert.equal(topologyOf(part).connectedComponents().length, 1);
         }
     }
 
