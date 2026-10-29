@@ -539,29 +539,13 @@ export function joinGeometry(
                         ? quadOffsets[part]! : triangleOffsets[part]!)
                 }));
 
-                // A moved welded corner invalidates the chart's exact
-                // mapping. Such a patch must be rebuilt by its caller.
-                const moved = patch.faces.some(face => {
-                    const authored = face.kind === "quad"
-                        ? source.geometry.quads[face.index]
-                        : source.geometry.triangles?.[face.index];
-
-                    if (!authored) fail("invalid-input", "Patch references missing source face");
-
-                    return authored.corners.some(id =>
-                        !positions[vertexOffsets[part]! + id]!.equals(
-                            vertices[remapId(id)]!
-                        )
-                    );
-                });
-
                 const candidate: SurfacePatchRef = {
                     owner: result.id,
                     faces,
                     chart: patch.chart
                 };
 
-                if (!moved && patchChartMatches(result, candidate, policy)) {
+                if (patchChartMatches(result, candidate, policy)) {
                     (patches[key] ??= []).push(candidate);
                 }
             }
