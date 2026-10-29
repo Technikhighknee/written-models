@@ -3,25 +3,15 @@ import { loftRings } from "./loftRings";
 import {
     sampleAxialSections, axialStationPoint,
     type AxialProfileStation, type ProfileAxis,
-    type ProfileSmoothing, type RadialWave
+    type ProfileSmoothing, type RadialWave,
+    type LoftAxialProfileOptions
 } from "../build/sampleAxialSections";
 
 export type {
     AxialProfileStation, ProfileAxis, ProfileSmoothing, RadialWave
 } from "../build/sampleAxialSections";
 
-export interface LoftAxialProfileOptions {
-    axis: ProfileAxis;
-    stations: readonly AxialProfileStation[];
-    outline?: readonly (readonly [number, number])[];
-    segments?: number;
-    tipStart?: number;
-    tipEnd?: number;
-    surface?: string;
-    sideSurfaces?: Readonly<Record<number, string>>;
-    smoothing?: ProfileSmoothing | Readonly<Record<string, ProfileSmoothing>>;
-    radialWaves?: readonly RadialWave[];
-}
+export type { LoftAxialProfileOptions } from "../build/sampleAxialSections";
 
 /** Compatibility constructor using the common axial section sampler. */
 export function loftAxialProfile({

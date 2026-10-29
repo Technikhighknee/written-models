@@ -7,7 +7,7 @@ import {
     sampleAxialSections,
     axialStationPoint
 } from "./sampleAxialSections";
-import type { LoftAxialProfileOptions } from "../construction/loftAxialProfile";
+import type { LoftAxialProfileOptions } from "./sampleAxialSections";
 import type { GeometryResult } from "../kernel/GeometryResult";
 import type { Section3 } from "../definitions/geometry";
 

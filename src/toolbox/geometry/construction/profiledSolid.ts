@@ -2,7 +2,7 @@ import { profileSpans } from "../../shapes/profiles/profileSpans";
 import type { ProfileSpansOptions } from "../../shapes/profiles/profileSpans";
 import { mirrorStations } from "../../shapes/profiles/mirrorStations";
 import { axialProfileSolid } from "../build/axialProfileSolid";
-import type { LoftAxialProfileOptions } from "./loftAxialProfile";
+import type { LoftAxialProfileOptions } from "../build/sampleAxialSections";
 import type { GeometryResult } from "../kernel/GeometryResult";
 
 export interface ProfiledSolidOptions

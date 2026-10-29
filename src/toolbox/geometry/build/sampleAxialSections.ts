@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { Section3 } from "../definitions/geometry";
-import { ellipticalRing } from "../construction/ellipticalRing";
+import { ellipticalRing } from "./ellipticalRing";
 
 export type ProfileAxis = "x" | "y" | "z";
 export type ProfileSmoothing = "smooth" | "faceted";
@@ -26,6 +26,15 @@ export interface AxialSectionOptions {
     outline?: readonly (readonly [number, number])[];
     segments?: number;
     radialWaves?: readonly RadialWave[];
+}
+
+/** Face, cap and smoothing options for an authored axial profile solid. */
+export interface LoftAxialProfileOptions extends AxialSectionOptions {
+    tipStart?: number;
+    tipEnd?: number;
+    surface?: string;
+    sideSurfaces?: Readonly<Record<number, string>>;
+    smoothing?: ProfileSmoothing | Readonly<Record<string, ProfileSmoothing>>;
 }
 
 function axesFor(axis: ProfileAxis): readonly [
