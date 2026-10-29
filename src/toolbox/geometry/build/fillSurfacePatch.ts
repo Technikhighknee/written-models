@@ -389,6 +389,8 @@ export function fillSurfacePatch({
             const edges = edgesOf(triangles);
             const split = new Set<string>();
             const marked = new Set<number>();
+            let worstError = 0;
+            let worstFace: Triangle | undefined;
 
             for (const [id, edge] of edges) {
                 if (edge.uses > 2) {
@@ -420,6 +422,10 @@ export function fillSurfacePatch({
                     .add(positions[c]!).multiplyScalar(1 / 3);
                 const deviation = sampleChart(chart, centroidUv, tolerance)
                     .distanceTo(expected);
+                if (deviation > worstError) {
+                    worstError = deviation;
+                    worstFace = [a, b, c];
+                }
 
                 if (deviation > maxDeviation) marked.add(i);
             }
@@ -430,7 +436,7 @@ export function fillSurfacePatch({
             }
 
             if (iteration === maxIterations || triangles.length > maxFaces) {
-                fail("sampling-limit", `Interior refinement reached its triangle budget (pass ${iteration}, ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} marked edges)`);
+                fail("sampling-limit", `Interior refinement reached its triangle budget (pass ${iteration}, ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} marked edges, worst ${worstError} at ${worstFace?.map(id => `(${uv[id]!.x},${uv[id]!.y})`).join(",")})`);
             }
 
             const midpoints = new Map<string, number>();
