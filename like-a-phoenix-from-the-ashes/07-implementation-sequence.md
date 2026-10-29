@@ -393,8 +393,22 @@ while keeping its visual and runtime behavior.
       `phase-five-simple-models.test.mjs` checks the migrated forms,
       quads, UVs, material regions and bounds. Commits: `0a2aa66`,
       `aec6358`.
-- [ ] **5.2** Migrate `dagger.ts`, including continuous profile
+- [x] **5.2** Migrate `dagger.ts`, including continuous profile
       transitions, faceted edges, guard tips and grip materials.
+      The model owns three authored shape recipes and separates pure
+      `buildDaggerGeometry` from materials. `profiledSolid` composes
+      `profileSpans`, optional `mirrorStations`, `sampleAxialSections`,
+      `loftSectionWalls` and the shared `tipBoundary`/`capBoundary`
+      operations; `profiledMesh` remains an optional rendering adapter.
+      The older `loftAxialProfile` also uses the shared section sampler
+      so contour construction has one source of truth.
+      `phase-five-dagger.test.mjs` checks the blade, mirrored quillon
+      and continuous iron/oak/iron grip against the prior form: exact
+      vertices, quad topology, side UVs, smoothing and region counts;
+      tips, closed topology, Quad View and binary GLB material breaks.
+      Native Godot appearance is part of model acceptance in 5.11.
+      Commits: `ac8972f`, `e744fce`, `8edab2f`, `dd9fdc1`,
+      `cd19c92`.
 - [ ] **5.3** Migrate `table.ts`, preserving the four worn planks,
       two trestles and fitted stretcher.
 - [ ] **5.4** Migrate `barrel.ts`, preserving the 24 staves, five
