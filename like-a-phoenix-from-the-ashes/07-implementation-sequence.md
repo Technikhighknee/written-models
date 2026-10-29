@@ -544,14 +544,45 @@ while keeping its visual and runtime behavior.
       Commits: `f99c761`, `2589c4f`, `97b6dc8`,
       `296df32`, `ff95153`, `6666c43`, `7ce19ee`,
       `5205720`, `21f4244`, `64d9fd5`, `3880ccd`.
-- [ ] **5.8** Keep `models/components/oakSeating.ts` and
+- [x] **5.8** Keep `models/components/oakSeating.ts` and
       `trestleSupport.ts` as model-owned recipes built from
       the common geometric operations.
-- [ ] **5.9** Preserve morph/skin/instance specialized export paths,
+      The oak workshop owns material, end-grain, UV, peg and wood
+      variation decisions, while delegating board and timber solids
+      to the shared construction pipeline. The trestle component
+      owns its five-member cut list and rendered assembly; fitted
+      contacts use authored surfaces rather than render-buffer
+      reconstruction. Table, bench and chair migration proofs
+      exercise these compositions without moving carpentry recipes
+      into the geometric kernel. Already in place by 5.7.
+- [x] **5.9** Preserve morph/skin/instance specialized export paths,
       texture atlases, compatible static batching and PBR appearance.
-- [ ] **5.10** Detect details that collapse after Float32 export;
+      Runtime compilation keeps morph targets and their independent
+      weights, clones complete skinned hierarchies, and preserves
+      instance matrices and instance colors. Static meshes with a
+      single material now batch even when their source BufferGeometry
+      contains multi-material group indices: Three.js ignores those
+      groups for single-material meshes, and the exporter does too.
+      Compatible PBR maps share an atlas with retained material tint,
+      UV channels, normal/roughness maps and color space. Binary GLB
+      proofs verify morph weights, skin/joint references and
+      EXT_mesh_gpu_instancing attributes, not merely runtime clones.
+      Commits: `dd86ddc`, `2351f54`, `e24ff78`.
+- [x] **5.10** Detect details that collapse after Float32 export;
        verify relevant material groups, UVs, tints and Quad View
        on each migrated model.
+       Authored `toBufferGeometry` already rejects triangles that
+       collapse or reverse during Float32 conversion. Static runtime
+       batching additionally checks the transformed world-space
+       triangles before atlas UV subdivision: a part may remain valid
+       locally but become unrepresentable after distant placement.
+       Precision failure names the offending mesh instead of silently
+       producing broken GLB triangles. The integrated model proofs
+       retain material regions, Quad View topology, surface UVs,
+       tints and binary GLB output; the runtime proof exercises both
+       the precision failure and a representable placement.
+       All 208 tests, typecheck and build pass in CI.
+       Commit: `e015734`.
 - [ ] **5.11** Complete every model-specific acceptance condition
        in [12](12-model-by-model-proof.md), including GLB/Godot.
 
