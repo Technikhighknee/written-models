@@ -583,8 +583,16 @@ while keeping its visual and runtime behavior.
        the precision failure and a representable placement.
        All 208 tests, typecheck and build pass in CI.
        Commit: `e015734`.
-- [ ] **5.11** Complete every model-specific acceptance condition
+- [x] **5.11** Complete every model-specific acceptance condition
        in [12](12-model-by-model-proof.md), including GLB/Godot.
+       All existing models were manually exported and inspected in Godot;
+       geometry, material appearance and runtime behavior were accepted.
+       The tankard alone exposed missing UVs on its eight liquid morph
+       targets during tangent generation. Shared `createFillableVolume`
+       now supplies cylindrical side and planar cap UVs without changing
+       the geometry, weights or fill calibration. Its GLB regression also
+       checks TEXCOORD_0; the subsequent Godot import was clean.
+       Commit: `7d29ccc`.
 
 **Gate:** Every existing asset renders, exports and retains its
 specific construction and runtime features. The general tool

@@ -51,6 +51,7 @@ export { sampleProfile } from "../build/sampleProfile";
 export type { ProfileStations } from "../build/sampleProfile";
 export { correspondContours } from "../build/correspondContours";
 export type { ContourCorrespondence } from "../definitions/geometry";
+export { clipContour } from "../edit/clipContour";
 export { partitionContour } from "../build/partitionContour";
 export type { PlanarCut2, ContourPartition } from "../build/partitionContour";
 export { samplePartition } from "../build/samplePartition";
