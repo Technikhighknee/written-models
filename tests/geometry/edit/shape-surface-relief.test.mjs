@@ -204,6 +204,52 @@ test("relief reaching a shared boundary is refused, rather than moving it", () =
     assert.equal(source.geometry.vertices.length, 4);
 });
 
+test("a relief path must belong to the selected patch", () => {
+    const source = cap();
+    const outside = feature(
+        p(2, -0.7, 1), p(2, 0, 1), p(2, 0.7, 1), 0.08
+    );
+
+    assert.throws(
+        () => shapeSurfaceRelief(
+            source, source.patches["wood-top"][0],
+            [outside], { overlap: "minimum" }
+        ),
+        error => error.reason === "unsupported-topology"
+    );
+});
+
+test("a deep groove cannot break through an opposing mating face", () => {
+    const upper = cap();
+    const below = fillSurfacePatch({
+        profile: profile(),
+        chart: {
+            at: uv => p(uv.x, uv.y, 0),
+            parameterOf: point => new THREE.Vector2(point.x, point.y),
+            normalAt: () => p(0, 0, -1)
+        },
+        region: "mating-face"
+    });
+
+    const joined = joinGeometry([upper, below], { weld: [] });
+    const selected = joined.patches["0:wood-top"][0];
+    const deep = feature(
+        p(0, -0.7, 1), p(0, 0, 1), p(0, 0.7, 1), 1.4
+    );
+
+    assert.throws(
+        () => shapeSurfaceRelief(
+            joined, selected, [deep],
+            { overlap: "minimum", maxDeviation: 0.025 }
+        ),
+        error => error.operation === "shapeSurfaceRelief" &&
+            error.reason === "unsupported-topology" &&
+            /mating/.test(error.message)
+    );
+
+    assert.equal(joined.geometry.vertices.length, 8);
+});
+
 test("stale selections and non-tapering or invalid feature paths fail", () => {
     const original = cap();
     const another = cap();
