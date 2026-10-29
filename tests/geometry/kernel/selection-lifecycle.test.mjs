@@ -150,3 +150,39 @@ test("chart ownership and orientation are part of survival", () => {
         false
     );
 });
+
+test("a chart does not turn disconnected faces into one surface patch", () => {
+    const quad = (offset) => ({
+        corners: [offset, offset + 1, offset + 2, offset + 3],
+        uvs: [
+            new THREE.Vector2(0, 0),
+            new THREE.Vector2(1, 0),
+            new THREE.Vector2(1, 1),
+            new THREE.Vector2(0, 1)
+        ],
+        surface: "top"
+    });
+    const result = geometryResult({
+        vertices: [
+            ...face().geometry.vertices,
+            new THREE.Vector3(3, 0, 0),
+            new THREE.Vector3(4, 0, 0),
+            new THREE.Vector3(4, 1, 0),
+            new THREE.Vector3(3, 1, 0)
+        ],
+        quads: [quad(0), quad(4)]
+    });
+
+    assert.equal(patchChartMatches(result, {
+        owner: result.id,
+        faces: [
+            { kind: "quad", index: 0 },
+            { kind: "quad", index: 1 }
+        ],
+        chart: {
+            at: uv => new THREE.Vector3(uv.x, uv.y, 0),
+            parameterOf: point => new THREE.Vector2(point.x, point.y),
+            normalAt: () => new THREE.Vector3(0, 0, 1)
+        }
+    }), false);
+});
