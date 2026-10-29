@@ -824,14 +824,34 @@ operations, with no live consumers of superseded specialized logic.
 
 - [ ] **7.1** Remove replaced board, stave, timber, vessel,
       cap/loft, topology-query and attachment algorithms.
+      First cleanup removed unused fitting adapters
+      (`fitBetweenSupports`, `fitBoundaryToSurface`,
+      `supportFacePlane`), the stale `profiledMesh` wrapper and
+      the unused rectangle-specific corner-mount generator.
+      Still active in the model-test corpus: older board, stave,
+      vessel and loft constructors. Migrate those consumers before
+      removing their implementations.
 - [ ] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
-      consumers have migrated.
+      consumers have migrated. Removed `assignMaterialsByNormal`,
+      `classifyExtrudedSurfaces`, `assignExtrudedTimberSurfaces`
+      and the GPU-mutating `warpGeometry`. The authored
+      `classifyAuthoredFaces`, `deformVertices`, `surfaceMesh`
+      and `toBufferGeometry` paths remain. Other compatibility
+      constructors and render-first adapters still need review.
 - [ ] **7.3** Keep imports following the module dependency
       direction in [06](06-migration-map.md).
-- [ ] **7.4** Rewrite the permanent `src/toolbox/README.md`
+      Moved `ellipticalRing` into `geometry/build` and moved
+      the shared axial profile options to `sampleAxialSections`,
+      eliminating two build-to-construction dependencies.
+      Complete dependency audit is still outstanding.
+- [x] **7.4** Rewrite the permanent `src/toolbox/README.md`
       around the actual capabilities and specific composition
       examples, with function names from the final code.
+      The guide now lists the implemented build, patch, edit,
+      fitting, topology, texture and cavity capabilities and
+      demonstrates concrete compositions without retaining
+      deleted API names.
 - [ ] **7.5** Verify all eight models in Quad View and GLB export,
       with the mug's active morph and other supported runtime paths.
 - [ ] **7.6** Construct another cross-category geometric assembly
