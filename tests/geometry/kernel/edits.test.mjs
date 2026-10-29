@@ -117,3 +117,35 @@ test("UV edits retain charts; deformation invalidates them", () => {
     assert.equal(worn.patches, undefined);
     assertSelectionOwner(worn, worn.boundaries.rim[0]);
 });
+
+test("a transformed chart does not retain the caller's mutable matrix", () => {
+    const original = surface();
+    const matrix = new THREE.Matrix4().makeTranslation(2, 3, 4);
+    const result = transformGeometry(original, matrix);
+
+    matrix.makeTranslation(80, 90, 100);
+
+    const point = result.patches.surface[0].chart.at(
+        new THREE.Vector2(0.25, 0.75)
+    );
+    assert.deepEqual(point.toArray(), [2.25, 3.75, 4]);
+    assert.deepEqual(
+        result.geometry.vertices[0].toArray(), [2, 3, 4]
+    );
+});
+
+test("geometry edits reject stale named edge chains", () => {
+    const original = surface();
+    const other = surface();
+    const mismatched = {
+        ...original,
+        boundaries: {
+            rim: [other.boundaries.rim[0]]
+        }
+    };
+
+    assert.throws(
+        () => offsetMeshUvs(mismatched, 1, 1),
+        error => error.reason === "invalid-input"
+    );
+});
