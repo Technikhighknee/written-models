@@ -212,3 +212,87 @@ test("invalid outlines, stale ownership and nonlinear UVs fail explicitly", () =
         error => error.reason === "unsupported-topology"
     );
 });
+
+test("successive independent openings retain both named rims and the rebuilt patch", () => {
+    const {source, selected} = boxTop(2);
+    const left = {
+        closed: true,
+        points: [
+            p(-0.8, -0.25), p(-0.8, 0.25),
+            p(-0.3, 0.25), p(-0.3, -0.25)
+        ]
+    };
+    const right = {
+        closed: true,
+        points: [
+            p(0.3, -0.25), p(0.3, 0.25),
+            p(0.8, 0.25), p(0.8, -0.25)
+        ]
+    };
+
+    const first = openPatch(source, selected, left);
+    const second = openPatch(first, first.patches.top[0], right);
+    assert.equal(topologyOf(first).openBoundaries().length, 1);
+    assert.equal(topologyOf(second).openBoundaries().length, 2);
+    assert.equal(second.boundaries.opening.length, 2);
+    assert.ok(second.boundaries.opening.every(rim =>
+        rim.owner === second.id && rim.closed
+    ));
+    assert.equal(second.patches.top.length, 1);
+    assert.equal(second.boundaries.topOutline.length, 1);
+});
+
+test("the opening cannot enclose an existing void", () => {
+    const chart = {
+        at: uv => new THREE.Vector3(uv.x, uv.y, 0),
+        parameterOf: point => new THREE.Vector2(point.x, point.y),
+        normalAt: () => new THREE.Vector3(0, 0, 1)
+    };
+    const source = fillSurfacePatch({
+        chart,
+        region: "surface",
+        profile: {
+            outer: {
+                points: [p(-2, -2), p(-2, 2), p(2, 2), p(2, -2)],
+                parameters: [0, 0.25, 0.5, 0.75]
+            },
+            holes: [{
+                points: [p(-0.2, -0.2), p(0.2, -0.2),
+                    p(0.2, 0.2), p(-0.2, 0.2)],
+                parameters: [0, 0.25, 0.5, 0.75]
+            }]
+        }
+    });
+    assert.throws(
+        () => openPatch(source, source.patches.surface[0], outline(0.6)),
+        error => error.reason === "unsupported-topology"
+    );
+});
+
+test("a curved chart with a planar perimeter is not treated as a planar patch", () => {
+    const chart = {
+        at: uv => new THREE.Vector3(
+            uv.x, uv.y, 0.12 * (1 - uv.x ** 2) * (1 - uv.y ** 2)
+        ),
+        parameterOf: point => new THREE.Vector2(point.x, point.y),
+        normalAt: uv => new THREE.Vector3(
+            0.24 * uv.x * (1 - uv.y ** 2),
+            0.24 * uv.y * (1 - uv.x ** 2),
+            1
+        ).normalize()
+    };
+    const source = fillSurfacePatch({
+        region: "curved",
+        chart,
+        profile: {
+            outer: {
+                points: [p(-1, -1), p(-1, 1), p(1, 1), p(1, -1)],
+                parameters: [0, 0.25, 0.5, 0.75]
+            }
+        }
+    });
+    assert.throws(
+        () => openPatch(source, source.patches.curved[0], outline(0.2)),
+        error => error.reason === "unsupported-topology"
+    );
+});
