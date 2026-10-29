@@ -40,9 +40,9 @@ function faceKey(face: FaceRef): string {
 }
 
 /**
- * Bevel an isolated open manifold edge or one or more disjoint convex
- * 3/4-edge prismatic cap rings. Contiguous open multi-edge chains and
- * ambiguous corner junctions are deliberately unsupported.
+ * Bevel one open edge, a consecutive two/three-edge chain around
+ * one planar convex cap with trihedral corners, or disjoint convex
+ * 3/4-edge prismatic cap rings. Ambiguous junctions are unsupported.
  *
  * All selected vertices are offset consistently once, with a matching
  * inset top rim and lowered side rim. The cap, side faces, and actual

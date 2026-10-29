@@ -380,11 +380,23 @@ source endpoints. The taper is fitted within both incident face
 footprints, including acute angles. The upper/lower selections are
 open chains. Existing unrelated boundary edges are not resampled.
 
-Multiple adjacent open edges are **not** automatically treated as
-one valid chamfer: their shared-corner junction must be constructed
-explicitly. Such chains, branched junctions and unsupported
-dihedrals fail. The implementation does not claim arbitrary
-multi-face bevel surfaces or unrestricted rounded fillets.
+Two or three **consecutive open edges of one planar convex cap**
+also support shared-corner reconstruction. At each intermediate
+vertex, the two side faces must meet at exactly one third edge
+and form a trihedral corner. The cap's inward offset lines meet at
+one miter point; the two side offsets must agree on one point
+of the third edge. The adjacent chamfer quads share the resulting
+miter edge and therefore need no artificial terminal triangles
+between segments. Only the two actual chain endpoints taper back
+to their source vertices. Widths are sampled at normalized arc
+length along the whole ordered chain, and the cap/side UVs remain
+independent. All reconstructed faces retain real shared topology.
+
+There is no unrestricted corner solver here: open chains passing
+through a junction without one common cap, higher-valence or
+branched vertices, and larger multi-face bevel loops remain
+unsupported. These require a more general corner reconstruction,
+not repeated single-edge chamfers.
 
 ## Deformation and variation
 

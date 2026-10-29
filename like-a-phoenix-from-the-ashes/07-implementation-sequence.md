@@ -736,9 +736,23 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       Excessive widths, overlapping multi-ring selections, concave
       junctions, folded faces and stale owners fail explicitly.
       Bevel -> subdivide -> split is checked as a composition.
-      Remaining before 6.6 is complete: contiguous open chains
-      with two or more selected edges, general intersecting corner
-      joins, and larger selected multi-face bevel loops.
+      Connected open chains with two or three consecutive edges
+      around one convex planar cap now reconstruct their common
+      corners together, not by overlapping terminated bevels.
+      Every intermediate trihedral corner gets one cap miter and
+      one matching point on the unselected third edge. Adjacent
+      chamfer panels, side faces and the cap reuse these shared
+      construction vertices, with real terminal triangles only at
+      the two chain endpoints. The width field is evaluated at
+      normalized total-chain arc length, and the source face UV
+      charts are preserved per corner. Orientation, manifold
+      connectivity, adjacent triangle/prism geometry, excessive
+      widths and a downstream split are checked in CI.
+      Remaining before 6.6 is complete: open edge chains whose
+      junction is not a trihedral corner of one shared cap, larger
+      selected multi-face loops and more general branching joins.
+      Those shapes are still explicitly unsupported, never silently
+      approximated.
 - [ ] **6.7** Implement solid boolean operations using the
       available `manifold-3d` kernel; return actual triangles
       with explicitly assigned surface regions and UVs.

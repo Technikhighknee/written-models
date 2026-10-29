@@ -896,16 +896,17 @@ interior parameters, merged by undirected source edge. Every
 incident face receives the same new position and its own
 interpolated UVs, with no hanging vertices.
 
-The implemented `bevelEdges` accepts one complete, ordered
+The implemented `bevelEdges` supports one complete ordered
 3/4-edge convex cap boundary on a prismatic manifold section,
-several independent complete rings, or one isolated open
-manifold edge shared by two convex planar faces. Open single
-edges receive a chamfer quad and terminating triangles, with
-tapers constrained to both face footprints. A `ScalarField`
-is evaluated at normalized arc length `t` along each closed
-ring, or at the two endpoints of an open edge. Unsupported
-contiguous open multi-edge chains, branching corner junctions
-and excessive widths are rejected rather than approximated.
+several independent complete rings, one isolated open manifold
+edge shared by two convex planar faces, or two/three consecutive
+open edges around one planar convex cap whose intermediate
+corners are trihedral. Open chains use a shared miter edge at
+each supported corner; terminal triangles occur only at the
+true endpoints. A `ScalarField` samples normalized arc length
+across an entire open chain or separately for each closed ring.
+Unsupported higher-valence or branched junctions, nonconforming
+side offsets and excessive widths are rejected.
 
 `DeformationField` takes position and vertex ID, and returns a
 displacement. Region-aware weights may be composed into that field
