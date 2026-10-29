@@ -264,7 +264,17 @@ test("finite trestle contacts fit both braces and the longitudinal tie", () => {
         const minY = Math.min(...brace.geometry.geometry.vertices.map(p => p.y));
         const maxY = Math.max(...brace.geometry.geometry.vertices.map(p => p.y));
         almost(minY, 0.1);
-        almost(maxY, 0.5);
+        // The diagonal is cut back along its axis to the post's
+        // finite face. Its uppermost corner is not its centerline hint.
+        assert.ok(maxY > 0.5 && maxY < 0.605);
+        const cap = brace.geometry.geometry.quads.find(face =>
+            face.surface === "cap-end"
+        );
+        assert.ok(cap);
+        for (const id of cap.corners) {
+            almost(brace.geometry.geometry.vertices[id].z,
+                direction * 0.0675);
+        }
     }
 
     const left = new THREE.Matrix4().makeTranslation(-0.6, -0.735, 0);
