@@ -4,9 +4,12 @@ import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
 import type { SampledBoundary } from "../definitions/geometry";
 import {
     geometryResult,
+    assertSelectionOwner,
     GeometryOperationError,
     type BoundaryRef,
-    type GeometryResult
+    type GeometryResult,
+    type FaceRef,
+    type SurfacePatchRef
 } from "../kernel/GeometryResult";
 import {
     lengthTolerance,
@@ -14,6 +17,7 @@ import {
     type GeometryPrecision
 } from "../kernel/precision";
 import { topologyOf } from "../kernel/topology";
+import { patchChartMatches } from "../kernel/selectionLifecycle";
 import { triangulateProfile } from "../build/triangulateProfile";
 import { capSectionEnd } from "../build/finishBoundaries";
 
@@ -589,18 +593,122 @@ export function splitByPlane(
         }
     }
 
-    for (const [partIndex, cuts] of pairedCuts) {
-        const part = parts[partIndex]!;
+    // A named selection only survives where its exact authored edges or
+    // faces survive. Crossed edges and subdivided faces do not keep their
+    // former IDs; any intact runs are reissued under the new result owner.
+    function transferNamedChains(part: Piece): Record<string, BoundaryRef[]> {
+        const names: Record<string, BoundaryRef[]> = Object.create(null);
+        const local = new Map(part.sourceIds.map((sourceId, id) =>
+            [sourceId, id]
+        ));
+        const topology = topologyOf(part.geometry);
+
+        for (const [name, chains] of Object.entries(input.boundaries)) {
+            for (const chain of chains) {
+                assertSelectionOwner(input, chain);
+                const ids = chain.vertices;
+                const count = chain.closed ? ids.length : ids.length - 1;
+                const retained = Array.from({length: count}, (_, i) => {
+                    const a = ids[i]!;
+                    const b = ids[(i + 1) % ids.length]!;
+                    if (!index.edgeUses(a, b).length) {
+                        fail("invalid-topology", "Named source chain contains a missing edge");
+                    }
+                    const from = local.get(a);
+                    const to = local.get(b);
+                    return from !== undefined && to !== undefined &&
+                        topology.edgeUses(from, to).length > 0;
+                });
+
+                const add = (run: number[], closed: boolean): void => {
+                    if (run.length < 2) return;
+                    const vertices = run.map(id => local.get(id)!);
+                    (names[name] ??= []).push({
+                        owner: part.geometry.id, vertices, closed
+                    });
+                };
+
+                if (retained.every(Boolean)) {
+                    add([...ids], chain.closed);
+                    continue;
+                }
+
+                const start = chain.closed
+                    ? (retained.indexOf(false) + 1) % count : 0;
+                let run: number[] = [];
+                for (let step = 0; step < count; step++) {
+                    const i = (start + step) % count;
+                    if (!retained[i]) {
+                        add(run, false);
+                        run = [];
+                    } else {
+                        if (!run.length) run.push(ids[i]!);
+                        run.push(ids[(i + 1) % ids.length]!);
+                    }
+                }
+                add(run, false);
+            }
+        }
+        return names;
+    }
+
+    function transferNamedPatches(
+        part: Piece
+    ): Record<string, SurfacePatchRef[]> {
+        const names: Record<string, SurfacePatchRef[]> = Object.create(null);
+        const candidates = new Map<string, FaceRef>();
+        for (const kind of ["quad", "triangle"] as const) {
+            const faces = kind === "quad"
+                ? part.geometry.geometry.quads
+                : part.geometry.geometry.triangles ?? [];
+            faces.forEach((face, faceIndex) => {
+                candidates.set(
+                    kind + ":" + face.corners.map(id =>
+                        part.sourceIds[id]!).join(","),
+                    {kind, index: faceIndex}
+                );
+            });
+        }
+
+        for (const [name, patches] of Object.entries(input.patches ?? {})) {
+            for (const patch of patches) {
+                assertSelectionOwner(input, patch);
+                const faces = patch.faces.map(ref => {
+                    const original = faceOf(mesh, ref);
+                    return candidates.get(
+                        ref.kind + ":" + original.corners.join(",")
+                    );
+                });
+                if (faces.some(face => face === undefined)) continue;
+
+                const restored: SurfacePatchRef = {
+                    owner: part.geometry.id,
+                    faces: faces as FaceRef[],
+                    chart: patch.chart
+                };
+                if (patchChartMatches(part.geometry, restored, policy)) {
+                    (names[name] ??= []).push(restored);
+                }
+            }
+        }
+        return names;
+    }
+
+    for (const [partIndex, part] of parts.entries()) {
+        const names = transferNamedChains(part);
+        const cuts = pairedCuts.get(partIndex) ?? [];
+        if (cuts.length) {
+            (names.cut ??= []).push(...cuts.map(cut => ({
+                owner: part.geometry.id,
+                vertices: [...cut.ids],
+                closed: cut.closed
+            })));
+        }
+        const patches = transferNamedPatches(part);
         part.geometry = {
             ...part.geometry,
-            boundaries: {
-                ...part.geometry.boundaries,
-                cut: cuts.map(cut => ({
-                    owner: part.geometry.id,
-                    vertices: [...cut.ids],
-                    closed: cut.closed
-                }))
-            }
+            boundaries: names,
+            ...(Object.keys(patches).length ? {patches} : {})
         };
     }
 
