@@ -6,6 +6,7 @@ import { geometryResult, type GeometryResult } from
 import { cutBoard } from "../../toolbox/geometry/construction/cutBoard";
 import { profiledBoard } from "../../toolbox/geometry/construction/profiledBoard";
 import { findFacingPatch } from "../../toolbox/geometry/queries/findFacingPatch";
+import { surfaceTriangles } from "../../toolbox/geometry/queries/surfaceTriangles";
 import {
     tableTimberGeometry,
     tableTimberBetweenSurfaces,
@@ -171,9 +172,41 @@ export function buildChairFrameGeometry(): ChairFrameGeometry {
                 )
             });
         } catch (error) {
-            throw new Error(`Chair joint ${name} does not fit its supports`, {
-                cause: error
-            });
+            const axis = lastHint.clone().sub(firstHint).normalize();
+            const detail = (
+                timber: TableTimberGeometry,
+                hint: THREE.Vector3,
+                facing: THREE.Vector3
+            ) => {
+                const target = support(timber);
+                const patch = findFacingPatch(target, hint, facing);
+                const local = patch.frame.clone().invert();
+                const vertices = surfaceTriangles(target)
+                    .filter(triangle => patch.faces.some(face =>
+                        face.kind === triangle.face.kind &&
+                        face.index === triangle.face.index
+                    ))
+                    .flatMap(triangle => triangle.points.map(point =>
+                        point.clone().applyMatrix4(local)
+                    ));
+                const bounds = new THREE.Box3().setFromPoints(vertices);
+                const anchor = hint.clone().applyMatrix4(local);
+                return {
+                    bounds: [bounds.min.toArray(), bounds.max.toArray()],
+                    anchor: anchor.toArray(),
+                    normal: patch.contact.normal.toArray(),
+                    count: patch.faces.length
+                };
+            };
+            const firstFace = detail(first, firstHint, axis);
+            const lastFace = detail(
+                last, lastHint, axis.clone().negate()
+            );
+            throw new Error(
+                `Chair joint ${name} failed (${width}x${depth}): ` +
+                JSON.stringify({firstFace, lastFace}),
+                {cause: error}
+            );
         }
     }
 
