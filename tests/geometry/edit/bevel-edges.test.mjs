@@ -123,10 +123,9 @@ test("invalid selection order and excessive widths fail without source changes",
     const source = box();
     const original = JSON.stringify(source.geometry.vertices);
     const edges = topEdges(source);
-    assert.throws(
-        () => bevelEdges(source, [edges[0]], () => 0.1),
-        error => error.reason === "invalid-input"
-    );
+    // A single open edge is an intentionally supported terminated bevel.
+    const single = bevelEdges(source, [edges[0]], () => 0.1);
+    assert.equal(topologyOf(single).openBoundaries().length, 0);
     assert.throws(
         () => bevelEdges(source,
             [edges[0], edges[2], edges[1], edges[3]], () => 0.1),
@@ -204,7 +203,10 @@ test("one open manifold edge is beveled with closed physical terminal triangles"
     assert.equal(result.boundaries["bevel-upper"].length, 1);
     assert.equal(result.boundaries["bevel-upper"][0].closed, false);
     assert.equal(result.boundaries["bevel-lower"][0].closed, false);
-    assert.equal(result.boundaries.topRim, undefined);
+    assert.equal(result.boundaries.topRim.length, 1);
+    assert.equal(result.boundaries.topRim[0].closed, false);
+    assert.equal(result.boundaries.topRim[0].vertices.length, 4);
+    assertSelectionOwner(result, result.boundaries.topRim[0]);
     for (const name of ["bevel-upper", "bevel-lower"]) {
         const selected = result.boundaries[name][0];
         assertSelectionOwner(result, selected);
