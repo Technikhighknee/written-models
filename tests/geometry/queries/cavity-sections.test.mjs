@@ -296,3 +296,46 @@ test("omitting an authored bulge row cannot silently change the vessel volume", 
     ));
     assert.ok(new ProfiledCavity(complete).capacity > 0);
 });
+
+test("uniquely paired authored triangles preserve the same cavity stations", () => {
+    const original = staves(8, [0, 0.4, 1]);
+    const triangles = original.map(piece => {
+        const selected = piece.geometry.quads.filter(face =>
+            face.surface === "inner"
+        );
+        return {
+            ...piece,
+            geometry: {
+                vertices: piece.geometry.vertices,
+                quads: piece.geometry.quads.filter(face =>
+                    face.surface !== "inner"
+                ),
+                triangles: selected.flatMap(face => [{
+                    corners: [
+                        face.corners[0], face.corners[1], face.corners[2]
+                    ],
+                    uvs: [face.uvs[0], face.uvs[1], face.uvs[2]],
+                    surface: "inner"
+                }, {
+                    corners: [
+                        face.corners[0], face.corners[2], face.corners[3]
+                    ],
+                    uvs: [face.uvs[0], face.uvs[2], face.uvs[3]],
+                    surface: "inner"
+                }]
+                )
+            }
+        };
+    });
+
+    const heights = [0, 0.2, 0.4, 0.7, 1];
+    const quads = cavitySectionsFromSurfaces(options(original, heights));
+    const split = cavitySectionsFromSurfaces(options(triangles, heights));
+
+    for (let i = 0; i < quads.length; i++) {
+        assert.equal(split[i].outline.length, quads[i].outline.length);
+        split[i].outline.forEach((point, j) =>
+            assert.ok(pointClose(point, quads[i].outline[j], 1e-11))
+        );
+    }
+});
