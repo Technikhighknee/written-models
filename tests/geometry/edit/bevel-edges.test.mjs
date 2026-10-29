@@ -501,6 +501,16 @@ test("an open chamfer traverses three edges across changing cap faces", () => {
     ).length, 2);
 
     assert.equal(result.boundaries["bevel-rails"].length, 6);
+    for (const name of ["bevel-upper", "bevel-lower"]) {
+        const chain = result.boundaries[name][0];
+        assertSelectionOwner(result, chain);
+        assert.equal(chain.vertices.length, 4);
+        for (let i = 0; i < chain.vertices.length - 1; i++) {
+            assert.equal(topologyOf(result).edgeUses(
+                chain.vertices[i], chain.vertices[i + 1]
+            ).length, 2);
+        }
+    }
     for (const chain of result.boundaries["bevel-rails"]) {
         assertSelectionOwner(result, chain);
         assert.equal(chain.closed, false);
@@ -640,4 +650,25 @@ test("articulated bevel cannot repeat a vertex or accept stale edge owners", () 
         })), () => 0.1),
         error => error.reason === "invalid-input"
     );
+});
+
+test("the articulated bevel keeps an existing unrelated upper-rim selection", () => {
+    const base = box();
+    const unrelated = topologyOf(base).regionBoundaries("nx")[0];
+    const source = {
+        ...base,
+        boundaries: {
+            ...base.boundaries,
+            "bevel-upper": [unrelated]
+        }
+    };
+    const edges = articulatedEdges(source, [
+        [-1, 1, 1], [1, 1, 1], [1, -1, 1],
+        [1, -1, -1]
+    ]);
+    const result = bevelEdges(source, edges, () => 0.1);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(result.boundaries["bevel-upper"].length, 2);
+    assertSelectionOwner(result, result.boundaries["bevel-upper"][0]);
+    assertSelectionOwner(result, result.boundaries["bevel-upper"][1]);
 });
