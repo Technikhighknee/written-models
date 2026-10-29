@@ -19,6 +19,7 @@ import {
 } from "../kernel/precision";
 import { patchChartMatches } from "../kernel/selectionLifecycle";
 import { topologyOf } from "../kernel/topology";
+import { triangulateProfile } from "../build/triangulateProfile";
 
 export interface EdgeSubdivision {
     edge: EdgeRef;
@@ -51,7 +52,7 @@ interface EdgeStations {
  * face. A vertex is allocated once per undirected edge/parameter;
  * material and UV seams remain independent face-corner attributes.
  *
- * Changed faces become real triangles in an interior fan. Untouched
+ * Changed faces become the minimum required real triangles. Untouched
  * authored quads and triangles are left as-is. Planar convex quads and
  * triangles are supported; splitting warped/concave quads is deliberately
  * rejected rather than creating a false planar or folded fan.
@@ -203,24 +204,35 @@ export function subdivideEdges(
             }
         }
 
-        const centroid = perimeter.reduce(
-            (sum, entry) => sum.add(vertices[entry.id]!),
-            new THREE.Vector3()
-        ).divideScalar(perimeter.length);
-        const centerUV = perimeter.reduce(
-            (sum, entry) => sum.add(entry.uv),
-            new THREE.Vector2()
-        ).divideScalar(perimeter.length);
-        const center = vertices.push(centroid) - 1;
-        for (let i = 0; i < perimeter.length; i++) {
-            const from = perimeter[i]!;
-            const to = perimeter[(i + 1) % perimeter.length]!;
+        // Triangulate the exact subdivided boundary, retaining the
+        // shared stations without inserting a synthetic face center.
+        // A split triangle thus needs two triangles; a split quad
+        // needs three, regardless of material UV discontinuities.
+        const x = b.clone().sub(a).normalize();
+        const z = normal.clone().normalize();
+        const y = z.clone().cross(x);
+        const flat = perimeter.map(entry => {
+            const offset = vertices[entry.id]!.clone().sub(a);
+            return new THREE.Vector2(offset.dot(x), offset.dot(y));
+        });
+        for (const triangle of triangulateProfile([flat], policy)) {
+            const indices = [...triangle];
+            const ids = indices.map(i => perimeter[i]!.id);
+            const orientation = vertices[ids[1]!]!.clone()
+                .sub(vertices[ids[0]!]!)
+                .cross(vertices[ids[2]!]!.clone().sub(vertices[ids[0]!]!));
+            if (orientation.dot(normal) < 0) {
+                indices.reverse();
+                ids.reverse();
+            }
             if (!triangleQuality(
-                vertices[from.id]!, vertices[to.id]!, centroid, policy
-            )) fail("degenerate-geometry", "Subdivision produced a collapsed face");
+                vertices[ids[0]!]!, vertices[ids[1]!]!,
+                vertices[ids[2]!]!, policy
+            )) fail("degenerate-geometry", "Subdivision produced a collapsed triangle");
             refs.push({kind: "triangle", index: triangles.push({
-                corners: [from.id, to.id, center],
-                uvs: [from.uv, to.uv, centerUV.clone()],
+                corners: ids as TriangleFace["corners"],
+                uvs: indices.map(i => perimeter[i]!.uv.clone()) as
+                    TriangleFace["uvs"],
                 surface: face.surface,
                 ...(face.smoothingGroup === undefined ? {} :
                     {smoothingGroup: face.smoothingGroup})

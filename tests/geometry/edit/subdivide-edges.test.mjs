@@ -51,7 +51,7 @@ test("one shared box edge is split on both faces, without T-junctions", () => {
     assert.notEqual(out.id, source.id);
     assert.equal(topologyOf(out).openBoundaries().length, 0);
     assert.equal(topologyOf(out).connectedComponents().length, 1);
-    assert.equal(out.geometry.vertices.length, before.length + 3);
+    assert.equal(out.geometry.vertices.length, before.length + 1);
     assert.equal(out.geometry.quads.length, source.geometry.quads.length - 2);
     assert.equal(out.boundaries.topOutline.length, 1);
     assert.equal(out.boundaries.topOutline[0].vertices.length,
@@ -161,7 +161,7 @@ test("open triangles are refined without creating hanging edge vertices", () => 
     const out = subdivideEdges(source, [edge(source, 1, 2, 0.5)]);
     assert.equal(topologyOf(out).connectedComponents().length, 1);
     assert.equal(topologyOf(out).openBoundaries().length, 1);
-    assert.equal(out.geometry.triangles.length, 8);
+    assert.equal(out.geometry.triangles.length, 4);
     assert.equal(topologyOf(out).edgeUses(1, 2).length, 0);
     assert.equal(out.boundaries.subdivided[0].vertices.length, 3);
 });
