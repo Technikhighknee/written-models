@@ -284,3 +284,46 @@ test("open chamfer rejects a broken or concave dihedral", () => {
         error => error.reason === "unsupported-topology"
     );
 });
+
+test("one edge shared by two triangular sheets can be chamfered without touching their outer rims", () => {
+    const source = geometryResult({
+        vertices: [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(2, 0, 0),
+            new THREE.Vector3(1, 1, 0),
+            new THREE.Vector3(1, 0, 1)
+        ],
+        quads: [],
+        triangles: [
+            {
+                corners: [0, 1, 2], surface: "first",
+                uvs: [
+                    new THREE.Vector2(0, 0),
+                    new THREE.Vector2(2, 0),
+                    new THREE.Vector2(1, 1)
+                ]
+            },
+            {
+                corners: [1, 0, 3], surface: "second",
+                uvs: [
+                    new THREE.Vector2(2, 0),
+                    new THREE.Vector2(0, 0),
+                    new THREE.Vector2(1, 1)
+                ]
+            }
+        ]
+    });
+    const before = topologyOf(source).openBoundaries();
+    assert.equal(before.length, 1);
+    const result = bevelEdges(source, [{
+        owner: source.id, from: 0, to: 1
+    }], () => 0.12);
+    assert.equal(topologyOf(result).openBoundaries().length, 1);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 3);
+    assert.ok(result.regions.first.length >= 2);
+    assert.ok(result.regions.second.length >= 2);
+    for (const id of [0, 1, 2, 3]) {
+        assert.ok(result.geometry.vertices[id].equals(source.geometry.vertices[id]));
+    }
+});
