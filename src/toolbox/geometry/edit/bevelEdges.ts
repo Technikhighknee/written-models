@@ -19,7 +19,6 @@ import {
 import { patchChartMatches, transferBoundary } from "../kernel/selectionLifecycle";
 import { topologyOf } from "../kernel/topology";
 import { bevelOpenEdge } from "./bevelOpenEdge";
-import { bevelOpenChain } from "./bevelOpenChain";
 import { bevelArticulatedChain } from "./bevelArticulatedChain";
 
 export type ScalarField = (t: number) => number;
@@ -67,14 +66,6 @@ export function bevelEdges(
     if (edges.length >= 2 && edges.at(-1)!.to !== edges[0]!.from &&
         edges.every((edge, i) => i === 0 ||
             edges[i - 1]!.to === edge.from)) {
-        const topology = topologyOf(source);
-        const shared = topology.edgeUses(edges[0]!.from, edges[0]!.to)
-            .map(use => use.face).filter(ref =>
-                edges.every(edge => topology.edgeUses(edge.from, edge.to)
-                    .some(use => faceKey(use.face) === faceKey(ref))));
-        if (shared.length === 1 && edges.length <= 3) {
-            return bevelOpenChain(source, edges, width, policy);
-        }
         return bevelArticulatedChain(source, edges, width, policy);
     }
     if (edges.length <= 4 && edges.at(-1)!.to !== edges[0]!.from &&
