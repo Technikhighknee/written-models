@@ -15,6 +15,7 @@ import {
     type GeometryPrecision
 } from "../kernel/precision";
 import { topologyOf } from "../kernel/topology";
+import { patchChartMatches, transferBoundary } from "../kernel/selectionLifecycle";
 import { triangulateAuthoredFaces } from "../kernel/triangulation";
 
 export interface GeometryJoinOptions {
@@ -515,23 +516,15 @@ export function joinGeometry(
         const remapId = (id: number) => map[vertexOffsets[part]! + id]!;
 
         for (const [name, chains] of Object.entries(source.boundaries)) {
-            const survivors = chains.filter(chain => {
-                assertSelectionOwner(source, chain);
-
-                return selectedEdges(chain).every(([a, b]) =>
-                    !used.has(edgeKey(a, b))
-                );
-            });
+            const survivors = chains.flatMap(chain =>
+                transferBoundary(source, result, chain, remapId, used)
+            );
 
             if (!survivors.length) continue;
             const key = (nameCounts.get(name) ?? 0) > 1
                 ? `${part}:${name}` : name;
 
-            boundaries[key] = survivors.map(chain => ({
-                owner: result.id,
-                vertices: chain.vertices.map(remapId),
-                closed: chain.closed
-            }));
+            boundaries[key] = survivors;
         }
 
         for (const [name, selections] of Object.entries(source.patches ?? {})) {
@@ -562,12 +555,14 @@ export function joinGeometry(
                     );
                 });
 
-                if (!moved) {
-                    (patches[key] ??= []).push({
-                        owner: result.id,
-                        faces,
-                        chart: patch.chart
-                    });
+                const candidate: SurfacePatchRef = {
+                    owner: result.id,
+                    faces,
+                    chart: patch.chart
+                };
+
+                if (!moved && patchChartMatches(result, candidate, policy)) {
+                    (patches[key] ??= []).push(candidate);
                 }
             }
         }
