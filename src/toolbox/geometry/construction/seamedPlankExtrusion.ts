@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { AuthoredMeshBuilder } from "../mesh/AuthoredMeshBuilder";
+import type { MeshData } from "../mesh/MeshData";
 import { toBufferGeometry } from "../mesh/toBufferGeometry";
 import { adaptiveStations } from "../topology/adaptiveStations";
 import { edgeRecessStations, edgeRecessDepth } from "../../shapes/profiles/edgeRecess";
@@ -90,7 +91,7 @@ const EPSILON = 1e-9;
  * The function is also suitable for doors, shutters or fitted wooden
  * panels, not only round barrel heads.
  */
-export function seamedPlankExtrusion(
+export function seamedPlankExtrusionData(
     outline: readonly PanelPoint[],
     {
         thickness,
@@ -106,7 +107,7 @@ export function seamedPlankExtrusion(
         longitudinalStations,
         deform
     }: SeamedPlankOptions
-): THREE.BufferGeometry {
+): { geometry: MeshData; stations: readonly number[] } {
     if (
         outline.length < 3 ||
         ![thickness, shoulderWidth, recessDepth, grooveFloorWidth, cutThreshold]
@@ -473,12 +474,18 @@ export function seamedPlankExtrusion(
 
     // The actual authored faces are the only topology representation.
     // Rendering and the Quad View consume this same MeshData object.
-    const geometry = toBufferGeometry(mesh.build(), {
-        face: 0,
-        cut: 1,
-        recess: 2
-    });
-    tessellation.set(geometry, fractions);
+    return { geometry: mesh.build(), stations: fractions };
+}
 
+/** Compile the authored plank for callers that still consume GPU geometry. */
+export function seamedPlankExtrusion(
+    outline: readonly PanelPoint[],
+    options: SeamedPlankOptions
+): THREE.BufferGeometry {
+    const result = seamedPlankExtrusionData(outline, options);
+    const geometry = toBufferGeometry(result.geometry, {
+        face: 0, cut: 1, recess: 2
+    });
+    tessellation.set(geometry, result.stations);
     return geometry;
 }
