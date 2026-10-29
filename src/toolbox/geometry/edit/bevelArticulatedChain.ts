@@ -524,9 +524,18 @@ export function bevelArticulatedChain(
             upper.push(firstA);
             lower.push(firstB);
         }
-        if (upper.at(-1) === firstA && lower.at(-1) === firstB) {
+        if (upper.at(-1) === firstA &&
+            lower.at(-1) === firstB) {
             upper.push(lastA);
             lower.push(lastB);
+        } else if (upper.at(-1) === firstB &&
+            lower.at(-1) === firstA) {
+            // The rail's face label changes across an articulated
+            // corner. Preserve the physical connected vertex chain.
+            upper.push(lastB);
+            lower.push(lastA);
+        } else {
+            fail("invalid-topology", "Bevel rail correspondence broke at a corner");
         }
     }
 
@@ -573,6 +582,12 @@ export function bevelArticulatedChain(
             closed: false
         }));
     });
+    boundaries["bevel-upper"] = [{
+        owner: result.id, vertices: upper, closed: false
+    }];
+    boundaries["bevel-lower"] = [{
+        owner: result.id, vertices: lower, closed: false
+    }];
 
     const patches: Record<string, SurfacePatchRef[]> = Object.create(null);
     for (const [name, selections] of Object.entries(source.patches ?? {})) {
