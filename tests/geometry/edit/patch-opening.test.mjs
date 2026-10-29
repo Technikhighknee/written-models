@@ -410,3 +410,19 @@ test("curved recess offsets along local normals and returns a usable floor chart
             .normalize().dot(expectedNormal) > 0.999999);
     }
 });
+
+test("an undersampled curved opening reports its boundary accuracy limit", () => {
+    const {source} = crownedPatch();
+    const patch = source.patches["curved-timber"][0];
+
+    assert.throws(
+        () => openPatch(source, patch, {
+            closed: true,
+            points: [
+                p(-0.8, -0.8), p(-0.8, 0.8),
+                p(0.8, 0.8), p(0.8, -0.8)
+            ]
+        }),
+        error => error.reason === "sampling-limit"
+    );
+});
