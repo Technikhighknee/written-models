@@ -4,16 +4,12 @@ import { boardedSurface } from "./components/boardedSurface";
 import { offsetMeshUvs as offsetAuthoredUvs } from "../toolbox/geometry/edit/geometryEdits";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import type { GeometryResult } from "../toolbox/geometry/kernel/GeometryResult";
-import {
-    createTimberBetween,
-    createTimberBetweenContacts
-} from "../toolbox/geometry/construction/timber";
+import { tableTimberGeometry } from "./components/tableTimberGeometry";
 import {
     createTrestleSupport,
     type TrestleTimberFactory,
     type TrestleSupportOptions
 } from "./components/trestleSupport";
-import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
 import { cm, m, mm } from "../toolbox/units/length";
 import { oakVariant, oakBoardFace } from "../materials/wood/oak";
@@ -149,17 +145,36 @@ function buildTrestles(
             v: (piece * cm(31)) % cm(49)
         };
 
-        const beam = contacts
-            ? createTimberBetweenContacts(
-                start, end, width, depth, faces, contacts, uvOffset
-            )
-            : createTimberBetween(
-                start, end, width, depth, faces, uvOffset
-            );
+        const member = tableTimberGeometry(
+            start, end, width, depth, contacts
+        );
+        const geometry = offsetAuthoredUvs(
+            member.geometry, uvOffset.u, uvOffset.v
+        );
 
-        // oakBoardFace and the tinted end grain expect vertex colors.
-        tintVertices(beam.geometry, new THREE.Color(0.97, 0.97, 0.97));
-        beam.name = name;
+        const beam = surfaceMesh({
+            name,
+            geometry,
+            materials: member.fitted
+                ? {
+                    "side-0": faces.face,
+                    "side-1": faces.face,
+                    "side-2": faces.face,
+                    "side-3": faces.face,
+                    "cap-start": faces.endGrain,
+                    "cap-end": faces.endGrain
+                }
+                : {
+                    px: faces.face,
+                    nx: faces.face,
+                    py: faces.endGrain,
+                    ny: faces.endGrain,
+                    pz: faces.face,
+                    nz: faces.face
+                },
+            tint: new THREE.Color(0.97, 0.97, 0.97)
+        });
+        beam.applyMatrix4(member.localToParent);
         return beam;
     };
 
