@@ -17,7 +17,9 @@ function files(directory) {
 
 function targetOf(file, specifier) {
     const resolved = resolve(dirname(file), specifier);
-    return resolved.replace(/\.(?:js|mjs)$/, ".ts");
+    const typescript = resolved.replace(/\.(?:js|mjs)$/, ".ts");
+    return /\.(?:ts|tsx)$/.test(typescript)
+        ? typescript : typescript + ".ts";
 }
 
 test("the geometry kernel and build/edit/query layers never depend on model recipes or render adapters", () => {
