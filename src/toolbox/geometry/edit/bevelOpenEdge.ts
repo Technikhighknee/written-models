@@ -133,18 +133,55 @@ export function bevelOpenEdge(
         Number.isFinite(value) && value > tolerance)) {
         fail("invalid-input", "Chamfer width must be finite and positive");
     }
-    const taperStart = wStart;
-    const taperEnd = wEnd;
-    if (taperStart + taperEnd >= fullLength - tolerance) {
-        fail("unsupported-topology", "Chamfer end transitions overlap");
-    }
-
-    const sides: InsetSide[] = uses.map(use => {
+    // At an acute endpoint, moving into each adjacent face by the
+    // requested width also requires moving farther along the edge.
+    // Find the shortest terminal taper accepted by *both* footprints
+    // before allocating construction vertices. This keeps every
+    // unrelated boundary edge and its original stations untouched.
+    const sideFrames = uses.map(use => {
         const face = getFace(source, use.face);
         const normal = faceNormal(vertices, face, tolerance);
         const direction = vertices[use.to]!.clone()
             .sub(vertices[use.from]!).normalize();
-        const intoFace = normal.clone().cross(direction).normalize();
+        return {
+            face, normal,
+            inward: normal.clone().cross(direction).normalize()
+        };
+    });
+    const strictlyInside = (
+        position: THREE.Vector3, face: Face, normal: THREE.Vector3
+    ): boolean => face.corners.every((from, i) => {
+        const a = vertices[from]!;
+        const b = vertices[face.corners[(i + 1) % face.corners.length]!]!;
+        const inward = normal.clone().cross(
+            b.clone().sub(a).normalize()
+        );
+        return position.clone().sub(a).dot(inward) > tolerance;
+    });
+    const terminal = (width: number, start: boolean): number => {
+        let length = width;
+        for (let attempt = 0; attempt < 32; attempt++) {
+            const base = (start ? a : b).clone()
+                .addScaledVector(tangent, start ? length : -length);
+            if (sideFrames.every(side =>
+                strictlyInside(
+                    base.clone().addScaledVector(side.inward, width),
+                    side.face, side.normal
+                )
+            )) return length;
+            length *= 1.5;
+            if (length >= fullLength / 2) break;
+        }
+        fail("unsupported-topology", "No valid terminal taper fits both adjacent faces");
+    };
+    const taperStart = terminal(wStart, true);
+    const taperEnd = terminal(wEnd, false);
+    if (taperStart + taperEnd >= fullLength - tolerance) {
+        fail("unsupported-topology", "Chamfer end transitions overlap");
+    }
+
+    const sides: InsetSide[] = uses.map((use, index) => {
+        const {face, normal, inward: intoFace} = sideFrames[index]!;
         // Trim the selected edge with a diagonal terminal connection
         // from each endpoint to an interior point. The nonselected
         // perimeter remains entirely unchanged.
