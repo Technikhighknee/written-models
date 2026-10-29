@@ -172,12 +172,12 @@ export function triangleSurfaceDistance(
     }
 
     const boxes = second.map(face =>
-        new THREE.Box3().setFromPoints(face.points)
+        new THREE.Box3().setFromPoints([...face.points])
     );
     let distanceSq = Infinity;
 
     for (const triangle of first) {
-        const bounds = new THREE.Box3().setFromPoints(triangle.points);
+        const bounds = new THREE.Box3().setFromPoints([...triangle.points]);
 
         for (let i = 0; i < second.length; i++) {
             if (boxDistanceSq(bounds, boxes[i]!) > distanceSq) continue;
