@@ -1,5 +1,10 @@
 import * as THREE from "three";
 
+import { fitBetweenSurfaces, type SurfaceAttachment } from
+    "../../toolbox/geometry/queries/fitBetweenSurfaces";
+import { loftSectionWalls } from "../../toolbox/geometry/build/loftSectionWalls";
+import { capBoundary } from "../../toolbox/geometry/build/finishBoundaries";
+import type { Section3 } from "../../toolbox/geometry/definitions/geometry";
 import { boxMesh } from "../../toolbox/geometry/construction/boxMesh";
 import { beamBetweenPlanes } from "../../toolbox/geometry/construction/beamBetweenPlanes";
 import {
@@ -65,5 +70,83 @@ export function tableTimberGeometry(
             rotation, new THREE.Vector3(1, 1, 1)
         ),
         fitted: false
+    };
+}
+
+export interface FittedTableTimberOptions {
+    first: SurfaceAttachment;
+    last: SurfaceAttachment;
+    width: number;
+    depth: number;
+    referenceDirection: THREE.Vector3Like;
+}
+
+function endFrame(section: Section3): THREE.Matrix4 {
+    const points = section.outer.points;
+    const a = new THREE.Vector3().copy(points[0]!);
+    const b = new THREE.Vector3().copy(points[1]!);
+    const c = new THREE.Vector3().copy(points[2]!);
+    const x = b.sub(a).normalize();
+    const normal = new THREE.Vector3().copy(points[1]!).sub(a)
+        .cross(c.sub(a)).normalize();
+    const y = new THREE.Vector3().crossVectors(normal, x).normalize();
+
+    return new THREE.Matrix4().makeBasis(x, y, normal).setPosition(a);
+}
+
+/**
+ * Fit an entire rectangular section, not just its centerline, between
+ * two finite authored contact patches. Each end is capped on its actual
+ * support plane; all six surfaces retain construction quads.
+ */
+export function tableTimberBetweenSurfaces({
+    first, last, width, depth, referenceDirection
+}: FittedTableTimberOptions): TableTimberGeometry {
+    if (![width, depth].every(value =>
+        Number.isFinite(value) && value > 0
+    )) {
+        throw new RangeError("Invalid fitted timber section");
+    }
+
+    const result = fitBetweenSurfaces({
+        start: first,
+        end: last,
+        section: {
+            outer: {
+                closed: true,
+                points: [
+                    new THREE.Vector2(-width / 2, -depth / 2),
+                    new THREE.Vector2(width / 2, -depth / 2),
+                    new THREE.Vector2(width / 2, depth / 2),
+                    new THREE.Vector2(-width / 2, depth / 2)
+                ]
+            }
+        },
+        referenceDirection
+    });
+    let geometry = loftSectionWalls(result.sections, {
+        uvMode: "edge",
+        surfaceAt: ({edge}) => `side-${edge}`
+    });
+
+    for (const [name, section] of [
+        ["start", result.sections[0]],
+        ["end", result.sections[1]]
+    ] as const) {
+        geometry = capBoundary(
+            geometry,
+            geometry.boundaries[`${name}-outer`]![0]!,
+            {
+                region: `cap-${name}`,
+                uvFrame: endFrame(section),
+                tessellation: "quad-if-planar"
+            }
+        );
+    }
+
+    return {
+        geometry,
+        localToParent: new THREE.Matrix4(),
+        fitted: true
     };
 }
