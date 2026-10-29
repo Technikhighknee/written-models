@@ -301,10 +301,24 @@ dynamic cavity behavior.
       cover nested anchors, explicit mating rotations, world/local
       round trips, and rejected attachments (`6671c01` through
       `9f62358`).
-- [ ] **4.6** Query finite surface clearance, including polygon
+- [x] **4.6** Query finite surface clearance, including polygon
       chord intersections between path sample points. Separately
       verify the intended exterior-side placement of hoops and bands;
       unsigned separation does not establish inside versus outside.
+      `surfaceClearance` evaluates actual transformed authored
+      triangles: vertex-to-triangle proximity, finite edge-to-edge
+      closest approaches, edge piercings through triangle interiors,
+      and coplanar crossing edges. AABB pair rejection avoids most
+      distant comparisons without replacing the exact surface test.
+      `verifyExteriorPlacement` separately checks the candidate's
+      outward normal-side placement against the oriented support,
+      refusing intersections and ambiguous contacts; open support
+      normals remain a local side diagnostic, not a solid containment
+      proof. Regression tests include a twelve-sided barrel and
+      rotated band, including a chord that cuts through the barrel
+      between valid radial endpoints, inward nested bands, and
+      real world-space clearances
+      (`06a82d1` through `0b6625f`).
 - [ ] **4.7** Extract aligned cavity sections from separate inner
       stave surfaces, deduplicating horizontal row edges and resolving
       crossings at intermediate heights. Reject ambiguous seams or
