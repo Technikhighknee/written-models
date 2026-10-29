@@ -136,6 +136,19 @@ test("cycle, singular, shear and foreign anchor failures leave hierarchy intact"
         /shear/
     );
 
+    const distantShear = shear.clone()
+        .setPosition(new THREE.Vector3(1e11, 2e11, -3e11));
+
+    assert.throws(
+        () => attachAtFrames({
+            parent,
+            child: separate,
+            parentFrame: distantShear,
+            childFrame: origin
+        }),
+        /shear/
+    );
+
     assert.throws(
         () => attachAtFrames({
             parent,
@@ -174,5 +187,11 @@ test("world/local frame conversion accounts for nested parent transforms", () =>
     sameFrame(
         frameFromAncestor(root, nested),
         nested.matrix
+    );
+
+    root.scale.x = 0;
+    assert.throws(
+        () => frameToLocal(nested, new THREE.Matrix4()),
+        error => error.reason === "invalid-input"
     );
 });
