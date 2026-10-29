@@ -45,6 +45,24 @@ const { verifyExteriorPlacement } = await toolbox(
     "geometry/queries/verifyExteriorPlacement.ts"
 );
 
+const { buildTankardGeometry, buildTankardServingCavity } =
+    await sourceModule("models/beerMug.ts");
+const { createFillableVolume } = await toolbox(
+    "geometry/construction/fillableVolume.ts"
+);
+const { geometryResult } = await toolbox(
+    "geometry/kernel/GeometryResult.ts"
+);
+const { raycastSurface } = await toolbox(
+    "geometry/queries/raycastSurface.ts"
+);
+const { prepareRuntimeModel } = await sourceModule(
+    "core/export/prepareRuntimeModel.ts"
+);
+const { GLTFExporter } = await import(
+    "three/addons/exporters/GLTFExporter.js"
+);
+
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
 const uv = (x, y) => new THREE.Vector2(x, y);
 
@@ -316,4 +334,123 @@ test("the barrel's real iron band remains outside its faceted staves", () => {
     assert.equal(side.exterior, true);
     assert.equal(side.ambiguous, false);
     assert.ok(side.minimumSignedDistance > 0);
+});
+
+test("both real tankard handle mounts meet the staves and the full mug exports", async () => {
+    const parts = buildTankardGeometry();
+    const handle = geometryResult(parts.handle);
+    const topology = topologyOf(handle);
+    const target = {
+        geometry: parts.staves[0],
+        localToWorld: new THREE.Matrix4()
+    };
+
+    for (const region of ["cap-start", "cap-end"]) {
+        const rims = topology.regionBoundaries(region);
+        assert.equal(rims.length, 1);
+        assert.equal(rims[0].closed, true);
+
+        for (const index of rims[0].vertices) {
+            const point = handle.geometry.vertices[index];
+            const contact = raycastSurface(target, {
+                origin: v(0.14, point.y, point.z),
+                direction: v(-1, 0, 0),
+                maxDistance: 0.16
+            });
+
+            assert.ok(contact, `No stave contact for ${region} station ${index}`);
+            assert.ok(contact.frontFacing);
+            assert.ok(Math.abs(point.x - contact.point.x) <= 0.0007,
+                `Handle's ${region} mount missed its real stave by more than 0.7 mm`);
+        }
+    }
+
+    const cavity = buildTankardServingCavity(parts.staves);
+    const wood = new THREE.MeshStandardMaterial({ color: 0x987654 });
+    const iron = new THREE.MeshStandardMaterial({
+        color: 0x444444, metalness: 0.7
+    });
+    const liquid = new THREE.MeshPhysicalMaterial({
+        name: "Amber Ale", color: 0xb77a2b
+    });
+    const beer = createFillableVolume(cavity, liquid, 0.65, 0.00035);
+    beer.mesh.name = "AmberAleContents";
+
+    const tankard = new THREE.Group();
+    const owned = [];
+    const add = (data, mapping, material) => {
+        const geometry = toBufferGeometry(data, mapping);
+        owned.push(geometry);
+        tankard.add(new THREE.Mesh(geometry, material));
+    };
+
+    try {
+        const staveMapping = {
+            outer: 0, inner: 0,
+            "edge-left": 0, "edge-right": 0,
+            "cap-start": 0, "cap-end": 0
+        };
+        for (const stave of parts.staves) {
+            add(stave, staveMapping, wood);
+        }
+        add(parts.floor, { side: 0, top: 0, bottom: 0 }, wood);
+        add(parts.handle, {
+            side: 0, "cap-start": 0, "cap-end": 0
+        }, wood);
+        for (const geometry of parts.bands) {
+            tankard.add(new THREE.Mesh(geometry, iron));
+        }
+        tankard.add(beer.mesh);
+
+        const runtime = prepareRuntimeModel(tankard);
+        const previousReader = globalThis.FileReader;
+        globalThis.FileReader = class {
+            result = null;
+            onloadend = null;
+
+            async readAsArrayBuffer(blob) {
+                this.result = await blob.arrayBuffer();
+                this.onloadend?.();
+            }
+        };
+
+        try {
+            assert.equal(runtime.sourceMeshes, 17);
+            assert.ok(runtime.outputMeshes < runtime.sourceMeshes);
+            const bytes = await new GLTFExporter().parseAsync(
+                runtime.root, { binary: true }
+            );
+            const header = new DataView(bytes);
+            assert.equal(header.getUint32(0, true), 0x46546c67);
+            const gltf = JSON.parse(new TextDecoder().decode(
+                new Uint8Array(bytes, 20, header.getUint32(12, true))
+            ));
+            const liquidNode = gltf.nodes.find(node =>
+                node.name === "AmberAleContents"
+            );
+
+            assert.ok(liquidNode);
+            const liquidMesh = gltf.meshes[liquidNode.mesh];
+            assert.equal(liquidMesh.primitives[0].targets.length, 8);
+            assert.deepEqual(liquidMesh.extras.targetNames,
+                Object.keys(beer.mesh.morphTargetDictionary));
+            assert.equal(liquidMesh.weights.length, 8);
+            assert.ok(gltf.meshes.length >= 3);
+            assert.ok(gltf.materials.length >= 3);
+        } finally {
+            runtime.dispose();
+            if (previousReader === undefined) {
+                delete globalThis.FileReader;
+            } else {
+                globalThis.FileReader = previousReader;
+            }
+        }
+    } finally {
+        for (const geometry of owned) geometry.dispose();
+        for (const geometry of parts.bands) geometry.dispose();
+        beer.mesh.geometry.dispose();
+        wood.dispose();
+        iron.dispose();
+        liquid.dispose();
+    }
 });
