@@ -3,10 +3,9 @@ import * as THREE from "three";
 import { boardedSurface } from "./boardedSurface";
 import {
     tableTimberGeometry,
-    tableTimberBetweenSurfaces,
     type TableTimberGeometry
 } from "./tableTimberGeometry";
-import type { SurfaceAttachment } from "../../toolbox/geometry/queries/fitBetweenSurfaces";
+
 import type { TimberContactNormals } from "../../toolbox/geometry/construction/timber";
 import { cylinderMesh } from "../../toolbox/geometry/construction/cylinderMesh";
 import { geometryResult, type GeometryResult } from "../../toolbox/geometry/kernel/GeometryResult";
@@ -110,14 +109,6 @@ export interface OakTimberShop {
         depth: number,
         contacts?: TimberContactNormals
     ): THREE.Mesh;
-    fittedTimber(
-        name: string,
-        start: SurfaceAttachment,
-        end: SurfaceAttachment,
-        width: number,
-        depth: number,
-        referenceDirection: THREE.Vector3Like
-    ): THREE.Mesh;
     peg(
         name: string,
         center: THREE.Vector3,
@@ -180,15 +171,6 @@ export function oakTimberShop(seed: number): OakTimberShop {
             return timberMesh(name, tableTimberGeometry(
                 start, end, width, depth, contacts
             ));
-        },
-        fittedTimber(name, start, end, width, depth, referenceDirection) {
-            return timberMesh(name, tableTimberBetweenSurfaces({
-                first: start,
-                last: end,
-                width,
-                depth,
-                referenceDirection
-            }));
         },
         peg(name, center, outward, radius = mm(6)) {
             const peg = surfaceMesh({
