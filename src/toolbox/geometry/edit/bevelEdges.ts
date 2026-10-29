@@ -18,6 +18,7 @@ import {
 } from "../kernel/precision";
 import { patchChartMatches, transferBoundary } from "../kernel/selectionLifecycle";
 import { topologyOf } from "../kernel/topology";
+import { bevelOpenEdge } from "./bevelOpenEdge";
 
 export type ScalarField = (t: number) => number;
 
@@ -56,9 +57,51 @@ export function bevelEdges(
 ): GeometryResult {
     const policy = resolvePrecision(precision);
     if (!source?.geometry || !Array.isArray(edges) ||
-        typeof width !== "function" ||
-        (edges.length !== 3 && edges.length !== 4)) {
-        fail("invalid-input", "Expected an ordered three- or four-edge closed rim");
+        typeof width !== "function" || !edges.length) {
+        fail("invalid-input", "Expected owned selected edges and a width field");
+    }
+    if (edges.length === 1) {
+        return bevelOpenEdge(source, edges[0]!, width, policy);
+    }
+    if (edges.length > 4) {
+        const loops: EdgeRef[][] = [];
+        const used = new Set<number>();
+        let current: EdgeRef[] = [];
+        for (const edge of edges) {
+            assertSelectionOwner(source, edge);
+            if (current.length &&
+                current.at(-1)!.to !== edge.from) {
+                fail("invalid-topology", "Separate beveled loops must each be ordered");
+            }
+            if (used.has(edge.from)) {
+                fail("unsupported-topology", "Bevel loops share a corner");
+            }
+            used.add(edge.from);
+            current.push(edge);
+            if (edge.to === current[0]!.from) {
+                if (current.length !== 3 && current.length !== 4) {
+                    fail("unsupported-topology", "Selected ring requires three or four edges");
+                }
+                loops.push(current);
+                current = [];
+            }
+        }
+        if (current.length || loops.length < 2) {
+            fail("unsupported-topology", "Unclosed or ambiguous multi-ring bevel");
+        }
+        // Each independent ring is reconstructed against the latest
+        // geometry snapshot. Existing vertex IDs remain stable; new
+        // result owners and all surviving named chains are reissued.
+        let result = source;
+        for (const loop of loops) {
+            result = bevelEdges(result, loop.map(edge => ({
+                ...edge, owner: result.id
+            })), width, policy);
+        }
+        return result;
+    }
+    if (edges.length !== 3 && edges.length !== 4) {
+        fail("unsupported-topology", "Open multi-edge bevel junction is not supported");
     }
     const topology = topologyOf(source);
     topology.openBoundaries();
@@ -346,12 +389,12 @@ export function bevelEdges(
         );
         if (retained.length) boundaries[name] = retained;
     }
-    boundaries["bevel-upper"] = [{
+    (boundaries["bevel-upper"] ??= []).push({
         owner: result.id, vertices: topIds, closed: true
-    }];
-    boundaries["bevel-lower"] = [{
+    });
+    (boundaries["bevel-lower"] ??= []).push({
         owner: result.id, vertices: bottomIds, closed: true
-    }];
+    });
 
     const patches: Record<string, SurfacePatchRef[]> = Object.create(null);
     for (const [name, entries] of Object.entries(source.patches ?? {})) {
