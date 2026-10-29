@@ -80,3 +80,6 @@ export type {
     AuthoredUvProjector,
     AuthoredUvProjectionOptions
 } from "../uv/projectAuthoredUvs";
+
+export { cavitySectionsFromSurfaces } from "../queries/cavitySectionsFromSurfaces";
+export type { CavitySectionsOptions, MeshRegionTarget, CavityRing } from "../queries/cavitySectionsFromSurfaces";
