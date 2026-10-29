@@ -176,3 +176,69 @@ test("uncapped cut has paired open rims; an open input cannot request caps", () 
         error => error.reason === "unsupported-topology"
     );
 });
+
+test("a plane slices open surface patches into paired open chains", () => {
+    const mesh = geometryResult({
+        vertices: [
+            new THREE.Vector3(-1, 0, -1),
+            new THREE.Vector3(1, 0, -1),
+            new THREE.Vector3(1, 0, 1),
+            new THREE.Vector3(-1, 0, 1)
+        ],
+        quads: [{
+            corners: [0, 3, 2, 1],
+            surface: "sheet",
+            uvs: [p(0, 0), p(0, 2), p(2, 2), p(2, 0)]
+        }]
+    });
+    const split = splitByPlane(mesh,
+        plane([1, 0, 0]), options(false));
+    assert.equal(split.parts.length, 2);
+    assert.deepEqual(split.sideOfPart, ["negative", "positive"]);
+    assert.equal(split.interfaces.length, 1);
+    const shared = split.interfaces[0];
+    assert.equal(shared.first.closed, false);
+    assert.equal(shared.second.closed, false);
+    assert.equal(shared.source.closed, false);
+    assert.deepEqual(shared.source.parameters, [0, 1]);
+    assert.equal(shared.source.points.length, 2);
+    for (const part of split.parts) {
+        assert.equal(topologyOf(part).openBoundaries().length, 1);
+        assert.equal(part.geometry.quads.length, 1);
+        assert.equal(part.boundaries.cut[0].closed, false);
+    }
+});
+
+test("a skewed cut retains original corner vertices and real triangles", () => {
+    const source = geometryResult(boxMesh({
+        width: 2, height: 2, depth: 2
+    }));
+    const result = splitByPlane(
+        source, plane([1, 1, 1]), options(true)
+    );
+    assert.equal(result.parts.length, 2);
+    assert.equal(result.interfaces.length, 1);
+    for (const part of result.parts) {
+        closed(part);
+        assert.ok((part.geometry.triangles?.length ?? 0) > 0);
+        for (const face of [...part.geometry.quads, ...(part.geometry.triangles ?? [])]) {
+            assert.ok(face.uvs.every(uv =>
+                Number.isFinite(uv.x) && Number.isFinite(uv.y)
+            ));
+        }
+    }
+});
+
+test("a cut along existing source corners reuses exact vertex positions", () => {
+    const source = geometryResult(boxMesh({
+        width: 2, height: 2, depth: 2
+    }));
+    const split = splitByPlane(source,
+        plane([1, 1, 0]), options(true));
+    assert.equal(split.parts.length, 2);
+    assert.equal(split.interfaces.length, 1);
+    for (const part of split.parts) closed(part);
+    assert.ok(split.interfaces[0].source.points.every(point =>
+        Math.abs(point.x + point.y) < 1e-9
+    ));
+});
