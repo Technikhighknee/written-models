@@ -482,12 +482,27 @@ test("four hand-fitted tabletop boards preserve matching worn seams and gaps", (
                 0, rank * 0.0025, 0
             )
         );
-        const mesh = surfaceMesh({
-            name: `TablePlank${index + 1}`,
-            geometry: separated,
-            materials: material,
-            tint: new THREE.Color().setScalar(0.95 + rank * 0.01)
-        });
+        let mesh;
+        try {
+            mesh = surfaceMesh({
+                name: `TablePlank${index + 1}`,
+                geometry: separated,
+                materials: material,
+                tint: new THREE.Color().setScalar(0.95 + rank * 0.01)
+            });
+        } catch (error) {
+            const face = error.context?.face;
+            if (face) {
+                const authored = face.kind === "quad"
+                    ? separated.geometry.quads[face.index]
+                    : separated.geometry.triangles[face.index];
+                console.error("Float32 face", index, face,
+                    authored.corners.map(id =>
+                        separated.geometry.vertices[id].toArray()
+                    ));
+            }
+            throw error;
+        }
         try {
             assert.equal(getControlOutline(mesh.geometry).quadCount,
                 separated.geometry.quads.length);
