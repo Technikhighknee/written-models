@@ -69,10 +69,13 @@ export function attachAtFrames<T extends THREE.Object3D>({
         position, rotation, scale
     );
     const values = childToParent.elements;
-    const error = Math.max(...values.map((value, index) =>
-        Math.abs(value - recovered.elements[index]!)
+    const axes = [0, 1, 2, 4, 5, 6, 8, 9, 10];
+    const error = Math.max(...axes.map(index =>
+        Math.abs(values[index]! - recovered.elements[index]!)
     ));
-    const magnitude = Math.max(1, ...values.map(Math.abs));
+    const magnitude = Math.max(
+        1, ...axes.map(index => Math.abs(values[index]!))
+    );
     if (
         ![...position.toArray(), ...rotation.toArray(), ...scale.toArray()]
             .every(Number.isFinite) ||
