@@ -246,3 +246,37 @@ test("the existing wooden mug's inner faces agree with its physical cavity", () 
     assert.equal(sections[0].outline.length, 12);
     assert.equal(sections.at(-1).outline.length, 12);
 });
+
+test("interpolation rejects a brief ring collapse missed at the midpoint", () => {
+    const lower = [
+        uv(-1, -1), uv(1, -1),
+        uv(1, 1), uv(-1, 1)
+    ];
+    const upper = lower.map(p => uv(-2 * p.x, -2 * p.y));
+    const pieces = lower.map((start, index) => {
+        const next = (index + 1) % lower.length;
+        return {
+            geometry: {
+                vertices: [
+                    vec(start.x, 0, start.y),
+                    vec(lower[next].x, 0, lower[next].y),
+                    vec(upper[next].x, 1, upper[next].y),
+                    vec(upper[index].x, 1, upper[index].y)
+                ],
+                quads: [{
+                    corners: [0, 1, 2, 3],
+                    uvs: [uv(0, 0), uv(1, 0), uv(1, 1), uv(0, 1)],
+                    surface: "inner"
+                }]
+            },
+            regions: ["inner"],
+            localToWorld: new THREE.Matrix4()
+        };
+    });
+
+    assert.throws(
+        () => cavitySectionsFromSurfaces(options(pieces, [0, 1])),
+        error => error.operation === "cavitySectionsFromSurfaces" &&
+            ["degenerate-geometry", "self-intersection"].includes(error.reason)
+    );
+});
