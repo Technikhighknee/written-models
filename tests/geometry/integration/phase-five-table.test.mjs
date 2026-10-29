@@ -5,7 +5,10 @@ import * as THREE from "three";
 import { sourceModule, toolbox } from "../../support/toolbox.mjs";
 
 const { buildTabletopGeometry } = await sourceModule("models/table.ts");
-const { tableTimberGeometry } = await sourceModule(
+const {
+    tableTimberGeometry,
+    tableTimberBetweenSurfaces
+} = await sourceModule(
     "models/components/tableTimberGeometry.ts"
 );
 const { createTrestleSupport } = await sourceModule(
@@ -219,4 +222,78 @@ test("table trestle's rectangular members retain cut faces and group transforms"
         material.dispose();
         endGrain.dispose();
     }
+});
+
+test("finite trestle contacts fit both braces and the longitudinal tie", () => {
+    const v = (x, y, z) => new THREE.Vector3(x, y, z);
+    const target = (part, parent = new THREE.Matrix4()) => ({
+        geometry: part.geometry.geometry,
+        localToWorld: parent.clone().multiply(part.localToParent)
+    });
+
+    const foot = tableTimberGeometry(
+        v(0, 0.05, -0.4), v(0, 0.05, 0.4),
+        0.16, 0.1
+    );
+    const post = tableTimberGeometry(
+        v(0, 0.1, 0), v(0, 0.605, 0),
+        0.145, 0.135
+    );
+
+    for (const direction of [-1, 1]) {
+        const brace = tableTimberBetweenSurfaces({
+            first: {
+                target: target(foot),
+                near: v(0, 0.1, direction * 0.295)
+            },
+            last: {
+                target: target(post),
+                near: v(0, 0.5, direction * 0.0675)
+            },
+            width: 0.07,
+            depth: 0.07,
+            referenceDirection: v(1, 0, 0)
+        });
+
+        assert.equal(brace.fitted, true);
+        assert.equal(brace.geometry.geometry.quads.length, 6);
+        assert.equal(brace.geometry.geometry.triangles.length, 0);
+        assert.equal(topologyOf(brace.geometry).openBoundaries().length, 0);
+        assert.equal(topologyOf(brace.geometry).connectedComponents().length, 1);
+
+        const minY = Math.min(...brace.geometry.geometry.vertices.map(p => p.y));
+        const maxY = Math.max(...brace.geometry.geometry.vertices.map(p => p.y));
+        almost(minY, 0.1);
+        almost(maxY, 0.5);
+    }
+
+    const left = new THREE.Matrix4().makeTranslation(-0.6, -0.735, 0);
+    const right = new THREE.Matrix4().makeTranslation(0.6, -0.735, 0);
+    const first = {
+        target: target(post, left),
+        near: v(-0.6, -0.395, 0)
+    };
+    const last = {
+        target: target(post, right),
+        near: v(0.6, -0.395, 0)
+    };
+
+    const tie = tableTimberBetweenSurfaces({
+        first, last,
+        width: 0.105, depth: 0.105,
+        referenceDirection: v(0, 1, 0)
+    });
+
+    assert.equal(tie.fitted, true);
+    assert.equal(topologyOf(tie.geometry).openBoundaries().length, 0);
+    assert.equal(tie.geometry.geometry.quads.length, 6);
+    const xs = tie.geometry.geometry.vertices.map(point => point.x);
+    almost(Math.min(...xs), -0.6 + 0.145 / 2);
+    almost(Math.max(...xs), 0.6 - 0.145 / 2);
+
+    assert.throws(() => tableTimberBetweenSurfaces({
+        first, last,
+        width: 0.105, depth: 0.2,
+        referenceDirection: v(0, 1, 0)
+    }), error => error.reason === "outside-contact-patch");
 });
