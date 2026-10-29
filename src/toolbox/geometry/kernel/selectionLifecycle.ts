@@ -134,8 +134,28 @@ export function patchChartMatches(
 
     const policy = resolvePrecision(precision);
     const vertices = result.geometry.vertices;
-    const extent = new THREE.Box3().setFromPoints(vertices)
-        .getSize(new THREE.Vector3()).length();
+    const selected = new Set<string>();
+    const patchVertices = new Set<number>();
+
+    for (const ref of patch.faces) {
+        if (!Number.isInteger(ref.index) || ref.index < 0) return false;
+        const key = `${ref.kind}:${ref.index}`;
+        if (selected.has(key)) return false;
+
+        const face = ref.kind === "quad"
+            ? result.geometry.quads[ref.index]
+            : ref.kind === "triangle"
+                ? result.geometry.triangles?.[ref.index]
+                : undefined;
+        if (!face) return false;
+
+        selected.add(key);
+        face.corners.forEach(id => patchVertices.add(id));
+    }
+
+    const extent = new THREE.Box3().setFromPoints(
+        [...patchVertices].map(id => vertices[id]!)
+    ).getSize(new THREE.Vector3()).length();
     const tolerance = lengthTolerance(policy, extent);
     const tested = new Map<number, THREE.Vector2>();
 
@@ -156,6 +176,26 @@ export function patchChartMatches(
     };
 
     try {
+        // A SurfacePatchRef describes one connected authored surface.
+        const topology = topologyOf(result);
+        const visited = new Set<string>();
+        const queue = [patch.faces[0]!];
+
+        while (queue.length) {
+            const face = queue.pop()!;
+            const key = `${face.kind}:${face.index}`;
+            if (visited.has(key)) continue;
+            visited.add(key);
+
+            for (const neighbor of topology.faceNeighbors(face)) {
+                if (selected.has(`${neighbor.kind}:${neighbor.index}`)) {
+                    queue.push(neighbor);
+                }
+            }
+        }
+
+        if (visited.size !== selected.size) return false;
+
         for (const ref of patch.faces) {
             const face = ref.kind === "quad"
                 ? result.geometry.quads[ref.index]
