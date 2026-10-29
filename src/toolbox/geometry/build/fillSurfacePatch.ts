@@ -381,7 +381,7 @@ export function fillSurfacePatch({
         // Refinement is conforming: split marked interior edges in every
         // incident face and use one shared midpoint vertex. A centroid fan
         // handles interior curvature without touching any boundary edge.
-        const maxIterations = 15;
+        const maxIterations = 32;
         const maxFaces = 40_000;
         let converged = false;
 
