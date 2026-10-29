@@ -839,12 +839,17 @@ operations, with no live consumers of superseded specialized logic.
       `classifyAuthoredFaces`, `deformVertices`, `surfaceMesh`
       and `toBufferGeometry` paths remain. Other compatibility
       constructors and render-first adapters still need review.
-- [ ] **7.3** Keep imports following the module dependency
+- [x] **7.3** Keep imports following the module dependency
       direction in [06](06-migration-map.md).
-      Moved `ellipticalRing` into `geometry/build` and moved
-      the shared axial profile options to `sampleAxialSections`,
-      eliminating two build-to-construction dependencies.
-      Complete dependency audit is still outstanding.
+      The shared `ellipticalRing` sampler and axial profile types
+      live in `geometry/build` rather than in construction
+      compatibility modules, eliminating reverse dependencies.
+      `tests/geometry/kernel/dependency-direction.test.mjs`
+      guards the geometry definitions, kernel, build, edit, query
+      and UV layers against importing model/core/material recipes,
+      construction-only implementations or render adapters.
+      The public `kernel/index.ts` barrel is the intentional
+      API-export exception. CI passes this check with all models.
 - [x] **7.4** Rewrite the permanent `src/toolbox/README.md`
       around the actual capabilities and specific composition
       examples, with function names from the final code.
