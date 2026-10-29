@@ -659,7 +659,7 @@ export function shapeSurfaceRelief(
             triangles.length * 4 > 60000) {
             fail(
                 "sampling-limit",
-                "Relief detail exceeds the interior sampling budget"
+                `Relief refinement stalled at pass ${iteration}: ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} split edges`
             );
         }
 
