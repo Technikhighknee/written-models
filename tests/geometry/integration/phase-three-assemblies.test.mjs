@@ -391,15 +391,19 @@ test("five barrel head planks keep exact seams and export distinct materials", a
         const json = JSON.parse(new TextDecoder().decode(
             new Uint8Array(bytes, 20, header.getUint32(12, true))
         ).trim());
-        const names = new Set((json.materials ?? []).map(m => m.name));
         const primitives = (json.meshes ?? []).flatMap(mesh => mesh.primitives);
+        const exportedColors = (json.materials ?? []).map(material =>
+            material.pbrMetallicRoughness?.baseColorFactor
+        );
 
-        for (const region of [
-            "outer", "inner", "end-grain",
-            "groove-floor", "groove-shoulder"
-        ]) {
-            assert.ok(names.has(`head-${region}`),
-                JSON.stringify({ materials: json.materials, meshes: json.meshes?.length }));
+        // Static batching deliberately renames the materials. Verify their
+        // actual exported linear PBR colors, not the old source names.
+        for (const [region, material] of Object.entries(materials)) {
+            assert.ok(exportedColors.some(color =>
+                color && ["r", "g", "b"].every((key, index) =>
+                    Math.abs(color[index] - material.color[key]) < 1e-5
+                )
+            ), `GLB lost ${region} material color`);
         }
         assert.ok(primitives.length > 1);
         assert.ok(primitives.some(primitive =>
