@@ -433,8 +433,8 @@ export function bevelOpenChain(
                 kind: "triangle",
                 index: triangles.push({
                     corners: ids as TriangleFace["corners"],
-                    uvs: ordered.map(i => uvAt(vertices[loop[i]!]!))
-                        as TriangleFace["uvs"],
+                    uvs: ordered.map(i => uvAt(vertices[loop[i]!]!)) as
+                        TriangleFace["uvs"],
                     surface: face.surface,
                     ...(face.smoothingGroup === undefined ? {} :
                         {smoothingGroup: face.smoothingGroup})
@@ -482,8 +482,8 @@ export function bevelOpenChain(
         ]);
         quads.push({
             corners: ordered as QuadFace["corners"],
-            uvs: ordered.map(id => coords.get(id)!.clone())
-                as QuadFace["uvs"],
+            uvs: ordered.map(id => coords.get(id)!.clone()) as
+                QuadFace["uvs"],
             surface: "bevel"
         });
     }
@@ -501,8 +501,8 @@ export function bevelOpenChain(
         ]);
         triangles.push({
             corners: ordered as TriangleFace["corners"],
-            uvs: ordered.map(id => coords.get(id)!.clone())
-                as TriangleFace["uvs"],
+            uvs: ordered.map(id => coords.get(id)!.clone()) as
+                TriangleFace["uvs"],
             surface: "bevel"
         });
     }
