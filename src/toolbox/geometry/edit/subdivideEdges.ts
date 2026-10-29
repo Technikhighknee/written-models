@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import type { QuadFace, TriangleFace } from "../mesh/MeshData";
 import {
     assertSelectionOwner,
     geometryResult,
