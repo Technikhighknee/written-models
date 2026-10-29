@@ -16,6 +16,18 @@ const { capBoundary } = await toolbox(
 const { extrudeContour } = await toolbox(
     "geometry/build/extrudeContour.ts"
 );
+const { fillSurfacePatch } = await toolbox(
+    "geometry/build/fillSurfacePatch.ts"
+);
+const { joinGeometry } = await toolbox(
+    "geometry/build/joinGeometry.ts"
+);
+const { measureContour } = await toolbox(
+    "geometry/topology/contourSampling.ts"
+);
+const { resolvePrecision } = await toolbox(
+    "geometry/kernel/precision.ts"
+);
 const { topologyOf } = await toolbox(
     "geometry/kernel/topology.ts"
 );
@@ -186,6 +198,57 @@ test("the same rounded outline can be independently extruded with genuine caps",
         shaped.contour.points.length * 2);
     assert.ok(result.regions["cap-start"].length > 0);
     assert.ok(result.regions["cap-end"].length > 0);
+});
+
+test("one shaped profile is shared by an independent wall and a charted cap", () => {
+    const shaped = shapeSectionCorners(rectangle(), [
+        round(0, 0.15, 5),
+        chamfer(1, 0.12),
+        round(2, 0.15, 5),
+        chamfer(3, 0.12)
+    ]);
+    const contour = shaped.contour.points;
+    const wall = loftSectionWalls([0, 0.6].map(z => ({
+        outer: {
+            points: contour.map(point =>
+                new THREE.Vector3(point.x, point.y, z)
+            ),
+            closed: true
+        }
+    })));
+
+    const measured = measureContour(
+        contour, true, "shaped-cap", resolvePrecision()
+    );
+    const lid = fillSurfacePatch({
+        profile: {
+            outer: { points: contour, parameters: measured.stations }
+        },
+        chart: {
+            at: uv => new THREE.Vector3(uv.x, uv.y, 0.6),
+            parameterOf: point => new THREE.Vector2(point.x, point.y),
+            normalAt: () => new THREE.Vector3(0, 0, 1)
+        },
+        region: "shaped-cap"
+    });
+
+    const joined = joinGeometry([wall, lid], {
+        weld: [{
+            firstPart: 0,
+            first: wall.boundaries["end-outer"][0],
+            secondPart: 1,
+            second: lid.boundaries.outer[0]
+        }]
+    });
+
+    assert.equal(joined.geometry.vertices.length, contour.length * 2);
+    assert.equal(topologyOf(joined).connectedComponents().length, 1);
+    assert.equal(topologyOf(joined).openBoundaries().length, 1);
+    assert.equal(joined.regions["shaped-cap"].length,
+        lid.geometry.triangles.length);
+    assert.equal(joined.patches["1:shaped-cap"][0].owner, joined.id);
+    assert.ok(!joined.boundaries["end-outer"]);
+    assert.ok(!joined.boundaries.outer);
 });
 
 test("malformed, overlapping and concave transitions fail explicitly", () => {
