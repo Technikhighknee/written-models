@@ -8,6 +8,8 @@ export { transformGeometry, deformVertices, offsetMeshUvs } from "../edit/geomet
 export type { DeformationField } from "../edit/geometryEdits";
 export { raycastSurface } from "../queries/raycastSurface";
 export type { SurfaceTarget, SurfaceHit, Ray3 } from "../queries/raycastSurface";
+export { findFacingPatch } from "../queries/findFacingPatch";
+export type { SurfacePatchHit } from "../queries/findFacingPatch";
 export {
     DEFAULT_GEOMETRY_PRECISION,
     resolvePrecision,
