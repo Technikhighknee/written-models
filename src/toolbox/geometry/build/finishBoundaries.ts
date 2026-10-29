@@ -9,6 +9,7 @@ import {
     type SurfacePatchRef
 } from "../kernel/GeometryResult";
 import { topologyOf } from "../kernel/topology";
+import { patchChartMatches, transferBoundary } from "../kernel/selectionLifecycle";
 import { triangulateProfile } from "./triangulateProfile";
 import {
     assertAffineTransform,
@@ -48,17 +49,6 @@ function loopEdges(vertices: readonly number[]): Set<string> {
     return new Set(vertices.map((a, i) =>
         edgeKey(a, vertices[(i + 1) % vertices.length]!)
     ));
-}
-
-function sameLoop(a: BoundaryRef, b: BoundaryRef): boolean {
-    if (!a.closed || !b.closed || a.vertices.length !== b.vertices.length) {
-        return false;
-    }
-
-    const edges = loopEdges(a.vertices);
-    return b.vertices.every((vertex, i) =>
-        edges.has(edgeKey(vertex, b.vertices[(i + 1) % b.vertices.length]!))
-    );
 }
 
 function validateOpenLoop(
@@ -275,38 +265,41 @@ function appendFaces(
         throw error;
     }
 
+    const consumedEdges = new Set(
+        consumed.flatMap(boundary => [...loopEdges(boundary.vertices)])
+    );
     const boundaries: Record<string, BoundaryRef[]> = Object.create(null);
 
     for (const [name, entries] of Object.entries(source.boundaries)) {
-        const survivors = entries.filter(boundary =>
-            !consumed.some(used => sameLoop(boundary, used))
+        const survivors = entries.flatMap(boundary =>
+            transferBoundary(
+                source, result, boundary, id => id, consumedEdges
+            )
         );
 
-        if (survivors.length) {
-            boundaries[name] = survivors.map(boundary => ({
-                owner: result.id,
-                vertices: [...boundary.vertices],
-                closed: boundary.closed
-            }));
-        }
+        if (survivors.length) boundaries[name] = survivors;
     }
 
-    let patches: Record<string, SurfacePatchRef[]> | undefined;
-    if (source.patches) {
-        patches = Object.create(null) as Record<string, SurfacePatchRef[]>;
-        for (const [name, entries] of Object.entries(source.patches)) {
-            patches[name] = entries.map(patch => ({
+    const patches: Record<string, SurfacePatchRef[]> = Object.create(null);
+
+    for (const [name, entries] of Object.entries(source.patches ?? {})) {
+        for (const patch of entries) {
+            assertSelectionOwner(source, patch);
+            const candidate: SurfacePatchRef = {
                 owner: result.id,
                 faces: patch.faces.map(face => ({ ...face })),
                 chart: patch.chart
-            }));
+            };
+            if (patchChartMatches(result, candidate, precision)) {
+                (patches[name] ??= []).push(candidate);
+            }
         }
     }
 
     return {
         ...result,
         boundaries,
-        ...(patches === undefined ? {} : { patches })
+        ...(Object.keys(patches).length ? { patches } : {})
     };
 }
 
