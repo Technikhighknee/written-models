@@ -1,4 +1,3 @@
-import * as THREE from "three";
 import type { MeshData } from "../mesh/MeshData";
 import { loftRings } from "./loftRings";
 import {
@@ -31,7 +30,8 @@ export function loftAxialProfile({
     radialWaves = []
 }: LoftAxialProfileOptions): MeshData {
     const rings = sampleAxialSections({
-        axis, stations, outline, segments, radialWaves
+        axis, stations, ...(outline === undefined ? {} : {outline}),
+        segments, radialWaves
     }).map(section => section.outer.points);
 
     const intervalSurfaces: string[] = [];

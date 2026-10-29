@@ -14,12 +14,12 @@ import type { Section3 } from "../definitions/geometry";
 function sectionFrame(section: Section3): THREE.Matrix4 {
     const points = section.outer.points;
     const a = points[0]!;
-    const x = points[1]!.clone().sub(a).normalize();
-    const z = points[1]!.clone().sub(a)
-        .cross(points[2]!.clone().sub(a)).normalize();
+    const x = new THREE.Vector3().copy(points[1]!).sub(a).normalize();
+    const z = new THREE.Vector3().copy(points[1]!).sub(a)
+        .cross(new THREE.Vector3().copy(points[2]!).sub(a)).normalize();
     const y = new THREE.Vector3().crossVectors(z, x).normalize();
     const center = points.reduce((sum, point) =>
-        sum.add(point), new THREE.Vector3()
+        sum.add(new THREE.Vector3().copy(point)), new THREE.Vector3()
     ).multiplyScalar(1 / points.length);
 
     return new THREE.Matrix4().makeBasis(x, y, z).setPosition(center);
@@ -36,7 +36,8 @@ export function axialProfileSolid({
     radialWaves = []
 }: LoftAxialProfileOptions): GeometryResult {
     const sections = sampleAxialSections({
-        axis, stations, outline, segments, radialWaves
+        axis, stations, ...(outline === undefined ? {} : {outline}),
+        segments, radialWaves
     });
 
     const intervals: string[] = [];
