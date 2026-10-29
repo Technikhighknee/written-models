@@ -2,7 +2,11 @@ import * as THREE from "three";
 
 import { createTrestleSupport } from "./components/trestleSupport";
 import { oakPlankPanel, oakTimberShop } from "./components/oakSeating";
-import { getControlResult } from "../toolbox/geometry/mesh/toBufferGeometry";
+import {
+    tableTimberGeometry,
+    tableTimberBetweenSurfaces,
+    type TableTimberGeometry
+} from "./components/tableTimberGeometry";
 import { cm, m } from "../toolbox/units/length";
 
 export default {
@@ -13,18 +17,12 @@ export default {
 };
 
 function surfaceOf(
-    mesh: THREE.Mesh,
+    part: TableTimberGeometry,
     parent = new THREE.Matrix4()
 ) {
-    const geometry = getControlResult(mesh.geometry)?.geometry;
-    if (!geometry) {
-        throw new Error("Bench member has no authored surface");
-    }
-    mesh.updateMatrix();
-
     return {
-        geometry,
-        localToWorld: parent.clone().multiply(mesh.matrix)
+        geometry: part.geometry.geometry,
+        localToWorld: parent.clone().multiply(part.localToParent)
     };
 }
 
@@ -66,38 +64,44 @@ function create(): THREE.Group {
         braceSize: cm(3.3)
     };
 
-    const trestles = new Map<string, THREE.Group>();
+    const trestles = new Map<string, {
+        group: THREE.Group;
+        post: TableTimberGeometry;
+    }>();
 
     for (const [name, x] of [
         ["LeftBenchTrestle", -supportOffset],
         ["RightBenchTrestle", supportOffset]
     ] as const) {
-        const members = new Map<string, THREE.Mesh>();
+        const members = new Map<string, TableTimberGeometry>();
         const support = createTrestleSupport(
             supports,
             (part, start, end, memberWidth, memberDepth, contacts) => {
                 const foot = members.get("Foot");
                 const post = members.get("Post");
                 const wood = contacts && foot && post
-                    ? workshop.fittedTimber(
-                        part,
-                        { target: surfaceOf(foot), near: start },
-                        { target: surfaceOf(post), near: end },
-                        memberWidth, memberDepth,
-                        new THREE.Vector3(1, 0, 0)
-                    )
-                    : workshop.timber(
-                        part, start, end,
-                        memberWidth, memberDepth, contacts
+                    ? tableTimberBetweenSurfaces({
+                        first: {target: surfaceOf(foot), near: start},
+                        last: {target: surfaceOf(post), near: end},
+                        width: memberWidth,
+                        depth: memberDepth,
+                        referenceDirection: new THREE.Vector3(1, 0, 0)
+                    })
+                    : tableTimberGeometry(
+                        start, end, memberWidth, memberDepth, contacts
                     );
+
                 members.set(part, wood);
-                return wood;
+                return workshop.timberFromGeometry(part, wood);
             }
         );
 
         support.name = name;
         support.position.x = x;
-        trestles.set(name, support);
+        trestles.set(name, {
+            group: support,
+            post: members.get("Post")!
+        });
         bench.add(support);
 
         // Draw-pins stay separately authored solids in their original seats.
@@ -121,26 +125,24 @@ function create(): THREE.Group {
     // The full 75 mm section must fit on BOTH finite inner post faces.
     const left = trestles.get("LeftBenchTrestle")!;
     const right = trestles.get("RightBenchTrestle")!;
-    left.updateMatrix();
-    right.updateMatrix();
+    left.group.updateMatrix();
+    right.group.updateMatrix();
 
     const tieY = cm(18);
-    const firstPost = left.getObjectByName("Post") as THREE.Mesh;
-    const lastPost = right.getObjectByName("Post") as THREE.Mesh;
-
-    bench.add(workshop.fittedTimber(
-        "LongLowStretcher",
-        {
-            target: surfaceOf(firstPost, left.matrix),
+    const tie = tableTimberBetweenSurfaces({
+        first: {
+            target: surfaceOf(left.post, left.group.matrix),
             near: new THREE.Vector3(-supportOffset, tieY, 0)
         },
-        {
-            target: surfaceOf(lastPost, right.matrix),
+        last: {
+            target: surfaceOf(right.post, right.group.matrix),
             near: new THREE.Vector3(supportOffset, tieY, 0)
         },
-        cm(7.5), cm(7.5),
-        new THREE.Vector3(0, 1, 0)
-    ));
+        width: cm(7.5),
+        depth: cm(7.5),
+        referenceDirection: new THREE.Vector3(0, 1, 0)
+    });
+    bench.add(workshop.timberFromGeometry("LongLowStretcher", tie));
 
     return bench;
 }
