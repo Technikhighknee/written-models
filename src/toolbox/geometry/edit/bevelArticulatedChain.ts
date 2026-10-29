@@ -542,7 +542,7 @@ export function bevelArticulatedChain(
         ], section.first.normal.clone().add(section.second.normal));
         triangles.push({
             corners: corners as TriangleFace["corners"],
-            uvs: corners.map((id, j) => new THREE.Vector2(
+            uvs: corners.map((_, j) => new THREE.Vector2(
                 lengths[index]!, j * widths[index]!
             )) as TriangleFace["uvs"],
             surface: "bevel"
