@@ -234,3 +234,32 @@ test("compatible PBR textures share atlas pages without losing surface tints", (
         else globalThis.document = oldDocument;
     }
 });
+
+test("world-space static batching rejects triangles collapsed by Float32", () => {
+    const model = new THREE.Group();
+    const material = new THREE.MeshStandardMaterial({color: 0x776655});
+    const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(0.002, 0.004, 0.006), material
+    );
+    mesh.name = "TinyDistantPart";
+    model.add(mesh);
+
+    mesh.position.x = 1e8;
+    assert.throws(
+        () => prepareRuntimeModel(model),
+        error => error.operation === "prepareRuntimeModel" &&
+            error.reason === "precision-loss" &&
+            error.message.includes("TinyDistantPart")
+    );
+
+    mesh.position.x = 0;
+    const runtime = prepareRuntimeModel(model);
+    try {
+        assert.equal(runtime.sourceMeshes, 1);
+        assert.equal(runtime.outputMeshes, 1);
+    } finally {
+        runtime.dispose();
+        mesh.geometry.dispose();
+        material.dispose();
+    }
+});

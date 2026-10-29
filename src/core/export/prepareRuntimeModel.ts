@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { GeometryOperationError } from "../../toolbox/geometry/kernel/GeometryOperationError";
 import { clone as cloneSkeletonHierarchy } from "three/addons/utils/SkeletonUtils.js";
 import {
     atlasUv, packPbrTextures,
@@ -234,6 +235,36 @@ function emitClipped(
     }
 }
 
+function assertFloat32Triangle(
+    triangle: readonly Vertex[],
+    meshName: string
+): void {
+    const [a, b, c] = triangle.map(vertex => vertex.position);
+    if (!a || !b || !c) return;
+
+    const original = new THREE.Vector3().subVectors(b, a)
+        .cross(new THREE.Vector3().subVectors(c, a));
+    const rounded = [a, b, c].map(position => new THREE.Vector3(
+        Math.fround(position.x),
+        Math.fround(position.y),
+        Math.fround(position.z)
+    ));
+    const quantized = new THREE.Vector3()
+        .subVectors(rounded[1]!, rounded[0]!)
+        .cross(new THREE.Vector3().subVectors(rounded[2]!, rounded[0]!));
+
+    if (
+        !rounded.every(point => point.toArray().every(Number.isFinite)) ||
+        !(quantized.lengthSq() > 0) ||
+        !(original.dot(quantized) > 0)
+    ) {
+        throw new GeometryOperationError(
+            "prepareRuntimeModel", "precision-loss",
+            `Float32 export collapses or reverses a triangle in ${meshName}`
+        );
+    }
+}
+
 function groupBuffers(): Buffers {
     return { positions: [], normals: [], colors: [], uvs: [] };
 }
@@ -296,6 +327,10 @@ function collectTriangles(
                 .normalize();
             for (const v of vertices) v!.normal.copy(faceNormal);
         }
+        // Local authored geometry may be precise while its merged,
+        // world-space Float32 export is not. Check before atlas clipping:
+        // slivers introduced only by UV splits are not authored details.
+        assertFloat32Triangle(vertices as Vertex[], mesh.name || "(unnamed mesh)");
         emitClipped(buffers, vertices as Vertex[], tile, atlas);
     }
 }
