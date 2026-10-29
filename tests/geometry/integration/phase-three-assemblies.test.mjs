@@ -31,6 +31,9 @@ const { bridgeBoundaries } = await toolbox(
 const { shapeSurfaceRelief } = await toolbox(
     "geometry/edit/shapeSurfaceRelief.ts"
 );
+const { transformGeometry } = await toolbox(
+    "geometry/edit/geometryEdits.ts"
+);
 const { surfaceMesh } = await toolbox(
     "geometry/mesh/surfaceMesh.ts"
 );
@@ -338,5 +341,158 @@ test("five barrel head planks keep exact seams and independently detailed faces"
             mesh.geometry.dispose();
         }
     }
+    material.dispose();
+});
+
+function tabletopCrown() {
+    const halfWidth = 0.55;
+    const crown = 0.0012;
+
+    return {
+        at: uv => p(
+            uv.x, uv.y,
+            0.046 + crown * (1 - (uv.y / halfWidth) ** 2)
+        ),
+        parameterOf: point => new THREE.Vector2(point.x, point.y),
+        normalAt: uv => p(
+            0, 2 * crown * uv.y / (halfWidth * halfWidth), 1
+        ).normalize()
+    };
+}
+
+function sharedTableCut(y, index) {
+    const x = [-0.9, -0.45, 0, 0.45, 0.9];
+    const wander = [0, 0.002, -0.003, 0.003, 0];
+
+    return {
+        id: `seam-${index}`,
+        points: x.map((station, i) =>
+            new THREE.Vector2(station, y + wander[i] * (index % 2 ? -1 : 1))
+        )
+    };
+}
+
+test("four hand-fitted tabletop boards preserve matching worn seams and gaps", () => {
+    const cuts = [-0.30, 0.01, 0.29].map(sharedTableCut);
+    const layout = samplePartition(partitionContour({
+        outer: {
+            closed: true,
+            points: [
+                new THREE.Vector2(-0.9, -0.55),
+                new THREE.Vector2(-0.9, 0.55),
+                new THREE.Vector2(0.9, 0.55),
+                new THREE.Vector2(0.9, -0.55)
+            ]
+        }
+    }, cuts), Object.fromEntries(cuts.map(cut => [
+        cut.id, [0, 0.25, 0.5, 0.75, 1]
+    ])));
+
+    assert.equal(layout.parts.length, 4);
+    assert.equal(layout.interfaces.length, 3);
+
+    const crown = tabletopCrown();
+    const underside = chart(0, -1);
+    const boards = [];
+    const centers = [];
+    let wornIndex = -1;
+
+    for (const [index, sampled] of layout.parts.entries()) {
+        const assembly = layeredPiece(sampled, crown, underside, "top");
+        const seams = layout.interfaces.filter(seam =>
+            seam.firstPart === index || seam.secondPart === index
+        );
+
+        if (wornIndex === -1 && seams.length === 2) {
+            const centerY = sampled.outer.points.reduce(
+                (sum, point) => sum + point.y, 0
+            ) / sampled.outer.points.length;
+            const features = seams.map(seam => {
+                const meanY = seam.points.reduce(
+                    (sum, point) => sum + point.y, 0
+                ) / seam.points.length;
+                const inward = centerY > meanY ? 1 : -1;
+
+                return {
+                    path: {
+                        points: seam.points.slice(1, -1).map(point =>
+                            crown.at(new THREE.Vector2(
+                                point.x, point.y + inward * 0.012
+                            ))
+                        ),
+                        parameters: [0, 0.5, 1],
+                        closed: false
+                    },
+                    halfWidthAt: () => 0.006,
+                    displacementAt: (u, t) =>
+                        -0.0016 * (1 - u * u) * Math.sin(Math.PI * t),
+                    regionAt: u => Math.abs(u) < 0.5
+                        ? "worn-seam" : "worn-shoulder"
+                };
+            });
+
+            assembly.top = shapeSurfaceRelief(
+                assembly.top, assembly.top.patches.top[0],
+                features, { overlap: "minimum", maxDeviation: 0.0008 }
+            );
+            wornIndex = index;
+        }
+
+        const result = weldLayered(assembly);
+        assert.equal(topologyOf(result).openBoundaries().length, 0);
+        assert.equal(topologyOf(result).connectedComponents().length, 1);
+        assert.ok(result.regions.top.length > 0);
+        assert.ok(result.regions.inner.length > 0);
+        assert.ok(result.regions["end-grain"].length > 0);
+
+        centers.push(sampled.outer.points.reduce(
+            (sum, point) => sum + point.y, 0
+        ) / sampled.outer.points.length);
+        boards.push(result);
+    }
+
+    assert.notEqual(wornIndex, -1);
+    assert.ok(boards[wornIndex].regions["worn-seam"].length > 0);
+    assert.ok(boards[wornIndex].regions["worn-shoulder"].length > 0);
+
+    for (const seam of layout.interfaces) {
+        const first = layout.parts[seam.firstPart].outer.points;
+        const second = layout.parts[seam.secondPart].outer.points;
+
+        for (const point of seam.points) {
+            assert.ok(first.some(vertex => vertex.equals(point)));
+            assert.ok(second.some(vertex => vertex.equals(point)));
+        }
+    }
+
+    // Gap is model assembly clearance, never a hidden mutation of the
+    // common source stations defining the mating edges.
+    const order = centers.map((_, i) => i)
+        .sort((a, b) => centers[a] - centers[b]);
+    const material = new THREE.MeshBasicMaterial({ vertexColors: true });
+
+    for (const [rank, index] of order.entries()) {
+        const separated = transformGeometry(
+            boards[index], new THREE.Matrix4().makeTranslation(
+                0, rank * 0.0025, 0
+            )
+        );
+        const mesh = surfaceMesh({
+            name: `TablePlank${index + 1}`,
+            geometry: separated,
+            materials: material,
+            tint: new THREE.Color().setScalar(0.95 + rank * 0.01)
+        });
+        try {
+            assert.equal(getControlOutline(mesh.geometry).quadCount,
+                separated.geometry.quads.length);
+            assert.equal(mesh.geometry.getAttribute("color").count,
+                mesh.geometry.getAttribute("position").count);
+            assert.ok(mesh.geometry.getAttribute("uv").count > 0);
+        } finally {
+            mesh.geometry.dispose();
+        }
+    }
+
     material.dispose();
 });
