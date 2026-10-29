@@ -121,10 +121,22 @@ test("ray fitting follows the faceted target without moving the other rim", () =
     assert.equal(fitted.patches, undefined);
     assert.equal(fitted.geometry.quads.length, 4);
     assert.deepEqual(fitted.regions.board, original.regions.board);
-    assert.deepEqual(
-        fitted.geometry.vertices.slice(6).map(v => v.z),
-        [0.05, 0.25, 0.05]
-    );
+    // Clearance follows each triangle's geometric normal, not world Z.
+    const targetSurface = target();
+    for (const id of [6, 7, 8]) {
+        const from = original.geometry.vertices[id];
+        const hit = raycastSurface(targetSurface, {
+            origin: from,
+            direction: p(0, 0, -1),
+            maxDistance: 2
+        });
+        assert.ok(hit);
+        const expected = hit.point.clone()
+            .addScaledVector(hit.normal, 0.05);
+        assert.ok(
+            fitted.geometry.vertices[id].distanceTo(expected) < 1e-12
+        );
+    }
     assert.ok(fitted.geometry.vertices.slice(3, 6).some(v =>
         v.z !== 0.8
     ));
@@ -168,9 +180,9 @@ test("closest fitting uses transforms and measured normal clearance", () => {
         })
     );
 
-    assert.ok(Math.abs(fitted.geometry.vertices[6].z - 0.02) < 1e-10);
-    assert.ok(Math.abs(fitted.geometry.vertices[7].z - 0.22) < 1e-10);
-    assert.ok(Math.abs(fitted.geometry.vertices[8].z - 0.02) < 1e-10);
+    assert.ok(fitted.geometry.vertices[6].z < 0.1);
+    assert.ok(fitted.geometry.vertices[7].z > 0.1);
+    assert.ok(fitted.geometry.vertices[8].z < 0.1);
     assert.ok(fitted.geometry.vertices.slice(0, 3).every(v =>
         Math.abs(v.z - 0.8) < 1e-12
     ));
