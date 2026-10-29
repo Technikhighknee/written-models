@@ -103,7 +103,13 @@ function mappedExitPatch(
         fail("invalid-topology", "Exit chart no longer matches its surviving faces");
     }
 
-    return patch;
+    // Prefer the owned survivor when it was already a named patch.
+    // openPatch then reissues the rebuilt selection under that name.
+    return Object.values(first.patches ?? {}).flat().find(candidate =>
+        candidate.chart === exit.chart &&
+        candidate.faces.length === mapped.length &&
+        candidate.faces.every((ref, i) => key(ref) === key(mapped[i]!))
+    ) ?? patch;
 }
 
 function stations(points: readonly THREE.Vector3[]): number[] {
