@@ -107,8 +107,8 @@ export function surfaceTriangles(
 
     return triangulateAuthoredFaces(target.geometry).map(triangle => {
         const face = triangle.face.kind === "quad"
-            ? target.geometry.quads[triangle.face.index]
-            : target.geometry.triangles?.[triangle.face.index];
+            ? target.geometry.quads[triangle.face.index]!
+            : target.geometry.triangles![triangle.face.index]!;
 
         const points = triangle.vertices.map(index => vertices[index]) as
             [THREE.Vector3 | undefined, THREE.Vector3 | undefined, THREE.Vector3 | undefined];
