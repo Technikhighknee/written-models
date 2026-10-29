@@ -188,28 +188,23 @@ test("the tankard handle survives the new sweep and both real stave mounts", asy
     const { buildTankardGeometry } = await sourceModule("models/beerMug.ts");
     const pieces = buildTankardGeometry();
 
+    assert.equal(pieces.staves.length, 12);
+    assert.equal(pieces.bands.length, 2);
+    assert.equal(pieces.handle.geometry.vertices.length, 19 * 8);
+    assert.equal(pieces.handle.geometry.quads.length, 18 * 8);
+    assert.equal(pieces.handle.geometry.triangles.length, 12);
+
+    assert.equal(topologyOf(pieces.handle).openBoundaries().length, 0);
+    assert.ok(pieces.handle.regions["cap-start"].length > 0);
+    assert.ok(pieces.handle.regions["cap-end"].length > 0);
+
+    const geometry = toBufferGeometry(pieces.handle, {
+        side: 0, "cap-start": 1, "cap-end": 1
+    });
+
     try {
-        assert.equal(pieces.staves.length, 12);
-        assert.equal(pieces.bands.length, 2);
-        assert.equal(pieces.handle.vertices.length, 19 * 8);
-        assert.equal(pieces.handle.quads.length, 18 * 8);
-        assert.equal(pieces.handle.triangles.length, 12);
-
-        const authored = geometryResult(pieces.handle);
-        assert.equal(topologyOf(authored).openBoundaries().length, 0);
-        assert.ok(authored.regions["cap-start"].length > 0);
-        assert.ok(authored.regions["cap-end"].length > 0);
-
-        const geometry = toBufferGeometry(pieces.handle, {
-            side: 0, "cap-start": 1, "cap-end": 1
-        });
-
-        try {
-            assert.equal(getControlOutline(geometry).quadCount, 18 * 8);
-        } finally {
-            geometry.dispose();
-        }
+        assert.equal(getControlOutline(geometry).quadCount, 18 * 8);
     } finally {
-        for (const band of pieces.bands) band.dispose();
+        geometry.dispose();
     }
 });
