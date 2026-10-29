@@ -10,6 +10,10 @@ export { raycastSurface } from "../queries/raycastSurface";
 export type { SurfaceTarget, SurfaceHit, Ray3 } from "../queries/raycastSurface";
 export { findFacingPatch } from "../queries/findFacingPatch";
 export type { SurfacePatchHit } from "../queries/findFacingPatch";
+export { finiteFootprintContains } from "../queries/finiteFootprint";
+export type { FootprintTriangle } from "../queries/finiteFootprint";
+export { fitBetweenSurfaces } from "../queries/fitBetweenSurfaces";
+export type { SurfaceAttachment, FittedContact, FittedSections, FitBetweenSurfacesOptions } from "../queries/fitBetweenSurfaces";
 export {
     DEFAULT_GEOMETRY_PRECISION,
     resolvePrecision,
