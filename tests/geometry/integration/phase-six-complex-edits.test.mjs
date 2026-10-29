@@ -112,7 +112,7 @@ function checkSelections(result) {
 function physicalVolume(result) {
     let sum = 0;
     for (const face of [
-        ...result.geometry.quads, ...result.geometry.triangles
+        ...result.geometry.quads, ...(result.geometry.triangles ?? [])
     ]) {
         const first = result.geometry.vertices[face.corners[0]];
         for (let index = 1; index < face.corners.length - 1; index++) {
@@ -127,7 +127,7 @@ function physicalVolume(result) {
 function uvSeamCount(result) {
     const coordinates = new Map();
     for (const face of [
-        ...result.geometry.quads, ...result.geometry.triangles
+        ...result.geometry.quads, ...(result.geometry.triangles ?? [])
     ]) {
         for (let i = 0; i < face.corners.length; i++) {
             const vertex = face.corners[i];
@@ -143,7 +143,7 @@ function uvSeamCount(result) {
 
 function faceUVsAreFinite(result) {
     for (const face of [
-        ...result.geometry.quads, ...result.geometry.triangles
+        ...result.geometry.quads, ...(result.geometry.triangles ?? [])
     ]) {
         assert.ok(result.regions[face.surface]?.length > 0);
         assert.equal(face.corners.length, face.uvs.length);
