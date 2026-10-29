@@ -1099,22 +1099,6 @@ also clears the real faceted supporting surface between samples.
 The implemented surface queries expose these complementary contracts:
 
 ```ts
-interface ClearanceOptions extends PrecisionOptions {
-  minimum: number; // finite, nonnegative world metres
-}
-
-interface ClearanceResult {
-  closestDistance: number;
-  intersects: boolean;
-  meetsMinimum: boolean;
-}
-
-surfaceClearance(
-  first: SurfaceTarget,
-  second: SurfaceTarget,
-  options: ClearanceOptions
-): ClearanceResult;
-
 interface ExteriorPlacementResult {
   exterior: boolean;
   intersects: boolean;
