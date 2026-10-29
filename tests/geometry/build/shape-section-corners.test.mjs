@@ -227,7 +227,7 @@ test("one shaped profile is shared by an independent wall and a charted cap", ()
         chart: {
             at: uv => new THREE.Vector3(uv.x, uv.y, 0.6),
             parameterOf: point => new THREE.Vector2(point.x, point.y),
-            normalAt: () => new THREE.Vector3(0, 0, 1)
+            normalAt: () => new THREE.Vector3(0, 0, -1)
         },
         region: "shaped-cap"
     });
