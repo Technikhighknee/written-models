@@ -13,13 +13,19 @@ import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
 import { oakVariant, oakBoardFace } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
-import { cavityFromMeshSurfaces } from "../toolbox/geometry/construction/profiledCavity";
+import { ProfiledCavity } from "../toolbox/geometry/construction/profiledCavity";
+import { cavitySectionsFromSurfaces } from "../toolbox/geometry/queries/cavitySectionsFromSurfaces";
 import {
     createFillableVolume,
     type FillLevelController
 } from "../toolbox/geometry/construction/fillableVolume";
 
 const STAVE_COUNT = 12;
+const TANKARD_PROFILE = [
+    new THREE.Vector2(cm(4.7), 0),
+    new THREE.Vector2(cm(5.15), cm(7.1)),
+    new THREE.Vector2(cm(4.9), cm(15.2))
+];
 const STAVE_SURFACES = {
     outer: 0, inner: 0, "edge-left": 0, "edge-right": 0,
     "cap-start": 1, "cap-end": 1
@@ -41,16 +47,10 @@ export interface TankardGeometry {
 
 /** Geometric construction, independent of baked textures and rendering. */
 export function buildTankardGeometry(): TankardGeometry {
-    const profile = [
-        new THREE.Vector2(cm(4.7), 0),
-        new THREE.Vector2(cm(5.15), cm(7.1)),
-        new THREE.Vector2(cm(4.9), cm(15.2))
-    ];
-
     // A stave is centered on +X so the handle can be fitted to the
     // real faceted wood instead of to an invisible smooth cylinder.
     const angleOffset = Math.PI / 2 - Math.PI / STAVE_COUNT;
-    const staves = radialStaves(profile, {
+    const staves = radialStaves(TANKARD_PROFILE, {
         count: STAVE_COUNT, thickness: mm(8),
         edgeRoundover: mm(0.8),
         innerWidthSamples: [0, 1],
@@ -68,7 +68,7 @@ export function buildTankardGeometry(): TankardGeometry {
     const bandWidth = cm(1.05);
     const upperBandCenter = cm(14.05);
     const bands = [cm(1.0), upperBandCenter].map(y =>
-        bandAroundProfile(profile, {
+        bandAroundProfile(TANKARD_PROFILE, {
             y, width: bandWidth, thickness: mm(2.1),
             clearance: mm(0.25), radialSegments: 24, angleOffset
         })
@@ -120,6 +120,34 @@ export function buildTankardGeometry(): TankardGeometry {
     }
 
     return {staves, floor, bands, handle};
+}
+
+/**
+ * Derive the serving volume from the actual stave faces. The section
+ * heights come from the same authored profile that constructs the wood;
+ * neither the outline nor its correspondence is approximated by a circle.
+ */
+export function buildTankardServingCavity(staves: readonly MeshData[]): ProfiledCavity {
+    const rings = cavitySectionsFromSurfaces({
+        pieces: staves.map(geometry => ({
+            geometry,
+            regions: ["inner"],
+            localToWorld: new THREE.Matrix4()
+        })),
+        sectionFrame: new THREE.Matrix4(),
+        heights: TANKARD_PROFILE.map(point => point.y)
+    });
+
+    const physical = new ProfiledCavity(rings).between(
+        cm(1.9) + mm(0.2),
+        cm(15.2) - mm(2)
+    );
+
+    // Fill level 1 is one serving with 10% of the physical volume as headroom.
+    return physical.between(
+        physical.bottom,
+        physical.heightAtFill(0.9)
+    );
 }
 
 function create(): THREE.Group & FillLevelController {
@@ -178,19 +206,7 @@ function create(): THREE.Group & FillLevelController {
     tintVertices(grip.geometry, new THREE.Color(0.88, 0.83, 0.78));
     tankard.add(grip);
 
-    // The cavity follows the authored inner faces, including the bulge of
-    // each stave. Its usable range starts just above the wooden inset floor.
-    const physicalCavity = cavityFromMeshSurfaces(parts.staves).between(
-        cm(1.9) + mm(0.2),
-        cm(15.2) - mm(2)
-    );
-
-    // Reserve headroom above a full serving: fill level 1 uses 90% of
-    // the geometric cavity capacity.
-    const cavity = physicalCavity.between(
-        physicalCavity.bottom,
-        physicalCavity.heightAtFill(0.9)
-    );
+    const cavity = buildTankardServingCavity(parts.staves);
     const beer = createFillableVolume(
         cavity,
         new THREE.MeshPhysicalMaterial({
