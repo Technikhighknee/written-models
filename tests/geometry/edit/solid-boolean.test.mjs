@@ -253,3 +253,42 @@ test("Boolean output can serialize as a real material-grouped GLB with UV attrib
         }
     }
 });
+
+test("models can classify and project every Boolean face explicitly", async () => {
+    const a = boxMesh({width: 2, height: 2, depth: 2});
+    const b = boxMesh({width: 1.1, height: 1.1, depth: 1.1});
+    const result = await booleanSolids(a, b, "difference", {
+        regionAt: (_, normal) =>
+            Math.abs(normal.z) > 0.9 ? "front-or-back" : "other-cut",
+        uvAt: point => ({x: point.x * 2, y: point.y * 3})
+    });
+    closed(result);
+    assert.deepEqual(Object.keys(result.regions).sort(),
+        ["front-or-back", "other-cut"]);
+    for (const face of result.geometry.triangles) {
+        for (let corner = 0; corner < 3; corner++) {
+            const point = result.geometry.vertices[face.corners[corner]];
+            const uv = face.uvs[corner];
+            assert.ok(Math.abs(uv.x - point.x * 2) < 1e-5);
+            assert.ok(Math.abs(uv.y - point.y * 3) < 1e-5);
+        }
+    }
+    exportable(result);
+});
+
+test("invalid caller-defined Boolean regions and UVs fail explicitly", async () => {
+    const a = box();
+    const b = box(0.5);
+    await assert.rejects(
+        booleanSolids(a, b, "intersection", {
+            regionAt: () => ""
+        }),
+        error => error.reason === "invalid-input"
+    );
+    await assert.rejects(
+        booleanSolids(a, b, "union", {
+            uvAt: () => ({x: Number.NaN, y: 0})
+        }),
+        error => error.reason === "invalid-input"
+    );
+});
