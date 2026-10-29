@@ -48,22 +48,50 @@ function segmentDistanceSq(
     const d = u.dot(w);
     const e = v.dot(w);
     const determinant = a * c - b * b;
-    const scale = a * c;
-    let s: number;
-    let t: number;
+    let sNumerator = b * e - c * d;
+    let tNumerator = a * e - b * d;
+    let sDenominator = determinant;
+    let tDenominator = determinant;
 
-    // The triangle validator guarantees nonzero edge lengths.
-    if (determinant <= Number.EPSILON * scale) {
-        s = 0;
-        t = THREE.MathUtils.clamp(e / c, 0, 1);
-    } else {
-        s = THREE.MathUtils.clamp((b * e - c * d) / determinant, 0, 1);
-        t = THREE.MathUtils.clamp((a * e - b * d) / determinant, 0, 1);
-
-        // Re-clamp against the other segment after constraining either end.
-        s = THREE.MathUtils.clamp((b * t - d) / a, 0, 1);
-        t = THREE.MathUtils.clamp((b * s + e) / c, 0, 1);
+    if (determinant <= Number.EPSILON * a * c) {
+        sNumerator = 0;
+        sDenominator = 1;
+        tNumerator = e;
+        tDenominator = c;
+    } else if (sNumerator < 0) {
+        sNumerator = 0;
+        tNumerator = e;
+        tDenominator = c;
+    } else if (sNumerator > sDenominator) {
+        sNumerator = sDenominator;
+        tNumerator = e + b;
+        tDenominator = c;
     }
+
+    if (tNumerator < 0) {
+        tNumerator = 0;
+        if (-d < 0) {
+            sNumerator = 0;
+        } else if (-d > a) {
+            sNumerator = sDenominator;
+        } else {
+            sNumerator = -d;
+            sDenominator = a;
+        }
+    } else if (tNumerator > tDenominator) {
+        tNumerator = tDenominator;
+        if (-d + b < 0) {
+            sNumerator = 0;
+        } else if (-d + b > a) {
+            sNumerator = sDenominator;
+        } else {
+            sNumerator = -d + b;
+            sDenominator = a;
+        }
+    }
+
+    const s = sNumerator / sDenominator;
+    const t = tNumerator / tDenominator;
 
     return p0.clone().addScaledVector(u, s)
         .distanceToSquared(q0.clone().addScaledVector(v, t));
