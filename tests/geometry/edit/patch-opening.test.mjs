@@ -297,14 +297,15 @@ test("a curved chart with a planar perimeter can now be opened", () => {
     assert.ok(opened.patches.curved.length === 1);
 });
 
-function parabolicPatch() {
+function crownedPatch() {
     const chart = {
         at: uv => new THREE.Vector3(
-            uv.x, uv.y, 0.08 * (uv.x ** 2 + uv.y ** 2)
+            uv.x, uv.y, 0.12 * (1 - uv.x ** 2) * (1 - uv.y ** 2)
         ),
         parameterOf: point => new THREE.Vector2(point.x, point.y),
         normalAt: uv => new THREE.Vector3(
-            -0.16 * uv.x, -0.16 * uv.y, 1
+            0.24 * uv.x * (1 - uv.y ** 2),
+            0.24 * uv.y * (1 - uv.x ** 2), 1
         ).normalize()
     };
     const border = half => {
@@ -321,7 +322,11 @@ function parabolicPatch() {
             )
         );
     };
-    const outside = border(1);
+    // The source already owns four unsplit interface edges. The
+    // crown has zero height along those edges, but curves inside.
+    const outside = [
+        p(-1, -1), p(-1, 1), p(1, 1), p(1, -1)
+    ];
     const source = fillSurfacePatch({
         region: "curved-timber",
         chart,
@@ -340,7 +345,7 @@ function parabolicPatch() {
 }
 
 test("curved opening preserves every authored outer station and returns its chart", () => {
-    const {source, chart, inner} = parabolicPatch();
+    const {source, chart, inner} = crownedPatch();
     const before = source.geometry.vertices.map(v => v.clone());
     const opened = openPatch(
         source, source.patches["curved-timber"][0], inner
@@ -366,7 +371,7 @@ test("curved opening preserves every authored outer station and returns its char
 });
 
 test("curved recess offsets along local normals and returns a usable floor chart", () => {
-    const {source, chart, inner} = parabolicPatch();
+    const {source, chart, inner} = crownedPatch();
     const result = recessPatch(
         source, source.patches["curved-timber"][0], inner, {
             depth: 0.12,
