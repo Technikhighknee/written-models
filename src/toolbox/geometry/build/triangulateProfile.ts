@@ -33,9 +33,10 @@ function edgeKey(a: number, b: number): string {
  * then restored ONLY along their original boundary edges. Interior
  * diagonals are never subdivided by unrelated contour vertices.
  */
-export function triangulateProfile(
+function triangulateAtOrientation(
     contours: readonly (readonly THREE.Vector2Like[])[],
-    precision?: GeometryPrecision
+    precision: GeometryPrecision | undefined,
+    angle: number
 ): PlanarTriangle[] {
     const policy = resolvePrecision(precision);
 
@@ -126,9 +127,20 @@ export function triangulateProfile(
         offset += count;
     }
 
+    // Earcut uses horizontal scanlines to connect holes. Rotating its
+    // temporary 2D input avoids aligned-hole bridge ambiguities without
+    // changing or resampling a single authored vertex.
+    const c = Math.cos(angle);
+    const sn = Math.sin(angle);
+    const oriented = angle === 0 ? reduced : reduced.map(loop =>
+        loop.map(p => new THREE.Vector2(
+            p.x * c - p.y * sn,
+            p.x * sn + p.y * c
+        ))
+    );
     const raw = THREE.ShapeUtils.triangulateShape(
-        reduced[0]!,
-        reduced.slice(1)
+        oriented[0]!,
+        oriented.slice(1)
     );
     const triangles: PlanarTriangle[] = raw.map(face => {
         const [a, b, c] = face;
@@ -233,4 +245,31 @@ export function triangulateProfile(
     }
 
     return triangles;
+}
+
+/**
+ * Triangulate in the authored chart. Temporary rotation is permitted only
+ * as an alternative Earcut projection when an aligned-hole bridge loses
+ * a required boundary; all output corners and checks use original points.
+ */
+export function triangulateProfile(
+    contours: readonly (readonly THREE.Vector2Like[])[],
+    precision?: GeometryPrecision
+): PlanarTriangle[] {
+    let failure: GeometryOperationError | undefined;
+
+    for (const angle of [0, Math.PI / 11, Math.PI / 7, Math.PI / 5]) {
+        try {
+            return triangulateAtOrientation(contours, precision, angle);
+        } catch (error) {
+            if (!(error instanceof GeometryOperationError) ||
+                error.reason !== "invalid-topology" ||
+                !error.message.startsWith("An authored cap boundary was not preserved")) {
+                throw error;
+            }
+            failure = error;
+        }
+    }
+
+    throw failure!;
 }
