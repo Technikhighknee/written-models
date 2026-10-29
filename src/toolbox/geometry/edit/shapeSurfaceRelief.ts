@@ -18,6 +18,7 @@ import {
     type GeometryPrecision
 } from "../kernel/precision";
 import { topologyOf } from "../kernel/topology";
+import { patchChartMatches, transferBoundary } from "../kernel/selectionLifecycle";
 import { triangulateAuthoredFaces } from "../kernel/triangulation";
 
 export interface SurfaceReliefFeature {
@@ -1104,14 +1105,10 @@ export function shapeSurfaceRelief(
 
     const boundaries: Record<string, BoundaryRef[]> = Object.create(null);
     for (const [name, refs] of Object.entries(source.boundaries)) {
-        boundaries[name] = refs.map(ref => {
-            assertSelectionOwner(source, ref);
-            return {
-                owner: result.id,
-                vertices: [...ref.vertices],
-                closed: ref.closed
-            };
-        });
+        const surviving = refs.flatMap(ref =>
+            transferBoundary(source, result, ref, id => id)
+        );
+        if (surviving.length) boundaries[name] = surviving;
     }
 
     const patches: Record<string, SurfacePatchRef[]> = Object.create(null);
@@ -1130,11 +1127,14 @@ export function shapeSurfaceRelief(
             }));
             if (mapped.some(face => face.index === undefined)) continue;
 
-            (patches[name] ??= []).push({
+            const candidate: SurfacePatchRef = {
                 owner: result.id,
                 faces: mapped,
                 chart: ref.chart
-            });
+            };
+            if (patchChartMatches(result, candidate, policy)) {
+                (patches[name] ??= []).push(candidate);
+            }
         }
     }
 
@@ -1165,14 +1165,18 @@ export function shapeSurfaceRelief(
     if (canRetain) {
         const name = Object.entries(source.patches ?? {})
             .find(([, refs]) => refs.includes(patch))?.[0] ?? originalRegion;
-        (patches[name] ??= []).push({
+        const candidate: SurfacePatchRef = {
             owner: result.id,
             faces: triangles.map((_, i) => ({
                 kind: "triangle" as const,
                 index: beforeNew + i
             })),
             chart: modifiedChart
-        });
+        };
+
+        if (patchChartMatches(result, candidate, policy)) {
+            (patches[name] ??= []).push(candidate);
+        }
     }
 
     return {
