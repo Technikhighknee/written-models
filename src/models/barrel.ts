@@ -8,10 +8,7 @@ import { cooperedBody } from "./components/barrelBody";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { offsetMeshUvs as offsetAuthoredUvs } from "../toolbox/geometry/edit/geometryEdits";
 import { bandAroundProfileData } from "../toolbox/geometry/construction/bandAroundProfile";
-import { groovedCircularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
-import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
-import { offsetMeshUvs } from "../toolbox/geometry/uv/offsetMeshUvs";
-import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
+import { cooperedHead } from "./components/cooperedHead";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
 import { oakVariant, oakBoardFace, oakGrooveFace } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
@@ -149,7 +146,7 @@ function createHead(
     const direction = isTop ? -1 : 1;
     head.position.y = rim.y + direction * (inset + thickness / 2);
 
-    const boards = groovedCircularPlankPanel(radius, {
+    const boards = cooperedHead(radius, {
         planks: 5,
         thickness,
         // Only the outward-facing head gets the fitted grain and relief.
@@ -192,19 +189,16 @@ function createHead(
         const wood = oakVariant(seed);
         // Subtle board-to-board color shifts, not a single flat disk.
         const tone = 0.92 + 0.085 * variations[i]!;
-        const geometry = tintVertices(
-            boards[i]!,
-            new THREE.Color(tone, tone, tone)
-        );
-        const board = new THREE.Mesh(geometry, [
-            // Planed broad oak: its quieter flowed grain also avoids
-            // the long straight stripes of the raw stave texture.
-            oakBoardFace(seed),
-            wood.tinted.endGrain,
-            oakGrooveFace(seed)
-        ]);
-        board.name = `HeadBoard${i + 1}`;
-        head.add(board);
+        head.add(surfaceMesh({
+            name: `HeadBoard${i + 1}`,
+            geometry: boards[i]!,
+            materials: {
+                face: oakBoardFace(seed),
+                cut: wood.tinted.endGrain,
+                recess: oakGrooveFace(seed)
+            },
+            tint: new THREE.Color(tone, tone, tone)
+        }));
     }
 
     return head;
