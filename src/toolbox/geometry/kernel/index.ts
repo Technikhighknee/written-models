@@ -64,6 +64,8 @@ export { joinGeometry } from "../build/joinGeometry";
 export type { GeometryJoinOptions } from "../build/joinGeometry";
 export { openPatch, recessPatch } from "../edit/patchOpening";
 export { cutThrough } from "../edit/cutThrough";
+export { subdivideEdges } from "../edit/subdivideEdges";
+export type { EdgeSubdivision } from "../edit/subdivideEdges";
 export type { ThroughCutOptions } from "../edit/cutThrough";
 export type { RecessOptions } from "../edit/patchOpening";
 export { shapeSurfaceRelief } from "../edit/shapeSurfaceRelief";
