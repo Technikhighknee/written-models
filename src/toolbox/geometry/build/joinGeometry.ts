@@ -305,31 +305,54 @@ export function joinGeometry(
         const firstIds = first.vertices;
         const secondIds = second.vertices;
         const candidates: number[][] = [];
+        let coordinatesMatch = false;
 
-        // A periodic seam is allowed to have a different start index.
-        // Every candidate must still use an actual vertex, not a newly
-        // projected/interpolated point.
-        for (let offset = 0; offset < secondIds.length; offset++) {
-            const mapping = firstIds.map(id =>
-                secondIds[(offset + secondIds.length -
-                    firstIds.indexOf(id)) % secondIds.length]!
-            );
+        // The *selection* order may be forward or reversed. It is the
+        // authored edge uses, not the selection arrays, that must oppose.
+        // Closed loops may additionally start at different seam vertices.
+        for (const direction of [1, -1]) {
+            const starts = first.closed
+                ? [...secondIds.keys()]
+                : [direction === 1 ? 0 : secondIds.length - 1];
 
-            if (!first.closed && offset !== secondIds.length - 1) continue;
+            for (const offset of starts) {
+                const mapping = firstIds.map((_, i) =>
+                    secondIds[(
+                        offset + direction * i +
+                        secondIds.length * (secondIds.length + 1)
+                    ) % secondIds.length]!
+                );
 
-            if (mapping.every((partner, i) => {
-                const a = positions[vertexOffsets[firstPart]! + firstIds[i]!]!;
-                const b = positions[vertexOffsets[secondPart]! + partner]!;
-                return a.distanceTo(b) <= tolerance;
-            })) {
-                candidates.push(mapping);
+                if (!mapping.every((partner, i) => {
+                    const a = positions[vertexOffsets[firstPart]! + firstIds[i]!]!;
+                    const b = positions[vertexOffsets[secondPart]! + partner]!;
+                    return a.distanceTo(b) <= tolerance;
+                })) continue;
+
+                coordinatesMatch = true;
+                const mappedIds = new Map(
+                    firstIds.map((id, i) => [id, mapping[i]!] as const)
+                );
+                const opposite = selectedEdges(first).every(([a, b]) => {
+                    const left = edgesA.get(edgeKey(a, b));
+                    const partnerA = mappedIds.get(a)!;
+                    const partnerB = mappedIds.get(b)!;
+                    const right = edgesB.get(edgeKey(partnerA, partnerB));
+
+                    return !!left && !!right &&
+                        mappedIds.get(left.from) === right.to &&
+                        mappedIds.get(left.to) === right.from;
+                });
+
+                if (opposite) candidates.push(mapping);
             }
         }
 
         if (candidates.length !== 1) {
             fail(
-                candidates.length ? "unsupported-topology" : "invalid-input",
-                "Weld requires one unambiguous reversed geometric correspondence"
+                candidates.length ? "unsupported-topology" :
+                    coordinatesMatch ? "invalid-topology" : "invalid-input",
+                "Weld needs one unambiguous geometric match with opposite face winding"
             );
         }
 
