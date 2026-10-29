@@ -246,6 +246,16 @@ dynamic cavity behavior.
 - [ ] **4.2** Select finite support patches by position/orientation
       and fit member sections against their complete footprints,
       including concavities and holes.
+      In progress: `findFacingPatch` chooses the nearest oriented,
+      connected, coplanar authored faces, with a rigid world contact
+      frame and a contact point clamped to actual triangles. It rejects
+      nonplanar faces and does not combine disconnected islands.
+      Verified with concave supports, holes, opposite faces and separated
+      islands (`0843b46` through `83ebb2c`). The entire projected member
+      section and its edges still require finite-footprint validation
+      before this step is complete. The support tests also exposed
+      inward extrusion winding; `extrudeContour` now produces outward
+      caps and sidewalls (`e7c6b5c`, `04a8f56`).
 - [ ] **4.3** Support explicitly authored finite planar contacts
       alongside geometry-selected support patches for trestles and
       braces through one fitting result with discriminated contacts.
