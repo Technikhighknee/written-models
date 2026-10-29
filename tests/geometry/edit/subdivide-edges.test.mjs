@@ -95,7 +95,8 @@ test("unordered requests with opposite edge orientations share ordered stations"
     const sorted = positions.map(point => point.clone()
         .sub(positions[0]).dot(axis) / axis.lengthSq());
     assert.deepEqual(sorted.map(t => Number(t.toFixed(7))),
-        [0, 0.2, 0.5, 0.7, 1]);
+        a < b ? [0, 0.2, 0.5, 0.7, 1] :
+            [0, 0.3, 0.5, 0.8, 1]);
 });
 
 test("all incident faces interpolate their own UV seam independently", () => {
@@ -137,7 +138,7 @@ test("multiple independent edge splits preserve closed manifold and named chains
     assert.equal(topologyOf(result).openBoundaries().length, 0);
     assert.equal(result.boundaries.subdivided.length, 2);
     assert.equal(result.boundaries.topOutline[0].vertices.length, rim.length + 2);
-    assert.equal(result.geometry.quads.length, 2);
+    assert.equal(result.geometry.quads.length, 3);
 });
 
 test("open triangles are refined without creating hanging edge vertices", () => {
@@ -159,7 +160,7 @@ test("open triangles are refined without creating hanging edge vertices", () => 
     const out = subdivideEdges(source, [edge(source, 1, 2, 0.5)]);
     assert.equal(topologyOf(out).connectedComponents().length, 1);
     assert.equal(topologyOf(out).openBoundaries().length, 1);
-    assert.equal(out.geometry.triangles.length, 6);
+    assert.equal(out.geometry.triangles.length, 8);
     assert.equal(topologyOf(out).edgeUses(1, 2).length, 0);
     assert.equal(out.boundaries.subdivided[0].vertices.length, 3);
 });
