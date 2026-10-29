@@ -13,9 +13,7 @@ import {
     type TrestleTimberFactory,
     type TrestleSupportOptions
 } from "./components/trestleSupport";
-import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 import { tintVertices } from "../toolbox/geometry/materials/tintVertices";
-import { offsetMeshUvs } from "../toolbox/geometry/uv/offsetMeshUvs";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
 import { cm, m, mm } from "../toolbox/units/length";
 import { oakVariant, oakBoardFace } from "../materials/wood/oak";
@@ -104,6 +102,7 @@ function buildTop(parent: THREE.Group, spec: TopSpec): void {
     for (let i = 0; i < boards.length; i++) {
         const seed = (i * 3 + 2) % 8;
         const wood = oakVariant(seed);
+        const oakFace = oakBoardFace(seed);
         const meshData = offsetAuthoredUvs(
             boards[i]!,
             cm(1.5) + i * cm(3.2),
@@ -114,10 +113,10 @@ function buildTop(parent: THREE.Group, spec: TopSpec): void {
             name: `Plank${i + 1}`,
             geometry: meshData,
             materials: {
-                outer: oakBoardFace(seed),
-                inner: oakBoardFace(seed),
-                "edge-left": oakBoardFace(seed),
-                "edge-right": oakBoardFace(seed),
+                outer: oakFace,
+                inner: oakFace,
+                "edge-left": oakFace,
+                "edge-right": oakFace,
                 "cap-start": wood.tinted.endGrain,
                 "cap-end": wood.tinted.endGrain
             },
