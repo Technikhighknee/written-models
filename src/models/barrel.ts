@@ -2,10 +2,12 @@ import * as THREE from "three";
 
 import { mm, cm } from "../toolbox/units/length";
 import { positionsFromEnds } from "../toolbox/spatial/layout/positionsFromEnds";
-import { bandAroundProfile } from "../toolbox/geometry/construction/bandAroundProfile";
-import { cylinderMesh, CYLINDER_SURFACES } from "../toolbox/geometry/construction/cylinderMesh";
+import { cylinderMesh } from "../toolbox/geometry/construction/cylinderMesh";
 import { bulgedProfile } from "../toolbox/shapes/profiles/bulged";
-import { radialStaves } from "../toolbox/geometry/construction/radialStaves";
+import { cooperedBody } from "./components/barrelBody";
+import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
+import { offsetMeshUvs as offsetAuthoredUvs } from "../toolbox/geometry/edit/geometryEdits";
+import { bandAroundProfileData } from "../toolbox/geometry/construction/bandAroundProfile";
 import { groovedCircularPlankPanel } from "../toolbox/geometry/construction/circularPlankPanel";
 import { toBufferGeometry } from "../toolbox/geometry/mesh/toBufferGeometry";
 import { offsetMeshUvs } from "../toolbox/geometry/uv/offsetMeshUvs";
@@ -77,27 +79,11 @@ function createBody(
     const body = new THREE.Group();
     body.name = "Body";
 
-    const staves = radialStaves(profile, {
+    const staves = cooperedBody(profile, {
         count: staveCount,
         thickness: staveThickness,
-        // The roundover belongs to the exterior. The interior has a
-        // simple planar cross-section (two points), not five copies of
-        // the outer bevel loops. Closed loft caps bridge the two densities.
-        innerWidthSamples: [0, 1],
-        // Sink the OUTER corners into the wood to create a narrow,
-        // shadow-catching V-seam. Adjacent stave sidewalls still meet
-        // at the same angle, so the barrel stays closed and watertight.
         edgeRoundover: mm(2.2)
     });
-
-    const surfaceMaterials = {
-        outer: 0,
-        inner: 0,
-        "edge-left": 0,
-        "edge-right": 0,
-        "cap-start": 1,
-        "cap-end": 1
-    };
 
     // Neighboring staves belong to broad tonal regions, not a random
     // checkerboard of unrelated oak finishes. Gentle vertex tints keep
@@ -114,23 +100,26 @@ function createBody(
         const wood = oakVariant(seed);
         // Each stave samples a different part of the shared oak family.
         // The quieter planed grain avoids barcode-like stripes.
-        const section = offsetMeshUvs(
+        const section = offsetAuthoredUvs(
             staves[i]!,
             0.018 + (i * 0.027) % 0.31,
             0.12 + ((i * 17) % 24) * 0.075
         );
         const tone = 0.965 + 0.025 * variations[i]!;
-        const geometry = tintVertices(
-            toBufferGeometry(section, surfaceMaterials),
-            new THREE.Color(tone, tone, tone)
-        );
-        const stave = new THREE.Mesh(geometry, [
-            oakBoardFace(seed),
-            wood.tinted.endGrain
-        ]);
-
-        stave.name = `Stave${String(i + 1).padStart(2, "0")}`;
-        body.add(stave);
+        const longGrain = oakBoardFace(seed);
+        body.add(surfaceMesh({
+            name: `Stave${String(i + 1).padStart(2, "0")}`,
+            geometry: section,
+            materials: {
+                outer: longGrain,
+                inner: longGrain,
+                "edge-left": longGrain,
+                "edge-right": longGrain,
+                "cap-start": wood.tinted.endGrain,
+                "cap-end": wood.tinted.endGrain
+            },
+            tint: new THREE.Color(tone, tone, tone)
+        }));
     }
 
     return body;
@@ -241,18 +230,16 @@ function createHoop(
     // those vertices. bandAroundProfile compensates for that sagitta before
     // adding the clearance. The complete metal surface stays outside the
     // actual staves, even between sampled angles and in a GLB export.
-    const band = new THREE.Mesh(
-        bandAroundProfile(profile, {
-            y,
-            width,
-            thickness,
-            clearance,
+    const band = surfaceMesh({
+        name: "ClosedForgedBand",
+        geometry: bandAroundProfileData(profile, {
+            y, width, thickness, clearance,
             bevel: mm(0.75),
             radialSegments,
             angleOffset: 0
         }),
-        iron
-    );
+        materials: iron
+    });
     band.name = "ClosedForgedBand";
     hoop.add(band);
 
@@ -277,8 +264,9 @@ function createHoop(
         point.y
     ));
 
-    const lap = new THREE.Mesh(
-        bandAroundProfile(lapProfile, {
+    const lap = surfaceMesh({
+        name: "OverlappingStrapJoint",
+        geometry: bandAroundProfileData(lapProfile, {
             y,
             width: width - mm(4),
             thickness: lapThickness,
@@ -287,8 +275,8 @@ function createHoop(
             radialSegments: lapSegments,
             arc
         }),
-        joiningIron
-    );
+        materials: joiningIron
+    });
     lap.name = "OverlappingStrapJoint";
     hoop.add(lap);
 
@@ -309,18 +297,21 @@ function createHoop(
     const lapOuterRadius = radiusAt(y) /
         Math.cos(sweep / (lapSegments * 2)) + lapClearance + lapThickness;
     const rivetHeight = mm(1.6);
-    const rivetGeometry = toBufferGeometry(cylinderMesh({
+    const rivetGeometry = cylinderMesh({
         radiusTop: mm(3.1),
         radiusBottom: mm(3.7),
         height: rivetHeight,
         radialSegments: 10
-    }), CYLINDER_SURFACES);
+    });
 
     for (const [index, direction] of [-1, 1].entries()) {
         const theta = centerAngle + direction * sweep * 0.29;
         const normal = new THREE.Vector3(Math.sin(theta), 0, Math.cos(theta));
-        const rivet = new THREE.Mesh(rivetGeometry, joiningIron);
-        rivet.name = index === 0 ? "JointRivetA" : "JointRivetB";
+        const rivet = surfaceMesh({
+            name: index === 0 ? "JointRivetA" : "JointRivetB",
+            geometry: rivetGeometry,
+            materials: joiningIron
+        });
         rivet.position.copy(normal).multiplyScalar(
             lapOuterRadius + rivetHeight * 0.32
         );
