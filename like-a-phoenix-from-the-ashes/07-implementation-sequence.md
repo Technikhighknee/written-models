@@ -203,9 +203,24 @@ independent pieces with precise adjoining geometry.
       per-piece vertex tint to render buffers without modifying source
       geometry or materials. Verified in material, UV and integration
       tests (`ccab36a` through `9059bad`).
-- [ ] **3.9** Reproduce the tabletop's worn but coherent plank seams,
+- [x] **3.9** Reproduce the tabletop's worn but coherent plank seams,
       the barrel head's detailed outer/simple inner faces, and
       the chair's slanted rear-seat corner housings.
+      Integration proofs compose existing generic contour partition,
+      shared sampling, charted patch construction, batched relief,
+      boundary bridging, lofts and explicit welding. Four independent
+      tabletop boards share wandering seam stations, then receive
+      intentional assembly clearance; one interior board has two
+      reconstructed wear/groove profiles. Five circular head boards
+      have separately detailed outward and sparse inward surfaces,
+      and a middle board joins two grooves without opening its seams.
+      The chair seat keeps different top/bottom rear-notch positions
+      and genuinely sloped wall faces. All outputs have closed,
+      connected authored topology. The five-piece head additionally
+      survives the actual GLB pipeline with its material colors, UVs
+      and vertex tint. Tests: `phase-three-assemblies.test.mjs`
+      (`f04dcf3` through `5605adb`). These are construction proofs;
+      migrating the live model recipes remains Phase 5.
 
 **Gate:** These assemblies have valid actual face topology and
 consistent matching interfaces. Their distinct material regions,
