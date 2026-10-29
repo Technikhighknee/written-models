@@ -743,19 +743,52 @@ export function shapeSurfaceRelief(
         );
     }
 
-    const uses = new Map<string, number>();
-    for (const triangle of triangles) {
+    const uses = new Map<string, number[]>();
+    const neighbors = Array.from(
+        { length: triangles.length }, () => new Set<number>()
+    );
+
+    triangles.forEach((triangle, index) => {
         for (let i = 0; i < 3; i++) {
             const key = edgeKey(triangle[i]!, triangle[(i + 1) % 3]!);
-            uses.set(key, (uses.get(key) ?? 0) + 1);
+            const entries = uses.get(key) ?? [];
+            entries.push(index);
+            uses.set(key, entries);
+        }
+    });
+
+    for (const entries of uses.values()) {
+        if (entries.length > 2) {
+            fail("invalid-topology", "Relief patch has nonmanifold edges");
+        }
+
+        if (entries.length === 2) {
+            neighbors[entries[0]!]!.add(entries[1]!);
+            neighbors[entries[1]!]!.add(entries[0]!);
         }
     }
-    if ([...uses.values()].some(n => n > 2)) {
-        fail("invalid-topology", "Relief patch has nonmanifold edges");
+
+    const visited = new Set<number>();
+    const queue = [0];
+
+    while (queue.length) {
+        const index = queue.pop()!;
+        if (visited.has(index)) continue;
+        visited.add(index);
+
+        for (const neighbor of neighbors[index]!) {
+            if (!visited.has(neighbor)) queue.push(neighbor);
+        }
+    }
+
+    if (visited.size !== triangles.length) {
+        fail("unsupported-topology", "Relief requires one connected patch");
     }
 
     const boundary = new Set(
-        [...uses].filter(([, n]) => n === 1).map(([key]) => key)
+        [...uses].filter(([, entries]) =>
+            entries.length === 1
+        ).map(([key]) => key)
     );
     const boundaryVertices = new Set<number>();
     for (const triangle of triangles) {

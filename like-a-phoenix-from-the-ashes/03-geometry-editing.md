@@ -225,6 +225,32 @@ stations are merged before rebuilding the surface. New shoulder,
 wall and floor faces receive explicit surface regions. The
 opposite mating face remains available for contact.
 
+`shapeSurfaceRelief(source, patch, features, options)` rebuilds
+a selected charted surface once from all authored feature paths.
+Each `SampledBoundary` supplies physical positions and increasing
+stations, a signed profile over the feature's physical half-width,
+and an optional region classifier for shoulders and floors.
+The reconstruction inserts path/width stations in the *interior*,
+regularizes internal diagonals, and refines both sides of any
+subdivided internal edge. Boundary vertices and edges are unchanged;
+any nonzero displacement detected along the rim is rejected.
+
+The output retains untouched faces, UVs and named edge chains,
+reissues face and patch selections with new owners, and labels
+newly constructed floor and shoulder faces. A modified patch chart
+is returned only if its inverse still round-trips every sampled
+construction vertex. Otherwise its stale patch selection is dropped.
+The sampled displacement is checked against nonselected mating faces,
+with penetration rejected. This is not a full continuous-surface
+Boolean intersection proof.
+
+`maxDeviation` is a measured interior sample tolerance (default
+0.005 m), rather than an analytical guarantee over arbitrary
+black-box shape fields. Requests exceeding the sampling budget or
+needing extra boundary subdivisions return `sampling-limit` instead
+of silently changing interfaces. Relief requires one connected,
+single-region source patch; unrelated source faces are preserved.
+
 The edge/corner work in `profiledBoard`,
 `seamedPlankExtrusion`, and `circularPlankPanel` first becomes
 construction-time section shaping plus patch relief. General

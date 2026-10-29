@@ -152,11 +152,20 @@ independent pieces with precise adjoining geometry.
       remapping, and surviving patch charts: `5827ff4` through `19b3bf2`.
       Verified on tubes, charted caps, partial edge joins, competing
       welds, duplicate faces and pinched closed shells.
-- [ ] **3.5** Implement batched `shapeSurfaceRelief`, combining
+- [x] **3.5** Implement batched `shapeSurfaceRelief`, combining
       all grooves, shoulders, crown/wear features and overlaps for
       a surface in one coherent reconstruction. Preserve boundary
       coordinates required by neighboring walls; edge relief must
       taper to the seam or explicitly rebuild the interface.
+      One selected charted patch, named path fields, union of feature
+      stations, signed `minimum`/`sum` overlap, conforming interior
+      edge refinement and UV/region reconstruction. Shared rims remain
+      untouched; stray paths, rim intrusion, and sampled penetration
+      of nonselected mating faces fail explicitly. Verified with
+      intersecting grooves, positive crowns, wear, joined walls and
+      holes: `69628b5` through `2463128`.
+      General continuous-surface self-intersection guarantees belong
+      to the later editing/Boolean phases.
 - [ ] **3.6** Compose construction-time chamfers using section
       profiles and patch-boundary shaping, without requiring the
       general post-hoc edge-beveling algorithm from Phase 6.

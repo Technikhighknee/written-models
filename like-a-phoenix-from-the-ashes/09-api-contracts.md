@@ -701,8 +701,12 @@ interface SurfaceReliefFeature {
 }
 
 interface SurfaceReliefOptions extends PrecisionOptions {
-  /** How overlapping feature displacement fields are combined. */
+  /** How overlapping signed feature fields are combined. */
   overlap: "minimum" | "sum";
+  /** Sampled interior chord/centroid deviation, default 0.005 metres.
+   *  Boundary edges are never subdivided by this operation.
+   */
+  maxDeviation?: number;
 }
 
 interface Ray3 {
