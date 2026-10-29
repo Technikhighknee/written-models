@@ -162,8 +162,9 @@ export function bevelOpenChain(
                 .normalize()
         );
         if (capNormal.dot(otherNormal) > 1 - policy.angle ||
-            capNormal.dot(otherNormal) <= -1 + policy.angle) {
-            fail("unsupported-topology", "Selected edge has an invalid dihedral");
+            capNormal.dot(otherNormal) <= -1 + policy.angle ||
+            inCap.dot(otherNormal) >= -Math.sin(policy.angle)) {
+            fail("unsupported-topology", "Selected edge needs a convex dihedral");
         }
         sideFaces.push({
             ref: sideUse.face, face: other,
@@ -500,17 +501,17 @@ export function bevelOpenChain(
             surface: "bevel"
         });
     }
-    const tips: [number, Rail, number][] = [
-        [chain[0]!, terminals[0]!, 0],
-        [chain.at(-1)!, terminals[1]!, edges.length - 1]
+    const tips: [number, Rail, number, number][] = [
+        [chain[0]!, terminals[0]!, 0, 0],
+        [chain.at(-1)!, terminals[1]!, edges.length - 1, edges.length]
     ];
-    for (const [tip, rail, index] of tips) {
+    for (const [tip, rail, index, station] of tips) {
         const ordered = orient([tip, rail.side, rail.cap], target(index));
         const coords = new Map([
-            [tip, new THREE.Vector2(travel[index]!, 0)],
-            [rail.cap, new THREE.Vector2(travel[index]!, widths[index]!)],
-            [rail.side, new THREE.Vector2(travel[index]!,
-                widths[index]! * 2)]
+            [tip, new THREE.Vector2(travel[station]!, 0)],
+            [rail.cap, new THREE.Vector2(travel[station]!, widths[station]!)],
+            [rail.side, new THREE.Vector2(travel[station]!,
+                widths[station]! * 2)]
         ]);
         triangles.push({
             corners: ordered as TriangleFace["corners"],
