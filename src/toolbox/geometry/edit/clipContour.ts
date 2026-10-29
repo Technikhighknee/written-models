@@ -33,13 +33,13 @@ function onEdge(
     b: THREE.Vector2,
     tolerance: number
 ): boolean {
-    const length = a.distanceTo(b);
+    const edge = b.clone().sub(a);
+    const length = edge.length();
+    const projection = p.clone().sub(a).dot(edge);
     return length > tolerance &&
         Math.abs(cross(a, b, p)) <= tolerance * length &&
-        p.dot(b.clone().sub(a)) >=
-            a.dot(b.clone().sub(a)) - tolerance * length &&
-        p.dot(b.clone().sub(a)) <=
-            b.dot(b.clone().sub(a)) + tolerance * length;
+        projection >= -tolerance * length &&
+        projection <= edge.lengthSq() + tolerance * length;
 }
 
 function edgesMeet(

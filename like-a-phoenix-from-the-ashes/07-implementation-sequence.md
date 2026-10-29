@@ -604,8 +604,19 @@ abstractions have been used by geometrically different models.
 beyond the shapes required by the current models. Exact semantics
 are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
 
-- [ ] **6.1** Extend convex clipping to concave planar profiles
+- [x] **6.1** Extend convex clipping to concave planar profiles
       with holes and multiple connected outputs.
+      The general `clipContour` triangulates a validated Profile2
+      domain, clips each triangle through cached shared edge
+      intersections, cancels internal edges and reconstructs ordered
+      outer/hole loops. Each independent kept island is returned as a
+      separate Profile2; a cut-open hole becomes an outer notch.
+      Input loops remain untouched, while touching/self-intersecting
+      profiles and ambiguous point contacts fail explicitly. The
+      original convex clipping fast path remains available.
+      Independent results have been extruded as closed solids,
+      including an enclosed hole and two distinct concave islands.
+      Commits: `d028b24` and follow-up validation.
 - [ ] **6.2** Implement plane-splitting of authored surfaces/solids,
       pairing cut interfaces and labeling every resulting component
       by half-space. Handle coincident source faces without duplicating

@@ -111,9 +111,16 @@ must be reconstructed. `joinGeometry` does not replace a general
 arbitrary surface-intersection or Boolean operation.
 
 A concave clipping result may have multiple components and holes.
-The `Profile2` result contains the boundary and any hole contours;
-`clipContour()` returns an array of profiles. The convex fast path
-remains available.
+`clipContour(profile, halfPlane)` returns an array of `Profile2`
+parts, with each component's own outer loop and enclosed holes. A
+hole intersected by the cutting line becomes part of the open
+perimeter. The operation caches edge-plane intersections across
+triangulated faces, cancels internal faces and traces closed boundary
+loops; it does not infer components from bounding boxes. Point-touching
+boundaries, intersecting loops and nested holes are outside the
+supported domain. `partitionContour` continues to handle independent
+boundary-to-boundary seams on convex source profiles, while the
+convex half-plane fast path remains available.
 
 ### Plane cuts through meshes
 
