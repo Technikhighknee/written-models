@@ -150,14 +150,27 @@ test("invalid selection order and excessive widths fail without source changes",
     assert.equal(JSON.stringify(source.geometry.vertices), original);
 });
 
-test("partial open chains are rejected instead of silently opening the solid", () => {
+test("three adjoining open edges form shared corner seams, not terminated overlaps", () => {
     const source = box();
-    const edges = topEdges(source);
-    assert.throws(
-        () => bevelEdges(source, edges.slice(0, 3), () => 0.1),
-        error => error.reason === "invalid-topology" ||
-            error.reason === "unsupported-topology"
-    );
+    const result = bevelEdges(source, topEdges(source).slice(0, 3),
+        () => 0.1);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 5);
+    assert.equal(result.boundaries["bevel-upper"][0].vertices.length, 4);
+    assert.equal(result.boundaries["bevel-lower"][0].vertices.length, 4);
+    assert.equal(result.geometry.triangles.filter(f =>
+        f.surface === "bevel"
+    ).length, 2);
+    for (const ref of ["bevel-upper", "bevel-lower"]) {
+        const chain = result.boundaries[ref][0];
+        assertSelectionOwner(result, chain);
+        for (let i = 0; i < chain.vertices.length - 1; i++) {
+            assert.equal(topologyOf(result).edgeUses(
+                chain.vertices[i], chain.vertices[i + 1]
+            ).length, 2);
+        }
+    }
 });
 
 test("a triangular prism cap gets a three-panel bevel without open edges", () => {
@@ -352,4 +365,59 @@ test("an open chamfer survives later subdivision and a capped plane split", () =
         assert.equal(topologyOf(part).connectedComponents().length, 1);
         assert.ok(part.regions["cross-section"].length > 0);
     }
+});
+
+test("two connected edges use exactly one welded bevel miter at their corner", () => {
+    const source = box();
+    const chain = topEdges(source).slice(0, 2);
+    const sourceVertices = source.geometry.vertices.map(v => v.clone());
+    const result = bevelEdges(source, chain, () => 0.14);
+
+    assert.deepEqual(source.geometry.vertices, sourceVertices);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 4);
+    assert.equal(result.geometry.quads.filter(face =>
+        face.surface === "bevel"
+    ).length, 2);
+    assert.equal(result.geometry.triangles.filter(face =>
+        face.surface === "bevel"
+    ).length, 2);
+    const upper = result.boundaries["bevel-upper"][0].vertices;
+    const lower = result.boundaries["bevel-lower"][0].vertices;
+    assert.equal(upper.length, 3);
+    assert.equal(lower.length, 3);
+    assert.equal(topologyOf(result).edgeUses(upper[1], lower[1]).length, 2);
+    assert.ok(result.patches.top?.length);
+    assertSelectionOwner(result, result.patches.top[0]);
+});
+
+test("connected open chain supports reversed orientation and a varying width", () => {
+    const source = box();
+    const edges = topEdges(source).slice(0, 2);
+    const reverse = [...edges].reverse().map(edge => ({
+        owner: edge.owner, from: edge.to, to: edge.from
+    }));
+    const samples = [];
+    const result = bevelEdges(source, reverse, t => {
+        samples.push(t);
+        return 0.1 + 0.04 * t;
+    });
+    assert.deepEqual(samples.map(v => Number(v.toFixed(3))),
+        [0, 0.5, 1]);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(result.regions.bevel.length, 4);
+});
+
+test("an invalid multi-edge corner cannot be joined by independent fake caps", () => {
+    const source = box();
+    const selected = topEdges(source);
+    assert.throws(
+        () => bevelEdges(source, [selected[0], selected[2]], () => 0.1),
+        error => error.reason === "invalid-topology"
+    );
+    assert.throws(
+        () => bevelEdges(source, [selected[0], selected[1]], () => 1.1),
+        error => error.reason === "unsupported-topology"
+    );
 });
