@@ -67,6 +67,8 @@ export { cutThrough } from "../edit/cutThrough";
 export { subdivideEdges } from "../edit/subdivideEdges";
 export { bevelEdges } from "../edit/bevelEdges";
 export { booleanSolids } from "../edit/booleanSolids";
+export { reconstructPatchQuads } from "../edit/reconstructPatchQuads";
+export type { QuadReconstructionSelection, QuadReconstructionOptions } from "../edit/reconstructPatchQuads";
 export type { BooleanOperation, BooleanOptions } from "../edit/booleanSolids";
 export type { ScalarField } from "../edit/bevelEdges";
 export type { EdgeSubdivision } from "../edit/subdivideEdges";
