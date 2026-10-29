@@ -834,6 +834,15 @@ booleanSolids(
   options?: BooleanOptions
 ): Promise<GeometryResult>;
 
+reconstructPatchQuads(
+  source: GeometryResult,
+  selection: string | SurfacePatchRef,
+  options?: {
+    precision?: GeometryPrecision;
+    requireComplete?: boolean;
+  }
+): GeometryResult;
+
 /** Surface-local groove while retaining the underlying part contact. */
 shapeSurfaceRelief(
   source: GeometryResult,
@@ -923,6 +932,18 @@ those surface-region and UV assignments. Source patch and edge
 selections do not survive arbitrary Boolean remeshing. Disjoint
 intersections produce a valid empty result. Invalid topology and
 Float32 precision loss are rejected.
+
+`reconstructPatchQuads` is deliberately narrower than
+unrestricted quad retopology. It selects one material region or
+an owned charted patch, pairs only manifold-adjacent planar
+convex triangles with matching material, smoothing and
+face-corner UV seams, and returns real quads whose canonical
+render triangulation exactly matches the original two
+triangles. Other triangles remain unchanged unless
+`requireComplete` demands a fully paired selection. Old
+named boundaries survive only while their edges exist;
+consumed diagonals do not. A valid charted input selection
+is also returned as `quad-reconstructed` with the new owner.
 
 `DeformationField` takes position and vertex ID, and returns a
 displacement. Region-aware weights may be composed into that field

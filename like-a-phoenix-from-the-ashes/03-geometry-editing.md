@@ -299,6 +299,44 @@ original face topology or interface station IDs is essential.
 The separate patch reconstruction operation can later establish
 new useful quads where its supported domain permits.
 
+## Selected patch quad reconstruction
+
+`reconstructPatchQuads(source, selection, options?)` is a
+strictly local, post-triangulation topology edit. A selection
+is either one source material-region name or a charted patch
+owned by the supplied result. The latter requires a valid
+two-way chart and returns its updated selection as
+`patches["quad-reconstructed"]`, in addition to surviving
+existing named patches.
+
+Two selected triangles may become an authored quad only if
+they have exactly one physical shared diagonal with opposite
+face winding; identical material and smoothing assignments;
+matching UV values at both ends of that diagonal; and a
+strictly convex, planar four-corner footprint. The quad's
+corner order deliberately produces those **same two original
+render triangles**, with the same physical vertices and
+UVs. No resampling, diagonal flip, hidden T-junction or
+guessed UV mapping is allowed.
+
+The algorithm chooses compatible pairs deterministically by
+shape quality. Selected triangles that cannot be paired
+remain actual triangles; `options.requireComplete: true`
+instead rejects an incomplete selection. The operation
+rejects an entirely unpairable selection rather than claiming
+to have reconstructed something. Unselected faces remain
+unchanged. Named edge chains that refer to deleted diagonals
+are dropped or reduced to valid surviving runs; outside
+boundaries remain selectable. Existing parameterized patches
+are reissued only when they still describe connected,
+correctly oriented resulting surfaces.
+
+This recovers a useful local quad layout from a compatible
+triangular patch, including eligible Boolean-generated
+regions. It is **not** global remeshing of arbitrary Boolean
+cuts into quad grids, and does not invent smoothing or
+material continuity across unrelated surfaces.
+
 ## Edge and surface shaping
 
 A profile is a field over distance, curve parameter, or surface position.

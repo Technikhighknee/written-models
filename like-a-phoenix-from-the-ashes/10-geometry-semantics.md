@@ -279,6 +279,34 @@ welding coincident-but-independent pieces by position. Float32
 quantization that reverses or collapses input triangles is
 rejected before the kernel operates.
 
+## 7. Quad reconstruction on selected triangular surfaces
+
+A selection is either a named material region or an owned
+regular `SurfacePatchRef`. Pairing two triangles is permitted
+only across their *authored physical diagonal*, with opposite
+directed edge uses and matching surface/smoothing assignments.
+The two face-corner UV values at each diagonal endpoint must
+also agree; positional coincidence alone never erases a UV
+seam. The four unique construction vertices must form a
+strictly convex plane within geometric tolerance.
+
+An accepted pair becomes one real authored quad using the
+winding that yields **exactly** those two original triangles
+under the canonical `[0,1,2]`, `[0,2,3]` quad triangulation.
+No extra boundary station, synthetic vertex or material
+projection is introduced. Candidate pairing is deterministic
+and prefers well-shaped quad footprints. Unpaired source
+triangles remain triangles, or a requested complete
+reconstruction fails.
+
+The output reissues only meaningful owner-bound selections.
+Existing outer boundaries remain; named diagonals that
+are no longer real edges disappear. Patches retain their
+chart only if it is still a valid connected, oriented
+parameterization of the reconstructed faces. This is an
+explicit local reconstruction domain, not an assertion that
+arbitrary Boolean triangulations imply a quad grid.
+
 ## 7. Selection survival through geometry edits
 
 All geometry-producing operations allocate a new result ID. Returned

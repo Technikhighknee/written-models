@@ -765,8 +765,30 @@ are in [03](03-geometry-editing.md) and [10](10-geometry-semantics.md).
       solids, chained Booleans, UV/material/smoothing provenance,
       custom classification/projection, Quad View representation,
       and actual multi-material GLB serialization.
-- [ ] **6.8** Provide an explicitly scoped patch-reconstruction
-      operation for selected surfaces with useful quad layout.
+- [x] **6.8** Implement `reconstructPatchQuads()` as an
+      explicitly scoped post-triangulation patch reconstruction.
+      Select an existing material region by name or an owned
+      regular `SurfacePatchRef`. Compatible neighboring pairs
+      of actual triangles become real authored quads **only**
+      when they share an oppositely directed physical diagonal,
+      matching material/smoothing assignments, compatible UV
+      values at both diagonal endpoints, and a planar, strictly
+      convex four-corner footprint. Quad corner order preserves
+      the exact two original render triangles and UVs. Candidate
+      pairs are chosen deterministically by shape quality; no
+      vertices are invented, neighboring edges are subdivided,
+      or unrelated faces changed. Unmatched triangles remain
+      triangles, or `requireComplete` rejects the edit.
+      Valid old edge chains and charted patches are transferred
+      with the new owner's IDs; consumed diagonals disappear.
+      An ad-hoc charted input patch also returns its new selection
+      as `quad-reconstructed`. The operation supports mixed
+      meshes, grid patches and selected Boolean regions, but
+      does not claim automatic global quad retopology.
+      CI covers an exact triangulated box, a four-cell grid,
+      an explicitly selected Boolean surface, seams, warped
+      surfaces, partial reconstruction, genuine authored Quad
+      View topology and selection invalidation.
 - [ ] **6.9** Demonstrate planar and curved openings, split solids,
       boolean faces, seams and topology transitions on geometrically
       different constructions.
