@@ -477,7 +477,7 @@ function edited(
         .getSize(new THREE.Vector2()).length();
     const tolerance = lengthTolerance(policy, bounds);
     const opening = validateOutline(outline, loops, tolerance);
-    const normal = validateChart(source, patch, loops, opening, tolerance);
+    validateChart(source, patch, loops, opening, tolerance);
     const mapUv = uvMap(source, patch, tolerance);
     const original = source.geometry;
     const vertices = original.vertices.map(v => v.clone());
