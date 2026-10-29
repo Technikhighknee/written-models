@@ -260,9 +260,18 @@ dynamic cavity behavior.
       The support tests also exposed inward extrusion winding;
       `extrudeContour` now produces outward caps and sidewalls
       (`e7c6b5c`, `04a8f56`).
-- [ ] **4.3** Support explicitly authored finite planar contacts
+- [x] **4.3** Support explicitly authored finite planar contacts
       alongside geometry-selected support patches for trestles and
       braces through one fitting result with discriminated contacts.
+      `fitBetweenSurfaces` resolves either a real authored-face patch
+      or an `AuthoredPlanarSupport` to one finite triangulated contact
+      footprint. Both variants use identical member-axis intersection
+      and complete section-coverage checks, including concavities and
+      holes. Explicit frames must be rigid, right-handed and oriented
+      toward the member; the result discriminates `surface` from
+      `authored-plane` contacts. Tests cover mesh/plane mixes, two
+      authored planes, false exterior fit, support holes and invalid
+      transforms (`a9da536` through `83fafff`).
 - [ ] **4.4** Fit ordered geometry boundaries onto curved targets,
       preserving other boundaries, and validate travel, face
       orientation and contact tolerance.
