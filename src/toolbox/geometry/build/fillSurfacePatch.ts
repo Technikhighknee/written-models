@@ -430,7 +430,7 @@ export function fillSurfacePatch({
             }
 
             if (iteration === maxIterations || triangles.length > maxFaces) {
-                fail("sampling-limit", "Interior refinement reached its triangle budget");
+                fail("sampling-limit", `Interior refinement reached its triangle budget (pass ${iteration}, ${triangles.length} triangles, ${marked.size} centroid errors, ${split.size} marked edges)`);
             }
 
             const midpoints = new Map<string, number>();
