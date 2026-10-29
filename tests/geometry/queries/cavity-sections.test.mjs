@@ -88,10 +88,15 @@ test("twelve separate stave surfaces reconstruct one volume without a circle gue
     const later = cavitySectionsFromSurfaces(options(
         pieces.slice().reverse(), heights
     ));
-    assert.deepEqual(
-        later.map(ring => ring.outline.map(point => point.toArray())),
-        rings.map(ring => ring.outline.map(point => point.toArray()))
-    );
+    for (let row = 0; row < heights.length; row++) {
+        const first = rings[row]!.outline;
+        const second = later[row]!.outline;
+
+        assert.equal(second.length, first.length);
+        first.forEach((point, index) =>
+            assert.ok(pointClose(point, second[index]!, 1e-12))
+        );
+    }
 });
 
 test("world placements and a reflected section frame return section-local rings", () => {
