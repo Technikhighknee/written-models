@@ -28,15 +28,13 @@ surfaceMesh({
 This builds on the existing `surfaceMesh()` and
 `toBufferGeometry()`.
 
-Surface classification by face normal, adjacency, or spatial
-selection works on authored faces. Today,
-`assignMaterialsByNormal()` and `classifyExtrudedSurfaces()`
-rearrange BufferGeometry triangles and render groups.
-The classification logic moves upstream to `classifyAuthoredFaces`,
-which updates authored face labels and returns a new geometry result.
-One render compiler then handles material groups. A nonplanar quad's
-classification normal is a representative area-weighted authored
-normal; query hits retain their individual triangle normals.
+`classifyAuthoredFaces()` assigns surface names and smoothing
+metadata from authored face centroids, normals and current labels.
+It returns a new owned result, preserving topology, UVs and surviving
+selections. Nonplanar quads use an area-weighted normal from both
+authored triangles. `surfaceMesh()` compiles the final material groups
+from those semantic surfaces; no GPU triangle regrouping is required
+for the new construction pipeline.
 
 ## UV coordinates
 
@@ -49,9 +47,13 @@ material and UV seams.
 - New subdivisions interpolate original UVs at created corners.
 - Newly constructed cut walls and floors use their explicit local
   chart and receive new UVs, region names and smoothing policy.
-- `offsetMeshUvs()` becomes a **non-mutating authored edit**. Its
-  returned `GeometryResult` owns the new face-corner UV data.
-- UV operations can target selected surfaces or faces.
+- `projectAuthoredUvs()` updates selected authored faces or
+  semantic surfaces with a reusable UV projector. Each face corner
+  receives its own UV, leaving welded construction edges intact.
+- `planarUvProjector()` uses a rigid frame and returns coordinates
+  measured in meters, including an optional physical offset.
+- `offsetMeshUvs()` is a non-mutating edit that returns owned
+  face-corner UVs.
 
 Materials in `src/materials/` determine visual appearance.
 The geometric tools provide coordinates and meaningful surface
@@ -59,10 +61,10 @@ regions for applying those materials. The per-piece oak variants
 and UV offsets of the table, barrel, chair and bench remain
 model-selected parameters.
 
-The current `offsetMeshUvs()` mutates the original authored UVs.
-Several existing model call sites discard its result because they
-rely on that mutation. Migration updates those sites to use the
-returned non-mutating geometry before rendering.
+Models compose the projector with the appropriate section,
+surface or construction frame. For example, an end face can be
+reprojected in meters without rebuilding its wall or changing
+any neighboring face-corner UVs.
 
 ## Quad View
 
@@ -86,11 +88,11 @@ the original construction topology.
 
 ## Render compilation
 
-The render adapter accepts an optional per-piece tint and applies
-it as GPU vertex colors, just as the current `tintVertices()` does.
-This preserves the table, barrel, chair, bench and mug's subtle
-oak-tone variations and their GLB export without inserting
-appearance-specific vertex color fields into the construction kernel.
+`surfaceMesh({ ..., tint })` applies optional per-piece
+vertex colors to compiled render geometry, using `tintVertices()`.
+The material must support vertex colors. Distinct tinted parts can
+share one material palette, and the authored geometry remains
+untinted. Vertex colors survive GLB export.
 
 `toBufferGeometry()` stays the single compiler responsible for:
 
