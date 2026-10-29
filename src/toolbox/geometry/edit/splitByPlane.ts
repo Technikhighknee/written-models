@@ -355,8 +355,38 @@ export function splitByPlane(
             continue;
         }
 
-        for (const side of ["negative", "positive"] as const) {
-            faces[side].push(...polygons(face, clip(face, side)));
+        // Warped quads have two actual render triangles, not one planar
+        // interior. Split those same two authored triangles when the cut
+        // crosses their surface; otherwise retain the untouched quad.
+        const fragments: Face[] = [];
+        if (face.corners.length === 4) {
+            const [a, b, c, d] = face.corners.map(id => positions[id]!);
+            const normal = new THREE.Vector3().subVectors(b!, a!)
+                .cross(new THREE.Vector3().subVectors(c!, a!)).normalize();
+            const departure = Math.abs(d!.clone().sub(a!).dot(normal));
+
+            if (departure > tolerance) {
+                for (const indices of [[0, 1, 2], [0, 2, 3]]) {
+                    fragments.push({
+                        corners: indices.map(i => face.corners[i]!) as
+                            TriangleFace["corners"],
+                        uvs: indices.map(i => face.uvs[i]!.clone()) as
+                            TriangleFace["uvs"],
+                        surface: face.surface,
+                        ...(face.smoothingGroup === undefined ? {} :
+                            {smoothingGroup: face.smoothingGroup})
+                    });
+                }
+            }
+        }
+        if (!fragments.length) fragments.push(face);
+
+        for (const fragment of fragments) {
+            for (const side of ["negative", "positive"] as const) {
+                faces[side].push(...polygons(
+                    fragment, clip(fragment, side)
+                ));
+            }
         }
     }
 
