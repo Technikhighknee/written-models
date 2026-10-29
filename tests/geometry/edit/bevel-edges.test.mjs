@@ -6,6 +6,7 @@ import {toolbox} from "../../support/toolbox.mjs";
 
 const {bevelEdges} = await toolbox("geometry/edit/bevelEdges.ts");
 const {boxMesh} = await toolbox("geometry/construction/boxMesh.ts");
+const {extrudeContour} = await toolbox("geometry/build/extrudeContour.ts");
 const {geometryResult, assertSelectionOwner} = await toolbox(
     "geometry/kernel/GeometryResult.ts"
 );
@@ -156,4 +157,31 @@ test("partial open chains are rejected instead of silently opening the solid", (
         error => error.reason === "invalid-topology" ||
             error.reason === "unsupported-topology"
     );
+});
+
+test("a triangular prism cap gets a three-panel bevel without open edges", () => {
+    const prism = extrudeContour({
+        outer: {
+            closed: true,
+            points: [
+                new THREE.Vector2(-1, -1),
+                new THREE.Vector2(-1, 1),
+                new THREE.Vector2(1, -1)
+            ]
+        }
+    }, {frame: new THREE.Matrix4(), depth: 1});
+    const rim = topologyOf(prism).regionBoundaries("cap-end")[0];
+    assert.equal(rim.vertices.length, 3);
+    const result = bevelEdges(prism, rim.vertices.map((from, i) => ({
+        owner: prism.id,
+        from,
+        to: rim.vertices[(i + 1) % rim.vertices.length]
+    })), () => 0.08);
+
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 3);
+    assert.equal(result.boundaries["bevel-upper"][0].vertices.length, 3);
+    assert.equal(result.boundaries["bevel-lower"][0].vertices.length, 3);
+    assert.equal(result.geometry.quads.length, prism.geometry.quads.length + 3);
 });
