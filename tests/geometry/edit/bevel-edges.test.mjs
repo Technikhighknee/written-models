@@ -570,3 +570,74 @@ test("articulated corner rejects a width that collapses one of its rails", () =>
         error => error.reason === "unsupported-topology"
     );
 });
+
+function signedVolume(mesh) {
+    let volume = 0;
+    for (const face of [
+        ...mesh.quads,
+        ...(mesh.triangles ?? [])
+    ]) {
+        const ids = face.corners;
+        const points = mesh.vertices;
+        for (let i = 1; i < ids.length - 1; i++) {
+            const a = points[ids[0]];
+            const b = points[ids[i]];
+            const c = points[ids[i + 1]];
+            volume += a.dot(b.clone().cross(c)) / 6;
+        }
+    }
+    return volume;
+}
+
+test("four consecutive bevel edges can change their support face three times", () => {
+    const source = box();
+    const edges = articulatedEdges(source, [
+        [-1, 1, 1], [1, 1, 1], [1, -1, 1],
+        [1, -1, -1], [-1, -1, -1]
+    ]);
+    const result = bevelEdges(source, edges, t => 0.08 + t * 0.04);
+
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
+    assert.equal(result.regions.bevel.length, 6);
+    assert.equal(result.boundaries["bevel-rails"].length, 8);
+    assert.ok(signedVolume(result.geometry) > 0);
+    assert.ok(signedVolume(result.geometry) < signedVolume(source.geometry));
+
+    const panels = result.geometry.quads.filter(face =>
+        face.surface === "bevel"
+    );
+    assert.equal(panels.length, 4);
+    for (const panel of panels) {
+        const [a, b, c, d] = panel.corners.map(id =>
+            result.geometry.vertices[id]
+        );
+        const n0 = b.clone().sub(a).cross(c.clone().sub(a));
+        const n1 = c.clone().sub(a).cross(d.clone().sub(a));
+        assert.ok(n0.length() > 1e-9);
+        assert.ok(n1.length() > 1e-9);
+        assert.ok(n0.dot(n1) > 0);
+    }
+});
+
+test("articulated bevel cannot repeat a vertex or accept stale edge owners", () => {
+    const source = box();
+    const loop = articulatedEdges(source, [
+        [-1, 1, 1], [1, 1, 1], [1, -1, 1],
+        [1, -1, -1], [-1, -1, -1]
+    ]);
+    assert.throws(
+        () => bevelEdges(source, [
+            ...loop, {...loop[0], from: loop.at(-1).to,
+                to: loop[0].from}
+        ], () => 0.1),
+        error => error.reason === "invalid-topology" ||
+            error.reason === "unsupported-topology"
+    );
+    assert.throws(
+        () => bevelEdges(source, loop.map(edge => ({
+            ...edge, owner: Symbol()
+        })), () => 0.1),
+        error => error.reason === "invalid-input"
+    );
+});
