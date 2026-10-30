@@ -2,6 +2,8 @@ import * as THREE from "three";
 
 import { extrudeContour } from "../toolbox/geometry/build/extrudeContour";
 import { sweepSection } from "../toolbox/geometry/build/sweepSection";
+import { capBoundary } from "../toolbox/geometry/build/finishBoundaries";
+import { joinGeometry } from "../toolbox/geometry/build/joinGeometry";
 import { revolveProfile } from "../toolbox/geometry/build/revolveProfile";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { wroughtIron } from "../materials/metal/wroughtIron";
@@ -50,16 +52,16 @@ export function buildSconceGeometry() {
         ]
     });
 
-    const armAt = (t: number) => new THREE.Vector3(
-        0,
-        0.025 + 0.145 * t,
-        0.01 + 0.28 * t - 0.022 * Math.sin(Math.PI * t)
+    // The arm turns upright before reaching the candle tray. Its last
+    // section is the first ring of the tray itself, not an embedded cap.
+    const spine = new THREE.CubicBezierCurve3(
+        new THREE.Vector3(0, 0.025, 0.01),
+        new THREE.Vector3(0, 0.052, 0.13),
+        new THREE.Vector3(0, 0.118, 0.29),
+        new THREE.Vector3(0, 0.17, 0.29)
     );
-    const armTangent = (t: number) => new THREE.Vector3(
-        0,
-        0.145,
-        0.28 - 0.022 * Math.PI * Math.cos(Math.PI * t)
-    );
+    const armAt = (t: number) => spine.getPoint(t);
+    const armTangent = (t: number) => spine.getTangent(t);
     const tangent = armTangent(0).normalize();
     const across = new THREE.Vector3(1, 0, 0);
     const upright = new THREE.Vector3()
@@ -68,31 +70,55 @@ export function buildSconceGeometry() {
         .makeBasis(across, upright, tangent)
         .setPosition(armAt(0));
 
-    const arm = sweepSection({
+    const armWalls = sweepSection({
         path: { at: armAt, tangent: armTangent },
         startingFrame: frame,
-        stations: [0, 0.2, 0.4, 0.6, 0.8, 1],
+        ends: "open",
+        stations: [0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875, 1],
         sectionAt: t => ({
             outer: {
                 closed: true,
-                points: circle(0.014 * (1 + 0.12 * t), 0, 0, 8)
+                points: circle(
+                    0.014 + 0.002 * THREE.MathUtils.smoothstep(t, 0.7, 1),
+                    0, 0, 24
+                )
             }
         }),
         wall: {
             outerRegion: "forged-arm",
-            smoothingGroupAt: () => "rounded-iron"
+            smoothingGroupAt: () => "sconce-forging"
         }
     });
+
+    // Only the plate-side end needs a cap. The cup-side end stays open
+    // so the two true boundary loops can be welded into one solid.
+    const arm = capBoundary(
+        armWalls,
+        armWalls.boundaries["start-outer"]![0]!,
+        {
+            region: "arm-base",
+            uvFrame: frame,
+            tessellation: "triangulate"
+        }
+    );
 
     const cupCenter = armAt(1);
     const cup = revolveProfile({
         closed: false,
         points: [
-            point(0, 0), point(0.052, 0),
-            point(0.055, 0.008), point(0.055, 0.027),
-            point(0.043, 0.035), point(0.039, 0.035),
-            point(0.037, 0.026), point(0.037, 0.009),
-            point(0, 0.009)
+            point(0.016, 0),
+            point(0.019, 0.005),
+            point(0.025, 0.009),
+            point(0.034, 0.012),
+            point(0.050, 0.012),
+            point(0.055, 0.015),
+            point(0.055, 0.034),
+            point(0.047, 0.042),
+            point(0.039, 0.042),
+            point(0.037, 0.033),
+            point(0.037, 0.022),
+            point(0.033, 0.022),
+            point(0, 0.022)
         ]
     }, {
         axisOrigin: cupCenter,
@@ -101,18 +127,28 @@ export function buildSconceGeometry() {
         angle: 2 * Math.PI,
         segments: 24,
         surfaceAt: ({ meridianInterval }) =>
-            meridianInterval >= 3 && meridianInterval <= 5
-                ? "rim" : "cup"
+            meridianInterval >= 6 && meridianInterval <= 8
+                ? "rim" : "cup",
+        smoothingGroupAt: () => "sconce-forging"
     });
 
-    return { plate, arm, cup, armAt, cupCenter };
+    const armAndCup = joinGeometry([arm, cup], {
+        weld: [{
+            firstPart: 0,
+            first: arm.boundaries["end-outer"]![0]!,
+            secondPart: 1,
+            second: cup.boundaries["open-0"]![0]!
+        }]
+    });
+
+    return { plate, armAndCup, armAt, cupCenter };
 }
 
 function create(): THREE.Group {
     const sconce = new THREE.Group();
     sconce.name = "ForgedIronCandleSconce";
 
-    const { plate, arm, cup } = buildSconceGeometry();
+    const { plate, armAndCup } = buildSconceGeometry();
 
     const iron = wroughtIron().clone();
     iron.name = "Sconce · Forged Iron";
@@ -128,14 +164,14 @@ function create(): THREE.Group {
             materials: iron
         }),
         surfaceMesh({
-            name: "CurvedForgedArm",
-            geometry: arm,
-            materials: iron
-        }),
-        surfaceMesh({
-            name: "CandleCup",
-            geometry: cup,
-            materials: cupIron
+            name: "ContinuousForgedArmAndCandleCup",
+            geometry: armAndCup,
+            materials: {
+                "arm-base": iron,
+                "forged-arm": iron,
+                cup: iron,
+                rim: cupIron
+            }
         })
     );
 
