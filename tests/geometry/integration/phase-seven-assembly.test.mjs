@@ -146,7 +146,7 @@ test("a pierced sconce assembles extrusion, transported sweep and revolution int
         ), name + " has missing UVs");
     }
 
-    assert.equal(plate.regions["inner-0"].length, 12);
+    assert.equal(plate.regions["inner-0"].length, 12 * 3);
     assert.ok(arm.regions["forged-arm"].length > 0);
     assert.ok(cup.regions.rim.length > 0);
     assert.ok(cup.regions.cup.length > 0);
