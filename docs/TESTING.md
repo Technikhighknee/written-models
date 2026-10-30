@@ -85,7 +85,10 @@ Answer these questions:
 If the answers are weak, **don't write the test**.
 
 Debugging experiments and one-off verification scripts are perfectly useful.
-They don't have to live in the repository forever. Fixing a bug doesn't
+They don't have to live in the repository forever. Mark them unmistakably:
+use a searchable `TEMPORARY — REMOVE AFTER ...` marker with a concrete
+removal condition, so anything left behind practically screams,
+"HEY, I'M STILL HERE!" during the next review. Fixing a bug doesn't
 automatically entitle it to a permanent regression test either.
 
 ## Kill tests that have outlived their usefulness
