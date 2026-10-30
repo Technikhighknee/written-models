@@ -4,7 +4,8 @@ import { cm, mm } from "../../toolbox/units/length";
 import { geometryResult, type GeometryResult } from
     "../../toolbox/geometry/kernel/GeometryResult";
 import { cutBoard } from "../../toolbox/geometry/construction/cutBoard";
-import { profiledBoard } from "../../toolbox/geometry/construction/profiledBoard";
+import { loftBoard, type BoardSection } from "../../toolbox/geometry/construction/loftBoard";
+import { sampleAdaptiveStations } from "../../toolbox/geometry/topology/adaptiveStations";
 import { findFacingPatch } from "../../toolbox/geometry/queries/findFacingPatch";
 import {
     tableTimberGeometry,
@@ -309,21 +310,64 @@ export function buildChairRearSeatGeometry(): GeometryResult {
     }));
 }
 
-/** The shaped top rail remains one continuous, nonrectangular oak board. */
+/** One continuous shaped oak crest, with actual worn end corners. */
 export function buildChairCrestGeometry(): GeometryResult {
-    const inner = CHAIR.rearX - CHAIR.backPostSize / 2;
-    return geometryResult(profiledBoard({
-        length: inner * 2,
-        thickness: cm(3),
-        chamfer: mm(2.4),
-        crown: mm(0.6),
-        leftEdge: t =>
-            -cm(4.7) + mm(0.45) * Math.sin(Math.PI * t),
-        rightEdge: t =>
-            cm(4.8) + cm(0.85) * Math.sin(Math.PI * t) ** 2,
-        start: {cornerWear: [mm(1.1), mm(1.4)]},
-        end: {cornerWear: [mm(1.6), mm(1.2)]}
-    }));
+    const length = 2 * (CHAIR.rearX - CHAIR.backPostSize / 2);
+    const thickness = cm(3);
+    const chamfer = mm(2.4);
+    const crown = mm(0.6);
+    const startWear = [mm(1.1), mm(1.4)] as const;
+    const endWear = [mm(1.6), mm(1.2)] as const;
+    const cornerExtent = 0.045;
+
+    const sectionAt = (progress: number): BoardSection => {
+        const nearStart = Math.max(0, 1 - progress / cornerExtent) ** 2;
+        const nearEnd = Math.max(0, 1 - (1 - progress) / cornerExtent) ** 2;
+        const left = -cm(4.7) + mm(0.45) * Math.sin(Math.PI * progress) +
+            startWear[0] * nearStart + endWear[0] * nearEnd;
+        const right = cm(4.8) +
+            cm(0.85) * Math.sin(Math.PI * progress) ** 2 -
+            startWear[1] * nearStart - endWear[1] * nearEnd;
+
+        const positions = [
+            left, left + chamfer, (left + right) / 2,
+            right - chamfer, right
+        ];
+        const last = positions.length - 1;
+        const baseX = -length / 2 + length * progress;
+        const topY = thickness / 2;
+        const bottomY = -thickness / 2;
+
+        return {
+            outer: positions.map((z, index) => {
+                const across = index / last;
+                return new THREE.Vector3(
+                    baseX,
+                    topY + crown * Math.sin(Math.PI * across) ** 2 -
+                        (index === 0 || index === last ? chamfer : 0),
+                    z
+                );
+            }),
+            inner: positions.map((z, index) => {
+                return new THREE.Vector3(
+                    baseX,
+                    bottomY + (index === 0 || index === last ? chamfer : 0),
+                    z
+                );
+            })
+        };
+    };
+
+    const stations = sampleAdaptiveStations(progress => {
+        const section = sectionAt(progress);
+        return [...section.outer, ...section.inner];
+    }, {
+        maxDeviation: 0.00045,
+        maxDepth: 6,
+        knots: [cornerExtent, 1 - cornerExtent]
+    }).stations;
+
+    return geometryResult(loftBoard(stations.map(sectionAt)));
 }
 
 /** Preserve the chosen rake and assembly placement of the back infill. */

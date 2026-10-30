@@ -859,8 +859,10 @@ operations, with no live consumers of superseded specialized logic.
       constructors are removed. Table, bench and chair tests now
       assert closed real quads, aligned section stations, surface UVs
       and nonoverlapping seams on the actual model results.
-      `profiledBoard` remains active for the chair's shaped crest
-      and must be migrated without changing its authored form.
+      The chair crest now samples its model-owned silhouette through
+      `sampleAdaptiveStations` and constructs its closed quads through
+      `loftBoard`, preserving its end wear, cross-section crown and
+      materials. The no-longer-used `profiledBoard` constructor is removed.
       The render-first `circularPlankPanel` and the
       `seamedPlankExtrusion` GPU adapter (including its render-object
       station cache) are removed. Barrel head regression tests now

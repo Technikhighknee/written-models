@@ -102,6 +102,38 @@ test("seat housings, raked back and crest preserve the authored silhouette", () 
         assert.ok(part.geometry.quads.length > 0);
     }
 
+    const crestMesh = crest.geometry;
+    const crestRows = crestMesh.vertices.length / 10;
+    const crestLength = 2 * (CHAIR.rearX - CHAIR.backPostSize / 2);
+    assert.ok(Number.isInteger(crestRows) && crestRows > 3);
+    assert.equal(crestMesh.quads.length, (crestRows - 1) * 10 + 8);
+    assert.equal(crestMesh.triangles?.length ?? 0, 0);
+    assert.equal(topologyOf(crest).connectedComponents().length, 1);
+    assert.deepEqual(
+        new Set(crestMesh.quads.map(face => face.surface)),
+        new Set([
+            "outer", "inner", "edge-left", "edge-right",
+            "cap-start", "cap-end"
+        ])
+    );
+
+    const start = crestMesh.vertices;
+    const last = (crestRows - 1) * 10;
+    near(start[0].x, -crestLength / 2);
+    near(start[last].x, crestLength / 2);
+    near(start[0].z, -0.047 + 0.0011);
+    near(start[4].z, 0.048 - 0.0014);
+    near(start[last].z, -0.047 + 0.0016);
+    near(start[last + 4].z, 0.048 - 0.0012);
+    near(start[2].y, 0.0156);
+    near(start[7].y, -0.015);
+
+    assert.ok(crestMesh.quads.every(face =>
+        face.uvs.every(uv =>
+            Number.isFinite(uv.x) && Number.isFinite(uv.y)
+        )
+    ));
+
     const exposed = rear.geometry.quads.flatMap(face =>
         face.corners.map(i => rear.geometry.vertices[i])
     );
