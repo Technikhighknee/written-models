@@ -29,9 +29,3 @@ These are entry points, not a mandatory tour through every file. Read what the t
 6. **Keep tests economical.** New features and new models do not automatically need new tests. Protect distinct costly regressions according to `docs/TESTING.md`.
 7. **Write documentation about the present.** No development diary disguised as JSDoc, no obsolete migration plans, no long lists of functions that simply duplicate code.
 8. **Honor the request.** Implement when asked to implement; inspect without gratuitous edits when asked to inspect. A review that finds nothing worth changing is a valid result.
-
-## GitHub connector reality
-
-The connector does not automatically read this file, the README or the repository tree. On a new task, deliberately inspect the current branch and relevant paths. Read file contents, not just filenames. Before writes, check the current head; avoid unrelated changes and preferably commit a coherent change together. Report what was actually changed, and never claim local tests or CI passed without checking.
-
-Passing tests cannot establish whether a model looks right. Rendering and target-engine appearance still need appropriate inspection.
