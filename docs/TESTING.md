@@ -126,18 +126,13 @@ responsibilities, not because another file looks tidy.
 
 ## Keep the suite lean
 
-When cleaning up existing tests:
+A test suite doesn't stay useful by accident. As the toolbox evolves,
+review the tests affected by each change. Keep the ones that still catch
+distinct, costly failures. Consolidate overlapping coverage, simplify
+needlessly elaborate fixtures and retire assumptions that no longer matter.
 
-1. Start with per-model checks. Remove incidental dimensions, part counts
-   and repeated export smoke tests.
-2. Compare integration tests with the shared-operation tests they overlap.
-   Keep only the combinations that catch something genuinely different.
-3. Review large suites case by case. Preserve meaningful edge cases;
-   cut repetitive permutations.
-4. Give survivors useful names and straightforward fixtures.
-5. Keep the surviving tests focused, reliable and worth their cost.
-
-There's no deletion quota. The result should be less work to maintain
-without losing protection against the failures that matter.
+Don't let old tests pile up just because they still pass. Don't schedule
+cleanup ceremonies or chase deletion quotas either. **The suite should be
+free to shrink whenever its tests stop earning their keep.**
 
 **Tests are here to protect the work. The work is not here to feed the tests.**
