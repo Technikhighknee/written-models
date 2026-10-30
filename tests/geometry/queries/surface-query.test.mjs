@@ -133,7 +133,7 @@ test("query triangles match the renderer's source faces despite material sorting
     const second = new THREE.MeshBasicMaterial();
     const rendered = surfaceMesh({
         name: "Sources",
-        geometry,
+        geometry: geometryResult(geometry),
         materials: { wood: second, iron: first }
     });
 

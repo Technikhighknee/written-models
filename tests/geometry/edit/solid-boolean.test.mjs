@@ -257,7 +257,7 @@ test("Boolean output can serialize as a real material-grouped GLB with UV attrib
 test("models can classify and project every Boolean face explicitly", async () => {
     const a = boxMesh({width: 2, height: 2, depth: 2});
     const b = boxMesh({width: 1.1, height: 1.1, depth: 1.1});
-    const result = await booleanSolids(a, b, "difference", {
+    const result = await booleanSolids(geometryResult(a), geometryResult(b), "difference", {
         regionAt: (_, normal) =>
             Math.abs(normal.z) > 0.9 ? "front-or-back" : "other-cut",
         uvAt: point => ({x: point.x * 2, y: point.y * 3})

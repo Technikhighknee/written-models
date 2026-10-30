@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { AuthoredMeshBuilder } from "../mesh/AuthoredMeshBuilder";
 import type { MeshData } from "../mesh/MeshData";
-import { adaptiveStations } from "../topology/adaptiveStations";
+import { sampleAdaptiveStations } from "../topology/adaptiveStations";
 import { edgeRecessStations, edgeRecessDepth } from "../../shapes/profiles/edgeRecess";
 
 /** A point in the X/Z plane. The board's grain runs along Z. */
@@ -197,7 +197,7 @@ export function seamedPlankExtrusionData(
     });
 
     type Vertex = PlankVertex;
-    const mesh = new AuthoredMeshBuilder();
+    const mesh = new AuthoredMeshBuilder({ weld: "position" });
 
     function recordFace(
         corners: readonly Vertex[],
@@ -280,7 +280,7 @@ export function seamedPlankExtrusionData(
     // every width station), not the unworked rectangular source surface.
     // This keeps shared edges watertight and the control mesh truthful.
     const fractions = longitudinalStations ? [...longitudinalStations]
-        : adaptiveLongitudinal ? adaptiveStations(
+        : adaptiveLongitudinal ? sampleAdaptiveStations(
             t => stations.flatMap(station => {
                 const z = station.low + (station.high - station.low) * t;
                 return [
@@ -289,7 +289,7 @@ export function seamedPlankExtrusionData(
                 ];
             }),
             adaptiveLongitudinal
-        ) : Array.from(
+        ).stations : Array.from(
             { length: longitudinalSegments + 1 },
             (_, i) => i / longitudinalSegments
         );

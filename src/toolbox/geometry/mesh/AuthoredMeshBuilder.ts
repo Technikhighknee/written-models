@@ -2,8 +2,8 @@ import * as THREE from "three";
 import type { MeshData, QuadFace, TriangleFace } from "./MeshData";
 
 export interface AuthoredMeshBuilderOptions {
-    /** Position welding is the legacy behavior; none preserves coincident parts. */
-    weld?: "position" | "none";
+    /** Position welding must be intentional; none preserves coincident parts. */
+    weld: "position" | "none";
     resolution?: number;
 }
 
@@ -16,19 +16,16 @@ export class AuthoredMeshBuilder {
     private readonly weldResolution: number;
     private readonly weld: "position" | "none";
 
-    constructor(options: number | AuthoredMeshBuilderOptions = 1e-9) {
-        // A numeric resolution keeps existing builder call sites compatible.
-        const resolution = typeof options === "number"
-            ? options : (options.resolution ?? 1e-9);
+    constructor(options: AuthoredMeshBuilderOptions) {
+        const resolution = options?.resolution ?? 1e-9;
         if (!Number.isFinite(resolution) || resolution <= 0) {
             throw new RangeError("Invalid construction vertex resolution");
         }
-        this.weldResolution = resolution;
-        this.weld = typeof options === "number"
-            ? "position" : (options.weld ?? "position");
-        if (this.weld !== "none" && this.weld !== "position") {
-            throw new RangeError("Invalid vertex welding policy");
+        if (options.weld !== "none" && options.weld !== "position") {
+            throw new RangeError("Expected an explicit vertex welding policy");
         }
+        this.weldResolution = resolution;
+        this.weld = options.weld;
     }
 
     /** Adds a distinct vertex even at a position that already exists. */

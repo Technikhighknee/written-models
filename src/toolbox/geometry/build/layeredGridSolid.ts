@@ -147,7 +147,7 @@ export function layeredGridSolid({
         return point;
     };
 
-    const builder = new AuthoredMeshBuilder();
+    const builder = new AuthoredMeshBuilder({ weld: "position" });
     const face = (
         vertices: readonly THREE.Vector3[],
         surface: string,

@@ -166,10 +166,3 @@ export function sampleAdaptiveStations(
     return { stations, observedMaxDeviation, saturated };
 }
 
-/** Existing consumers retain their station-array API during migration. */
-export function adaptiveStations(
-    sample: (t: number) => readonly Position3[],
-    options: AdaptiveStationsOptions
-): number[] {
-    return [...sampleAdaptiveStations(sample, options).stations];
-}

@@ -62,8 +62,7 @@ export function toBufferGeometry(
     const mesh = source.geometry;
     const byMaterial = new Map<number, AuthoredTriangle[]>();
 
-    {
-        const quantized = mesh.vertices.map(point => new THREE.Vector3(
+    const quantized = mesh.vertices.map(point => new THREE.Vector3(
             Math.fround(point.x),
             Math.fround(point.y),
             Math.fround(point.z)
@@ -96,7 +95,6 @@ export function toBufferGeometry(
                 );
             }
         }
-    }
     const smoothNormals = new Map<string, Map<number, THREE.Vector3>>();
 
     for (const face of [...mesh.quads, ...(mesh.triangles ?? [])]) {

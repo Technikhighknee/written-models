@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import Module from "manifold-3d";
 
-import type { MeshData, TriangleFace } from "../mesh/MeshData";
+import type { TriangleFace } from "../mesh/MeshData";
 import {
     geometryResult,
     GeometryOperationError,
@@ -294,14 +294,14 @@ function resultMesh(
  * The WASM kernel initializes asynchronously on the first call.
  */
 export async function booleanSolids(
-    first: MeshData | GeometryResult,
-    second: MeshData | GeometryResult,
+    first: GeometryResult,
+    second: GeometryResult,
     operation: BooleanOperation,
     options: BooleanOptions = {}
 ): Promise<GeometryResult> {
     const policy = resolvePrecision(options.precision);
-    const leftSource = "geometry" in first ? first : geometryResult(first, policy);
-    const rightSource = "geometry" in second ? second : geometryResult(second, policy);
+    const leftSource = first;
+    const rightSource = second;
     if (!["union", "intersection", "difference"].includes(operation)) {
         fail("invalid-input", "Unknown boolean operation");
     }
