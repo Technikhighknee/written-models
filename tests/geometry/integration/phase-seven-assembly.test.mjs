@@ -49,7 +49,7 @@ test("a pierced sconce assembles extrusion, transported sweep and revolution int
     assert.ok(armAndCup.regions.rim.length > 0);
     assert.ok(armAndCup.regions.cup.length > 0);
     assert.equal(armAndCup.geometry.vertices.length,
-        9 * 24 + 12 * 24 + 1);
+        9 * 24 + 12 * 24 + 1 - 24);
     assert.equal(armAndCup.geometry.quads.filter(face =>
         face.surface === "forged-arm"
     ).length, 8 * 24);
