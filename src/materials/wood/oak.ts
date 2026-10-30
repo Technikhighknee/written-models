@@ -130,22 +130,3 @@ export function oakBoardFace(seed: number): THREE.MeshStandardMaterial {
     boardFaceCuts.set(seed, face);
     return face;
 }
-
-/**
- * The shadowed floor of a narrow fitted timber joint. It uses the SAME
- * long-grain PBR maps as its board; only the light reaching an old recess
- * is represented by a darker material tint. Created lazily and reused by
- * all fitted wood panels with the same oak cut.
- */
-const grooveFaces = new Map<number, THREE.MeshStandardMaterial>();
-
-export function oakGrooveFace(seed: number): THREE.MeshStandardMaterial {
-    const existing = grooveFaces.get(seed);
-    if (existing) return existing;
-
-    const face = oakBoardFace(seed).clone();
-    face.name = `Oak Cut ${seed} · Shaded Timber Joint`;
-    face.color.multiplyScalar(0.48);
-    grooveFaces.set(seed, face);
-    return face;
-}
