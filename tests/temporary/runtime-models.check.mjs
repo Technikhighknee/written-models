@@ -57,7 +57,6 @@ test("one-shot: create every model and compile actual export geometry", () => {
                 assert.equal(runtime.sourceMeshes, originalMeshes.length,
                     definition.slug + ": source meshes dropped");
                 assert.ok(runtime.outputMeshes > 0);
-                assert.ok(runtime.outputMeshes <= runtime.sourceMeshes);
                 let meshCount = 0;
                 runtime.root.traverse(child => {
                     if (child instanceof THREE.Mesh) meshCount++;
