@@ -37,7 +37,7 @@ This is the simple pattern for **construction → owned result → materialized 
 
 The board recipe generates individual cross-sections, samples each with `sampleAdaptiveStations()`, combines station positions **before** authoring neighboring strips, and then uses `loftPairedSurfaceRows()` to obtain an owned `GeometryResult`.
 
-`loftPairedSurfaceRows()` already returns an owned `GeometryResult`. Its shared wall loft and boundary bridge preserve the authored longitudinal seam stations; the variations and wear patterns belong in the model composition. The variations and wear patterns belong in the model composition. The shared stations protect real seams, not just the rendered appearance.
+`loftPairedSurfaceRows()` already returns an owned `GeometryResult`. Its shared wall loft and boundary bridge preserve the authored longitudinal seam stations. Wear and variation remain model decisions; shared stations protect real seams rather than only their appearance.
 
 ### A curved vessel and fillable contents: `src/models/beerMug.ts`
 
@@ -45,7 +45,7 @@ The board recipe generates individual cross-sections, samples each with `sampleA
 
 `buildTankardServingCavity()` then passes **the actual inner stave faces** to `cavitySectionsFromSurfaces()`. `ProfiledCavity` converts those rings into a measurable volume and `createFillableVolume()` creates the movable contents.
 
-**Fill level is a volume fraction, not a height fraction.** The tankard sets its full serving to **90% of the chosen physical cavity's capacity**, deliberately leaving headroom. Its GLB contains supported morph shapes and weights; the TypeScript `setFillLevel()` controller is not serialized.
+**Fill level is a volume fraction, not a height fraction.** The tankard sets its full serving to **90% of the chosen physical cavity's capacity**, deliberately leaving headroom. `createFillableVolume()` maintains one mesh whose full contents form the neutral base and whose eight morph targets are named `Fill_0_of_8` through `Fill_7_of_8` (Godot blend shapes). It exposes `setFillLevel(0..1)` and `getFillLevel()` in TypeScript. GLB preserves morph shapes and their current weights, not that controller. Upright filling is supported; sloshing, pouring and tilted liquid surfaces are not.
 
 ### A timber member fitted to real supports: `src/models/components/tableTimberGeometry.ts`
 
@@ -58,6 +58,16 @@ The fitting operation checks finite contact geometry, not just whether the membe
 Use `openPatch()` or `recessPatch()` only on supported selected charted surfaces; they do **different** things. `cutThrough()` joins suitable opposing patches with actual walls. `booleanSolids()` is the path for general **closed-solid** subtraction, union and intersection.
 
 For real combinations, inspect `tests/geometry/integration/edit-compositions.test.mjs`. They show what the supported operations can preserve together. `reconstructPatchQuads()` is optional reconstruction of compatible topology, not a way to rename every Boolean triangle a quad.
+
+## Other constructions to compose
+
+**A timber-framed gate:** Partition adjoining board outlines with `partitionContour()` and `samplePartition()` so pieces agree at the same stations. Construct the members with `loftSectionWalls()`, fit diagonal braces against finite supports using `fitBetweenSurfaces()`, and apply `bevelEdges()` where its edge and topology constraints hold. The gate's layout and wear belong to the model.
+
+**A carved stone doorway:** Start from an authored `extrudeContour()` solid. For a straight passage between suitable opposing planar patches, use `cutThrough()`; for general closed-solid subtraction, use `booleanSolids()`. The resulting faces may genuinely be triangles. `reconstructPatchQuads()` can recover only compatible pairs, not magically turn every Boolean into quads.
+
+**A carved wooden panel:** `fillSurfacePatch()` can establish a charted crown while respecting a prescribed outer boundary. `shapeSurfaceRelief()` adds supported grooves; `recessPatch()` adds a recessed floor and walls. Design adjacent panel pieces with matching boundary stations before building them, rather than relying on render-time overlap.
+
+These are composition directions, not presets or guarantees for arbitrary contours. Check each operation's actual input domain.
 
 ## Practical boundaries
 
