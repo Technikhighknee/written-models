@@ -2,10 +2,7 @@ import * as THREE from "three";
 
 import { samplePolarStripSections } from "../../toolbox/geometry/build/samplePolarStripSections";
 import { loftPairedSurfaceRows } from "../../toolbox/geometry/build/loftPairedSurfaceRows";
-import {
-    geometryResult,
-    type GeometryResult
-} from "../../toolbox/geometry/kernel/GeometryResult";
+import type { GeometryResult } from "../../toolbox/geometry/kernel/GeometryResult";
 
 export interface CooperedStavesOptions {
     count: number;
@@ -59,10 +56,10 @@ export function cooperedStaves(
         innerRadiusAt: radius => radius - thickness
     });
 
-    return sections.map(piece => geometryResult(loftPairedSurfaceRows(
+    return sections.map(piece => loftPairedSurfaceRows(
         piece.map(section => ({
             outer: section.outer.points.slice(0, outerStations.length),
             inner: section.outer.points.slice(outerStations.length).reverse()
         }))
-    )));
+    ));
 }

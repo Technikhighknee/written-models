@@ -386,7 +386,7 @@ export function buildChairCrestGeometry(): GeometryResult {
         knots: [cornerExtent, 1 - cornerExtent]
     }).stations;
 
-    return geometryResult(loftPairedSurfaceRows(stations.map(sectionAt)));
+    return loftPairedSurfaceRows(stations.map(sectionAt));
 }
 
 /** Preserve the chosen rake and assembly placement of the back infill. */

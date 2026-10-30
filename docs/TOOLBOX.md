@@ -35,7 +35,7 @@ This is the simple pattern for **construction → owned result → materialized 
 
 ### Hand-worked boards: `src/models/components/boardedSurface.ts`
 
-The board recipe generates individual cross-sections, samples each with `sampleAdaptiveStations()`, combines station positions **before** authoring neighboring strips, and then uses `loftPairedSurfaceRows()` plus `geometryResult()`.
+The board recipe generates individual cross-sections, samples each with `sampleAdaptiveStations()`, combines station positions **before** authoring neighboring strips, and then uses `loftPairedSurfaceRows()` to obtain an owned `GeometryResult`.
 
 Here `loftPairedSurfaceRows()` is a reusable constructor returning `MeshData`; `geometryResult()` creates the owned output. The variations and wear patterns belong in the model composition. The shared stations protect real seams, not just the rendered appearance.
 

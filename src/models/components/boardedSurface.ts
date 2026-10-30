@@ -1,9 +1,7 @@
 import * as THREE from "three";
 
 import { loftPairedSurfaceRows } from "../../toolbox/geometry/build/loftPairedSurfaceRows";
-import {
-    geometryResult, type GeometryResult
-} from "../../toolbox/geometry/kernel/GeometryResult";
+import type { GeometryResult } from "../../toolbox/geometry/kernel/GeometryResult";
 import { sampleAdaptiveStations } from "../../toolbox/geometry/topology/adaptiveStations";
 import { weightedCuts } from "../../toolbox/spatial/layout/weightedCuts";
 import { seededVariation } from "../../toolbox/spatial/layout/seededVariation";
@@ -199,7 +197,7 @@ export function boardedSurface({
         [...shape.stations]
     ))].sort((a, b) => a - b);
 
-    return shapes.map(shape => geometryResult(
+    return shapes.map(shape =>
         loftPairedSurfaceRows(shared.map(shape.sectionAt))
-    ));
+    );
 }

@@ -3,6 +3,7 @@ import * as THREE from "three";
 import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
 import { loftSideQuads } from "./loftSideQuads";
 import { bridgeBoundaries } from "./bridgeBoundaries";
+import { geometryResult, type GeometryResult } from "../kernel/GeometryResult";
 
 /** Open, corresponding surface rows, both ordered from the same end. */
 export interface PairedSurfaceSection {
@@ -38,7 +39,7 @@ function stations(points: readonly THREE.Vector3Like[]): number[] {
  */
 export function loftPairedSurfaceRows(
     sections: readonly PairedSurfaceSection[]
-): MeshData {
+): GeometryResult {
     const outerCount = sections[0]?.outer.length ?? 0;
     const innerCount = sections[0]?.inner.length ?? 0;
 
@@ -109,7 +110,8 @@ export function loftPairedSurfaceRows(
         }
     }
 
-    return triangles.length
+    const mesh: MeshData = triangles.length
         ? { vertices, quads, triangles }
         : { vertices, quads };
+    return geometryResult(mesh);
 }
