@@ -12,4 +12,12 @@ src/
 └── toolbox/   Collections of handy-dandy functions
 ```
 
-<!-- READ THE DAMN TOOLBOX README. MY DEAR ROBOT FRIEND :) – Jason... or "The management" lol -->
+<!--
+FOR CHATGPT / AI AGENTS WORKING ON THIS REPOSITORY
+
+READ 00_READ_THIS_FIRST.md FROM THE REPOSITORY ROOT BEFORE ANALYZING,
+MODIFYING OR EXTENDING THIS REPOSITORY.
+
+Do not rely on this README alone. The entry-point file links to the
+current architecture, toolbox guidance and testing policy.
+-->
