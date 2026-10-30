@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 
-import { toolbox } from "../../support/toolbox.mjs";
+import { sourceModule, toolbox } from "../../support/toolbox.mjs";
 
 const { cavitySectionsFromSurfaces } = await toolbox(
     "geometry/queries/cavitySectionsFromSurfaces.ts"
@@ -16,8 +16,8 @@ const { loftSectionWalls } = await toolbox(
 const { ProfiledCavity, cavityFromMeshSurfaces } = await toolbox(
     "geometry/construction/profiledCavity.ts"
 );
-const { radialStaves } = await toolbox(
-    "geometry/construction/radialStaves.ts"
+const { buildTankardGeometry } = await sourceModule(
+    "models/beerMug.ts"
 );
 
 const vec = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -213,18 +213,7 @@ test("explicit height order and rigid section frames are enforced", () => {
 });
 
 test("the existing wooden mug's inner faces agree with its physical cavity", () => {
-    const profile = [
-        uv(0.047, 0),
-        uv(0.0515, 0.071),
-        uv(0.049, 0.152)
-    ];
-    const pieces = radialStaves(profile, {
-        count: 12,
-        thickness: 0.008,
-        edgeRoundover: 0.0008,
-        innerWidthSamples: [0, 1],
-        angleOffset: Math.PI / 2 - Math.PI / 12
-    });
+    const pieces = buildTankardGeometry().staves.map(stave => stave.geometry);
 
     const sections = cavitySectionsFromSurfaces(options(
         pieces.map(geometry => ({
