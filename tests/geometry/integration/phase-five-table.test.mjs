@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import * as THREE from "three";
 
 import { sourceModule, toolbox } from "../../support/toolbox.mjs";
+import { assertBoardPanel } from "../../support/assert-board-panel.mjs";
 
 const { buildTabletopGeometry } = await sourceModule("models/table.ts");
 const {
@@ -13,9 +14,6 @@ const {
 );
 const { createTrestleSupport } = await sourceModule(
     "models/components/trestleSupport.ts"
-);
-const { boardPanel } = await toolbox(
-    "geometry/construction/boardPanel.ts"
 );
 const { topologyOf } = await toolbox(
     "geometry/kernel/topology.ts"
@@ -41,65 +39,13 @@ const almost = (actual, expected, tolerance = 1e-9) =>
     assert.ok(Math.abs(actual - expected) <= tolerance,
         `Expected ${expected}, got ${actual}`);
 
-function originalTableBoards() {
-    return boardPanel({
-        length: 1.8,
-        width: 0.9,
-        thickness: 0.05,
-        count: 4,
-        widthWeights: [1.07, 0.94, 1.03, 0.96],
-        gap: 0.0025,
-        chamfer: 0.003,
-        crown: 0.0006,
-        handWorked: {
-            seed: 1400,
-            edgeWander: 0.0042,
-            endStagger: 0.012,
-            cornerWear: 0.007,
-            thicknessVariation: 0.0014,
-            chamferVariation: 0.33
-        }
-    });
-}
-
-test("the actual four tabletop boards keep their worn seams and authored faces", () => {
-    const old = originalTableBoards();
+test("the four tabletop boards preserve closed faces and fitted seams", () => {
     const updated = buildTabletopGeometry();
-
-    assert.equal(updated.length, 4);
-    assert.equal(old.length, 4);
+    assertBoardPanel(updated, { count: 4, gap: 0.0025 }, topologyOf);
 
     for (let i = 0; i < updated.length; i++) {
         const result = updated[i];
-        const before = old[i];
         const mesh = result.geometry;
-
-        assert.equal(topologyOf(result).openBoundaries().length, 0);
-        assert.equal(topologyOf(result).connectedComponents().length, 1);
-        assert.equal(mesh.vertices.length, before.vertices.length);
-        assert.equal(mesh.quads.length, before.quads.length);
-        assert.equal(mesh.triangles?.length ?? 0,
-            before.triangles?.length ?? 0);
-
-        for (let j = 0; j < mesh.vertices.length; j++) {
-            const point = mesh.vertices[j];
-            const previous = before.vertices[j];
-            almost(point.x, previous.x);
-            almost(point.y, previous.y);
-            almost(point.z, previous.z);
-        }
-
-        for (let j = 0; j < mesh.quads.length; j++) {
-            const face = mesh.quads[j];
-            const previous = before.quads[j];
-            assert.equal(face.surface, previous.surface);
-            assert.deepEqual(face.corners, previous.corners);
-            for (let k = 0; k < face.uvs.length; k++) {
-                almost(face.uvs[k].x, previous.uvs[k].x);
-                almost(face.uvs[k].y, previous.uvs[k].y);
-            }
-        }
-
         const oak = new THREE.MeshStandardMaterial({
             color: 0x986f44, vertexColors: true
         });

@@ -855,8 +855,12 @@ operations, with no live consumers of superseded specialized logic.
       Revolution tests directly exercise `revolveMeridianMesh` on
       closed hollow shells, pole-capped vessels, material regions
       and radial variation.
-      Older board constructors still have test consumers; migrate
-      those before removing their implementations.
+      The superseded `boardPanel`, `profiledBoard` and
+      `straightBoard` constructors are removed. Table, bench and chair
+      tests now assert closed real quads, aligned section stations,
+      surface UVs and nonoverlapping seams directly on the model
+      results, rather than retaining a second hand-worked board engine.
+      Round head geometry still needs consolidation.
 - [ ] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
       consumers have migrated. Removed `assignMaterialsByNormal`,

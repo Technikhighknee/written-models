@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
 import { sourceModule, toolbox } from "../../support/toolbox.mjs";
+import { assertBoardPanel } from "../../support/assert-board-panel.mjs";
 
 const {
     BENCH_SEAT,
@@ -12,9 +13,6 @@ const {
 } = await sourceModule("models/tavernBench.ts");
 const { oakPanelGeometry } = await sourceModule(
     "models/components/oakSeating.ts"
-);
-const { boardPanel } = await toolbox(
-    "geometry/construction/boardPanel.ts"
 );
 const { cylinderMesh } = await toolbox(
     "geometry/construction/cylinderMesh.ts"
@@ -40,58 +38,12 @@ function near(actual, expected, tolerance = 1e-10) {
         `Expected ${actual} to match ${expected} within ${tolerance}`);
 }
 
-test("the bench keeps all three hand-planed seat planks and their shared seams", () => {
-    const actual = oakPanelGeometry(BENCH_SEAT);
-    const previous = boardPanel({
-        length: 1.52,
-        width: 0.4,
-        thickness: 0.045,
-        count: 3,
-        widthWeights: [1.02, 0.93, 1.05],
-        gap: 0.002,
-        chamfer: 0.0024,
-        crown: 0.00055,
-        handWorked: {
-            seed: 321,
-            edgeWander: 0.0022 * 0.76,
-            endStagger: 0.0048 * 0.76,
-            cornerWear: 0.0035 * 0.76,
-            thicknessVariation: 0.0009 * 0.76,
-            chamferVariation: 0.27
-        }
-    });
-
-    assert.equal(actual.length, 3);
-    for (let i = 0; i < 3; i++) {
-        const now = actual[i].geometry;
-        const old = previous[i];
-
-        assert.equal(topologyOf(actual[i]).openBoundaries().length, 0);
-        assert.equal(topologyOf(actual[i]).connectedComponents().length, 1);
-        assert.equal(now.vertices.length, old.vertices.length);
-        assert.equal(now.quads.length, old.quads.length);
-        assert.equal(now.triangles?.length ?? 0,
-            old.triangles?.length ?? 0);
-
-        for (let index = 0; index < now.vertices.length; index++) {
-            const point = now.vertices[index];
-            const before = old.vertices[index];
-            near(point.x, before.x);
-            near(point.y, before.y);
-            near(point.z, before.z);
-        }
-
-        for (let index = 0; index < now.quads.length; index++) {
-            const face = now.quads[index];
-            const before = old.quads[index];
-            assert.deepEqual(face.corners, before.corners);
-            assert.equal(face.surface, before.surface);
-            for (let corner = 0; corner < 4; corner++) {
-                near(face.uvs[corner].x, before.uvs[corner].x);
-                near(face.uvs[corner].y, before.uvs[corner].y);
-            }
-        }
-    }
+test("the bench keeps three closed planks with aligned, fitted seams", () => {
+    const seat = oakPanelGeometry(BENCH_SEAT);
+    assertBoardPanel(seat, {
+        count: BENCH_SEAT.planks,
+        gap: BENCH_SEAT.gap ?? 0.002
+    }, topologyOf);
 });
 
 test("both braced supports, the finite stretcher and eight oak pins export", async () => {

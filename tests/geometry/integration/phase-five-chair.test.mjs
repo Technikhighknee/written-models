@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
 import { sourceModule, toolbox } from "../../support/toolbox.mjs";
+import { assertBoardPanel } from "../../support/assert-board-panel.mjs";
 
 const {
     CHAIR,
@@ -17,9 +18,6 @@ const {
 } = await sourceModule("models/components/chairGeometry.ts");
 const { oakPanelGeometry } = await sourceModule(
     "models/components/oakSeating.ts"
-);
-const { boardPanel } = await toolbox(
-    "geometry/construction/boardPanel.ts"
 );
 const { topologyOf } = await toolbox(
     "geometry/kernel/topology.ts"
@@ -83,37 +81,14 @@ test("chair frame's 13 timbers and 12 pins use authored finite surfaces", () => 
 test("seat housings, raked back and crest preserve the authored silhouette", () => {
     const seat = oakPanelGeometry(CHAIR_FRONT_SEAT);
     const infill = oakPanelGeometry(CHAIR_BACK_INFILL);
-    const oldSeat = boardPanel({
-        length: CHAIR.seatWidth,
-        width: CHAIR.seatFront - CHAIR.frontBoardBack,
-        thickness: CHAIR.seatThickness,
-        count: 2,
-        widthWeights: [1.05, 0.95],
-        gap: 0.0018,
-        chamfer: 0.0024,
-        crown: 0.0006,
-        handWorked: {
-            seed: 412,
-            edgeWander: 0.0022 * 0.5,
-            endStagger: 0.0048 * 0.5,
-            cornerWear: 0.0035 * 0.5,
-            thicknessVariation: 0.0009 * 0.5,
-            chamferVariation: 0.27
-        }
-    });
-
-    assert.equal(seat.length, 2);
-    assert.equal(infill.length, 3);
-    for (let index = 0; index < 2; index++) {
-        const actual = seat[index].geometry;
-        const before = oldSeat[index];
-        assert.equal(actual.quads.length, before.quads.length);
-        for (let i = 0; i < actual.vertices.length; i++) {
-            near(actual.vertices[i].x, before.vertices[i].x);
-            near(actual.vertices[i].y, before.vertices[i].y);
-            near(actual.vertices[i].z, before.vertices[i].z);
-        }
-    }
+    assertBoardPanel(seat, {
+        count: CHAIR_FRONT_SEAT.planks,
+        gap: CHAIR_FRONT_SEAT.gap
+    }, topologyOf);
+    assertBoardPanel(infill, {
+        count: CHAIR_BACK_INFILL.planks,
+        gap: CHAIR_BACK_INFILL.gap
+    }, topologyOf);
 
     const rear = buildChairRearSeatGeometry();
     const crest = buildChairCrestGeometry();
