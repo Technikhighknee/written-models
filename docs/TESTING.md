@@ -11,6 +11,17 @@ The toolbox is a geometry system. Its highest-risk contracts are authored
 topology, shared boundaries, selections, UVs, precision, finite contacts and
 runtime export. Visual quality is judged on the actual model.
 
+**Model-by-model automated testing is not a project goal.** New models do
+not receive tests by default, and there is no requirement to keep a separate
+test for every existing model. Test reusable toolbox contracts at their
+source. Model-level automation requires a specific, costly regression
+that cannot be protected adequately by a smaller shared-capability test.
+
+**Maintenance cost is a reason to delete a test.** If keeping a test current
+requires more effort than the failures it realistically prevents, remove
+or simplify it. Repeated changes to legitimate artistic or model-specific
+decisions are a warning that a test has become a maintenance liability.
+
 ## Before adding a test
 
 Answer these questions:
@@ -20,15 +31,18 @@ Answer these questions:
 3. **Evidence:** Which observable invariant detects it reliably?
 4. **Uniqueness:** Is that invariant already protected by an existing test?
 5. **Cost:** Is automation worth its execution and maintenance overhead?
+6. **Change tolerance:** Will ordinary, intentional model changes trigger
+   failures even though no shared contract was broken?
 
 Add a test when the answers demonstrate a meaningful gap. A real regression
 with a reusable failure mode is usually stronger evidence than a newly
 implemented function. Tests should exercise public behavior or a stable
 geometry contract. Prefer the smallest input that reproduces the risk.
 
-A test can be skipped when the behavior is already covered, manual inspection
+Skip automation when the behavior is already covered, manual inspection
 is more reliable, or its assertions would merely restate the implementation.
-A green test alone does not justify keeping it.
+A passing test earns no permanent entitlement to remain in the suite.
+On each relevant change, its continued value can be reassessed.
 
 ## What deserves automation
 
@@ -55,7 +69,9 @@ and subsequent join, or authored UVs surviving a Boolean and export.
 
 Reuse existing composition proofs. Avoid new tests whose main purpose is to
 exercise the entire toolbox, finish a project phase or demonstrate that a
-temporary model once existed.
+temporary model once existed. A new model that uses an existing operation
+is generally evidence from actual construction and manual inspection;
+it does not automatically create another integration test.
 
 ### Runtime and GLB boundaries
 
@@ -65,7 +81,10 @@ runtime-specific features such as morph targets or instances.
 
 The tankard's fill targets and Godot-compatible UVs are a concrete,
 previously observed regression risk. Existing focused tests cover them.
-An all-model export run is optional diagnostic work, not a default CI gate.
+Broad per-model GLB checks would multiply maintenance with little added
+protection once the shared exporter is covered. Run a model-specific
+diagnostic only when investigating a real failure; do not add an
+all-model CI gate.
 
 ## What needs human inspection
 
@@ -75,8 +94,10 @@ review. Real Godot imports establish how exported assets behave in the target
 engine.
 
 The existing eight models have already undergone manual Godot inspection.
-That acceptance stands. Repeat it when a relevant change creates a reason,
-and inspect the affected model or behavior.
+That acceptance stands. A new or materially changed model is accepted
+through actual viewer/Godot inspection. A geometry-kernel change may call
+for inspecting representative affected models. No automatic test is
+required solely because a model exists.
 
 Automated geometric checks can support visual review; they cannot establish
 that an asset looks good.
@@ -96,7 +117,7 @@ Examples of names for retained tests:
 - `join-geometry.test.mjs`
 - `tankard-fill-export.test.mjs`
 - `runtime-export.test.mjs`
-- `table-geometry.test.mjs`
+- `selection-lifecycle.test.mjs`
 - `edit-composition.test.mjs`
 
 Names derived from migration phases (`phase-two-*`, `phase-five-*`, etc.)
@@ -115,10 +136,14 @@ for a particular number of deletions.
 
 Priorities for review:
 
-1. **Overlapping model proofs:** Compare `phase-two-models`,
-   `phase-three-assemblies`, `phase-four-fitted-assemblies` and the
-   `phase-five-*` tests with each other and with focused model/export tests.
-   Preserve distinct regressions; consolidate repeated assertions.
+1. **Model-bound tests:** Start with `phase-two-models`,
+   `phase-three-assemblies`, `phase-four-fitted-assemblies` and
+   `phase-five-*`. These are prime removal candidates when they assert
+   current model dimensions, part counts or artistic choices. Keep a
+   model-specific regression only when it addresses a demonstrated,
+   costly failure that shared-toolbox tests cannot reasonably catch.
+   Move any genuinely reusable invariant to the appropriate capability
+   test, if it is not already protected.
 2. **Large operation suites:** Inspect the individual cases in
    `bevel-edges.test.mjs`, `join-geometry.test.mjs`,
    `solid-boolean.test.mjs` and other extensive files for unique
@@ -132,8 +157,10 @@ Priorities for review:
 
 Classify each existing test as **keep**, **consolidate** or **remove**,
 with a short, concrete reason. Do not mechanically apply a percentage
-reduction. Perform the review in small changes that make the resulting
-suite easier to understand.
+reduction. A test that mostly obstructs legitimate model changes should
+usually be removed; do not recreate its assertions under a new filename.
+Perform the review in small changes that make the resulting suite easier
+to understand.
 
 ## Running and maintaining tests
 
@@ -151,9 +178,10 @@ new tooling, dependencies or CI stages only when a demonstrated problem
 requires them.
 
 When a test fails, determine whether the contract, implementation or
-assertion is wrong before changing anything. When a test is removed,
-its genuinely unique protection must either remain elsewhere or be
-consciously accepted as manual verification.
+assertion is wrong before changing anything. It is acceptable to remove
+a test whose protection is not worth maintaining; there is no obligation
+to replace every deleted test with another test.
 
-**The rule:** Every automated test must justify the failure it prevents
-and the cost of keeping it.
+**The rule:** The suite must prevent more costly regressions than the
+maintenance it creates. Shared capabilities get the strongest protection;
+models earn individual automation only by exception.
