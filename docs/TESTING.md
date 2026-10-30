@@ -1,187 +1,162 @@
 # Testing strategy
 
-## Purpose
+## Objective
 
-Tests protect behavior whose failure would be costly to discover or repair. The
-suite should stay small enough to understand, run and maintain. There is no
-coverage target, minimum test count or requirement to test every function,
-model or change.
+The test suite exists to keep the geometry toolbox dependable as it grows.
+Its value is measured by the serious regressions it catches relative to the
+effort required to maintain it.
 
-The toolbox is a geometry system. Its highest-risk contracts are authored
-topology, shared boundaries, selections, UVs, precision, finite contacts and
-runtime export. Visual quality is judged on the actual model.
+I prioritize correctness at shared boundaries: authored topology, geometry
+editing, selection ownership, finite contacts, numerical precision, UVs and
+runtime export. A failure there can affect many models without being obvious
+in the viewer.
 
-**Model-by-model automated testing is not a project goal.** New models do
-not receive tests by default, and there is no requirement to keep a separate
-test for every existing model. Test reusable toolbox contracts at their
-source. Model-level automation requires a specific, costly regression
-that cannot be protected adequately by a smaller shared-capability test.
+I will keep the suite deliberately small. Every test is an ongoing maintenance
+commitment. Coverage percentages, test counts and the number of modeled
+assets have no role in deciding how much automation we need.
 
-**Maintenance cost is a reason to delete a test.** If keeping a test current
-requires more effort than the failures it realistically prevents, remove
-or simplify it. Repeated changes to legitimate artistic or model-specific
-decisions are a warning that a test has become a maintenance liability.
+## Where I invest in tests
 
-## Before adding a test
+### Shared geometry
 
-Answer these questions:
+The kernel and reusable operations carry the highest risk. Focused tests
+should establish contracts such as:
 
-1. **Failure:** What concrete regression could occur?
-2. **Consequence:** What breaks if that regression escapes?
-3. **Evidence:** Which observable invariant detects it reliably?
-4. **Uniqueness:** Is that invariant already protected by an existing test?
-5. **Cost:** Is automation worth its execution and maintenance overhead?
-6. **Change tolerance:** Will ordinary, intentional model changes trigger
-   failures even though no shared contract was broken?
+- A solid stays manifold, with valid face winding and connected components.
+- Shared boundaries retain their actual vertices and matching stations.
+- An edit preserves valid selections, regions, UV seams and source-face
+  identity where the operation promises to preserve them.
+- Fitting and clearance use finite geometry and meaningful world units.
+- Unsupported or numerically unsafe inputs fail without corrupting the
+  original geometry.
+- Render triangulation and Quad View agree on the authored faces.
 
-Add a test when the answers demonstrate a meaningful gap. A real regression
-with a reusable failure mode is usually stronger evidence than a newly
-implemented function. Tests should exercise public behavior or a stable
-geometry contract. Prefer the smallest input that reproduces the risk.
+Use compact fixtures and geometric assertions. A failure should identify the
+broken contract. For complex operations, cover distinct failure classes
+rather than enumerating every variation of a valid input.
 
-Skip automation when the behavior is already covered, manual inspection
-is more reliable, or its assertions would merely restate the implementation.
-A passing test earns no permanent entitlement to remain in the suite.
-On each relevant change, its continued value can be reassessed.
+### Interfaces between operations
 
-## What deserves automation
+A small number of integration tests should cover boundaries where correct
+operations can fail when combined: for example, cutting and rejoining a
+selected surface, or carrying authored UVs through geometry compilation.
 
-### Geometry contracts
+Select cases that expose genuinely new risk. Existing component tests and
+composition tests count as evidence. A new model or implementation milestone
+does not create an additional testing obligation.
 
-Protect operations with consequences for multiple models, especially:
+### Runtime features
 
-- Manifold boundaries, directed winding, connected components and valid
-  authored triangles/quads.
-- Shared stations, welded rims and prevention of T-junctions.
-- Selection ownership and survival through geometry edits.
-- UV seams, surface regions and source-face identity through rendering.
-- Physical contact, clearance and precision at supported boundary cases.
-- Explicit failures for dangerous inputs that could silently corrupt geometry.
+Preserve targeted checks for export behavior that is easy to break silently,
+including material/UV transfer and morph-target data.
 
-Use small constructed fixtures with measurable invariants. Cover distinct
-failure modes; similar parameter variations can share a test or be omitted.
+The tankard's fill morph is a good example. Its Godot import exposed a real
+UV problem, and its active fill behavior has a specific runtime contract.
+Those risks justify focused regression coverage.
 
-### Compositions
+The shared runtime exporter should be verified with representative inputs.
+Running every model through the exporter on every change would add little
+confidence beyond that shared coverage.
 
-A focused integration test is justified when individually sound operations
-can fail at their interface. Examples include a boundary surviving an edit
-and subsequent join, or authored UVs surviving a Boolean and export.
+## Model development
 
-Reuse existing composition proofs. Avoid new tests whose main purpose is to
-exercise the entire toolbox, finish a project phase or demonstrate that a
-temporary model once existed. A new model that uses an existing operation
-is generally evidence from actual construction and manual inspection;
-it does not automatically create another integration test.
+Models are primarily evaluated as assets. I inspect their geometry, Quad
+View, appearance and relevant GLB/Godot behavior as part of making them.
 
-### Runtime and GLB boundaries
+I do not create automated tests for each model. Dimensions, board counts,
+decorative details, proportions and other authored design decisions change
+through ordinary iteration. Tests coupled to those details introduce
+maintenance work without protecting the toolbox.
 
-Preserve a small number of representative checks for actual data-loss risks:
-authored faces reaching Quad View, UV/material data reaching GLB, and
-runtime-specific features such as morph targets or instances.
+A model-specific regression test earns its place when a concrete,
+significant failure has occurred, can recur unnoticed, and cannot be guarded
+economically at the shared-toolbox level.
 
-The tankard's fill targets and Godot-compatible UVs are a concrete,
-previously observed regression risk. Existing focused tests cover them.
-Broad per-model GLB checks would multiply maintenance with little added
-protection once the shared exporter is covered. Run a model-specific
-diagnostic only when investigating a real failure; do not add an
-all-model CI gate.
+The existing eight models have already been inspected and exported manually.
+That acceptance remains valid. I will repeat targeted inspection when
+changes affect the relevant behavior.
 
-## What needs human inspection
+## Decision to add or keep a test
 
-Model silhouette, proportions, historical character, wear, wood grain,
-materials, lighting, artistic seams and perceived quality belong to visual
-review. Real Godot imports establish how exported assets behave in the target
-engine.
+Before introducing automation, I establish:
 
-The existing eight models have already undergone manual Godot inspection.
-That acceptance stands. A new or materially changed model is accepted
-through actual viewer/Godot inspection. A geometry-kernel change may call
-for inspecting representative affected models. No automatic test is
-required solely because a model exists.
+1. **Risk:** The specific failure it is intended to catch.
+2. **Impact:** The practical cost of that failure escaping.
+3. **Signal:** An observable assertion that distinguishes correct behavior
+   from the regression.
+4. **Coverage:** Whether an existing test already provides that signal.
+5. **Lifetime cost:** The expected effect of legitimate changes on the test,
+   its fixtures and its execution time.
 
-Automated geometric checks can support visual review; they cannot establish
-that an asset looks good.
+I add the test when its expected protective value clearly exceeds that cost.
+The same standard applies during maintenance. A passing test can become
+obsolete. Repeated updates caused by normal model edits are a strong reason
+to remove it.
 
-## Test organization and names
+Deleting a low-value test is a complete maintenance decision. It does not
+create a requirement to replace the test elsewhere.
 
-- Use `*.test.mjs` and descriptive, lowercase kebab-case filenames.
-- Name files after the **capability or behavior under test**.
-- Keep related cases together when they share the same contract and setup.
-- Split a file when its concerns are genuinely independent.
-- Keep fixtures simple, local and readable. Shared helpers must earn their
-  maintenance cost.
-- Use assertions that reveal the violated invariant when they fail.
+## Organization
 
-Examples of names for retained tests:
+Files are named for the capability or behavior they cover, in lowercase
+kebab-case: `join-geometry.test.mjs`, `selection-lifecycle.test.mjs`,
+`tankard-fill-export.test.mjs`.
 
-- `join-geometry.test.mjs`
-- `tankard-fill-export.test.mjs`
-- `runtime-export.test.mjs`
-- `selection-lifecycle.test.mjs`
-- `edit-composition.test.mjs`
+Keep related cases together and their setup readable. Shared helpers are
+appropriate when they remove meaningful repetition. Test names describe
+the invariant being protected. Comments explain the current contract.
 
-Names derived from migration phases (`phase-two-*`, `phase-five-*`, etc.)
-are temporary labels. Review their contents before assigning names: some
-cases belong in existing capability tests, some merit a specific integration
-file, and some add no independent protection.
+Migration-phase labels have no place in the permanent suite. Names such as
+`phase-five-chair.test.mjs` tell us when a test was written and become
+meaningless as the system evolves.
 
-Comments and test descriptions explain the current contract and the
-failure being guarded. They do not serve as a development diary.
+## Cleanup of the existing suite
 
-## Existing suite: review before changing it
+The current suite has 59 test files, including 12 integration files named
+after development phases. I will review their assertions before editing the
+suite, using the following order.
 
-The current repository has **59 `*.test.mjs` files**, including
-**12 phase-named integration files**. This is an inventory, not a target
-for a particular number of deletions.
+1. **Model-specific integration tests.** Examine the phase-two through
+   phase-five files and identify assertions tied to particular models.
+   Remove routine construction and export checks already covered by the
+   toolbox. Preserve only model-specific failure modes that justify their
+   upkeep.
+2. **Overlapping compositions.** Compare the phase-six integration cases
+   and `authoring-pipeline.test.mjs` with focused build, edit and runtime
+   coverage. Retain the smallest set of distinct integration risks.
+3. **Shared operations.** Review the large bevel, join, Boolean and other
+   capability suites case by case. Keep meaningful boundary conditions;
+   consolidate redundant permutations. File length alone does not decide.
+4. **Names and structure.** Rename remaining phase-based tests by behavior
+   and move cases only where that improves ownership and readability.
 
-Priorities for review:
+Each decision should be traceable to a particular contract or a concrete
+maintenance burden. I will avoid arbitrary reduction targets and avoid
+introducing replacement tests simply to preserve the old test count.
 
-1. **Model-bound tests:** Start with `phase-two-models`,
-   `phase-three-assemblies`, `phase-four-fitted-assemblies` and
-   `phase-five-*`. These are prime removal candidates when they assert
-   current model dimensions, part counts or artistic choices. Keep a
-   model-specific regression only when it addresses a demonstrated,
-   costly failure that shared-toolbox tests cannot reasonably catch.
-   Move any genuinely reusable invariant to the appropriate capability
-   test, if it is not already protected.
-2. **Large operation suites:** Inspect the individual cases in
-   `bevel-edges.test.mjs`, `join-geometry.test.mjs`,
-   `solid-boolean.test.mjs` and other extensive files for unique
-   geometric failure modes. Size alone is no reason to delete a test.
-3. **Cross-operation integration:** Evaluate
-   `phase-six-complex-edits.test.mjs` and `authoring-pipeline.test.mjs`
-   against the direct build/edit tests and existing export checks.
-4. **Naming:** Rename retained phase-based files to reflect their real
-   responsibility, or move individual tests into suitable existing files.
-   Avoid moves that only create more structure.
+## Execution
 
-Classify each existing test as **keep**, **consolidate** or **remove**,
-with a short, concrete reason. Do not mechanically apply a percentage
-reduction. A test that mostly obstructs legitimate model changes should
-usually be removed; do not recreate its assertions under a new filename.
-Perform the review in small changes that make the resulting suite easier
-to understand.
-
-## Running and maintaining tests
-
-The existing verification pipeline is sufficient:
+Use the existing tooling:
 
 ```sh
+node --test tests/geometry/build/join-geometry.test.mjs
 npm run typecheck
 npm test
 npm run build
 ```
 
-For targeted development, run the relevant `node --test <file>` first.
-Run the full suite after cleanup or cross-cutting geometry changes. Add
-new tooling, dependencies or CI stages only when a demonstrated problem
-requires them.
+During development, run affected tests first. Run the full suite for changes
+to shared geometry behavior and after test-suite cleanup. The existing CI
+pipeline is sufficient.
 
-When a test fails, determine whether the contract, implementation or
-assertion is wrong before changing anything. It is acceptable to remove
-a test whose protection is not worth maintaining; there is no obligation
-to replace every deleted test with another test.
+A failing test triggers investigation of the contract, implementation and
+assertion. Fix the defect when the contract is sound. Update or remove the
+test when its expectation has outlived the design.
 
-**The rule:** The suite must prevent more costly regressions than the
-maintenance it creates. Shared capabilities get the strongest protection;
-models earn individual automation only by exception.
+## Standard of success
+
+I want a suite that gives a useful warning when the toolbox breaks and
+otherwise stays out of model development. If maintaining the suite starts
+costing more than the regressions it prevents, I will reduce it.
+
+That is the governing constraint for every test decision.
