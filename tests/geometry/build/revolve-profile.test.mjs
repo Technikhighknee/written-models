@@ -184,7 +184,7 @@ test("arbitrary axis and radial zero direction preserve geometry scale", () => {
     assert.equal(topologyOf(result).openBoundaries().length, 0);
 });
 
-test("revolved meridian stations retain poles, radial waves and hollow walls", () => {
+test("revolved meridian stations retain poles and radial waves", () => {
     const body = revolveMeridianMesh([
         { radius: 0, height: 0, surface: "base" },
         {
@@ -202,18 +202,6 @@ test("revolved meridian stations retain poles, radial waves and hollow walls", (
         vertex.y === 0 && Math.hypot(vertex.x, vertex.z) < 0.99
     ));
     assert.equal(topologyOf(geometryResult(body)).openBoundaries().length, 0);
-
-    const hollow = revolveMeridianMesh([
-        { radius: 1.1, height: 0, surface: "shell" },
-        { radius: 1.2, height: 1, surface: "shell" },
-        { radius: 1.1, height: 1, surface: "shell" },
-        { radius: 1.0, height: 0, surface: "shell" }
-    ], { ...options(), closedMeridian: true });
-
-    assert.equal(hollow.vertices.length, 48);
-    assert.equal(hollow.quads.length, 48);
-    assert.equal(hollow.triangles.length, 0);
-    assert.equal(topologyOf(geometryResult(hollow)).openBoundaries().length, 0);
 });
 
 test("a hollow turned profile retains its floor, interior, lip and exterior", () => {

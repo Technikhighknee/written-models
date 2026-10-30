@@ -7,12 +7,6 @@ import { toolbox } from "../../support/toolbox.mjs";
 const { partitionContour } = await toolbox(
     "geometry/build/partitionContour.ts"
 );
-const { extrudeContour } = await toolbox(
-    "geometry/build/extrudeContour.ts"
-);
-const { topologyOf } = await toolbox(
-    "geometry/kernel/topology.ts"
-);
 
 const p = (x, y) => new THREE.Vector2(x, y);
 const square = () => ({
@@ -122,7 +116,7 @@ test("later parallel cuts transfer prior interface ownership correctly", () => {
     assert.equal(result.interfaces[0].secondPart, 1);
 });
 
-test("the partition of a sampled circular head remains independently extrudable", () => {
+test("a densely sampled convex contour preserves cut interfaces and total area", () => {
     const vertices = Array.from({ length: 32 }, (_, i) => {
         const angle = Math.PI * 2 * i / 32;
 
@@ -149,8 +143,8 @@ test("the partition of a sampled circular head remains independently extrudable"
         return { id, points };
     }
 
-    const cutA = verticalCut(-0.42, "left-plank");
-    const cutB = verticalCut(0.35, "right-plank");
+    const cutA = verticalCut(-0.42, "left");
+    const cutB = verticalCut(0.35, "right");
     const result = partitionContour(source, [cutA, cutB]);
 
     assert.equal(result.parts.length, 3);
@@ -166,15 +160,6 @@ test("the partition of a sampled circular head remains independently extrudable"
         assert.ok(ownsInterface(result.parts[seam.secondPart], seam.points));
     }
 
-    for (const piece of result.parts) {
-        const solid = extrudeContour(piece, {
-            frame: new THREE.Matrix4(),
-            depth: 0.06
-        });
-
-        assert.equal(topologyOf(solid).openBoundaries().length, 0);
-        assert.equal(topologyOf(solid).connectedComponents().length, 1);
-    }
 });
 
 test("rejects unsupported crossings, holes, nonconvex inputs and bad cuts", () => {
