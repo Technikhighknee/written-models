@@ -4,25 +4,16 @@ import * as THREE from "three";
 
 import { toolbox } from "../../support/toolbox.mjs";
 
-const { revolveProfile } = await toolbox(
+const { revolveProfile, revolveMeridianMesh } = await toolbox(
     "geometry/build/revolveProfile.ts"
 );
-const { latheMeridian } = await toolbox(
-    "geometry/construction/latheMeridian.ts"
-);
-const { turnedVessel } = await toolbox(
-    "geometry/construction/turnedVessel.ts"
+const { geometryResult } = await toolbox(
+    "geometry/kernel/GeometryResult.ts"
 );
 const { topologyOf } = await toolbox("geometry/kernel/topology.ts");
 const { surfaceMesh } = await toolbox("geometry/mesh/surfaceMesh.ts");
 const { getControlOutline } = await toolbox(
     "geometry/mesh/controlOutline.ts"
-);
-const { revolveShell } = await toolbox(
-    "shapes/operations/revolveShell.ts"
-);
-const { getControlMesh } = await toolbox(
-    "geometry/mesh/toBufferGeometry.ts"
 );
 
 const vector = (x, y) => new THREE.Vector2(x, y);
@@ -193,60 +184,65 @@ test("arbitrary axis and radial zero direction preserve geometry scale", () => {
     assert.equal(topologyOf(result).openBoundaries().length, 0);
 });
 
-test("old lathe and shell continue using real geometry with radial waves", () => {
-    const mesh = latheMeridian([
-        { radius: 0, y: 0, surface: "bottom" },
+test("revolved meridian stations retain poles, radial waves and hollow walls", () => {
+    const body = revolveMeridianMesh([
+        { radius: 0, height: 0, surface: "base" },
         {
-            radius: 1, y: 0, surface: "body",
+            radius: 1, height: 0, surface: "body",
             radialWave: { lobes: 6, depth: 0.08 }
         },
-        { radius: 1, y: 1, surface: "top" },
-        { radius: 0, y: 1 }
-    ], 12);
+        { radius: 1, height: 1, surface: "top" },
+        { radius: 0, height: 1 }
+    ], options());
 
-    assert.equal(mesh.vertices.length, 26);
-    assert.equal(mesh.quads.length, 12);
-    assert.equal(mesh.triangles.length, 24);
-    assert.ok(mesh.vertices.some(vertex => vertex.length() < 0.99));
+    assert.equal(body.vertices.length, 26);
+    assert.equal(body.quads.length, 12);
+    assert.equal(body.triangles.length, 24);
+    assert.ok(body.vertices.some(vertex =>
+        vertex.y === 0 && Math.hypot(vertex.x, vertex.z) < 0.99
+    ));
+    assert.equal(topologyOf(geometryResult(body)).openBoundaries().length, 0);
 
-    const geometry = revolveShell([
-        vector(1.1, 0),
-        vector(1.2, 1)
-    ], { thickness: 0.1, radialSegments: 12 });
+    const hollow = revolveMeridianMesh([
+        { radius: 1.1, height: 0, surface: "shell" },
+        { radius: 1.2, height: 1, surface: "shell" },
+        { radius: 1.1, height: 1, surface: "shell" },
+        { radius: 1.0, height: 0, surface: "shell" }
+    ], { ...options(), closedMeridian: true });
 
-    try {
-        const authored = getControlMesh(geometry);
-        assert.ok(authored);
-        assert.ok(authored.quads.length > 0);
-    } finally {
-        geometry.dispose();
-    }
+    assert.equal(hollow.vertices.length, 48);
+    assert.equal(hollow.quads.length, 48);
+    assert.equal(hollow.triangles.length, 0);
+    assert.equal(topologyOf(geometryResult(hollow)).openBoundaries().length, 0);
 });
 
-test("turned vessel retains floor, inner wall, rim and outer regions", () => {
-    const mesh = turnedVessel({
-        outline: [
-            { y: 0, radius: 0.5 },
-            { y: 0.2, radius: 0.55 },
-            { y: 0.5, radius: 0.52 }
-        ],
-        wallThickness: 0.05,
-        floorThickness: 0.08,
-        radialSegments: 12,
-        samplesPerSpan: 2,
-        rolledRim: true,
-        footImpressions: { count: 6, depth: 0.02, height: 0.06 }
-    });
+test("a hollow turned profile retains its floor, interior, lip and exterior", () => {
+    const mesh = revolveMeridianMesh([
+        { radius: 0, height: 0, surface: "base" },
+        {
+            radius: 0.5, height: 0, surface: "outer",
+            radialWave: { lobes: 6, depth: 0.02 }
+        },
+        { radius: 0.55, height: 0.2, surface: "outer" },
+        { radius: 0.52, height: 0.5, surface: "rim" },
+        { radius: 0.495, height: 0.525, surface: "rim" },
+        { radius: 0.47, height: 0.5, surface: "inner" },
+        { radius: 0.5, height: 0.2, surface: "inner" },
+        { radius: 0.45, height: 0.08, surface: "floor" },
+        { radius: 0, height: 0.08 }
+    ], options());
 
     const regions = new Set([
         ...mesh.quads,
-        ...(mesh.triangles ?? [])
+        ...mesh.triangles
     ].map(face => face.surface));
 
     for (const region of ["base", "outer", "rim", "inner", "floor"]) {
         assert.ok(regions.has(region), `Missing region: ${region}`);
     }
-
+    const result = geometryResult(mesh);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
     assert.ok(mesh.vertices.some(vertex =>
         Math.abs(vertex.y) < 1e-8 && Math.hypot(vertex.x, vertex.z) < 0.5
     ));

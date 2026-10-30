@@ -850,8 +850,13 @@ operations, with no live consumers of superseded specialized logic.
       section positions, physical quads, material/smoothing transitions,
       endpoint topology and runtime GLB instead of building a duplicate
       dagger with the compatibility path.
-      Older board and vessel constructors still have test consumers;
-      migrate those before removing their implementations.
+      Unused vessel recipes `turnedVessel`, `latheMeridian`
+      and the render-first `revolveShell` wrapper are removed.
+      Revolution tests directly exercise `revolveMeridianMesh` on
+      closed hollow shells, pole-capped vessels, material regions
+      and radial variation.
+      Older board constructors still have test consumers; migrate
+      those before removing their implementations.
 - [ ] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
       consumers have migrated. Removed `assignMaterialsByNormal`,
