@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import type { GeometryResult } from "../kernel/GeometryResult";
 import { sweepSection as sweepPath } from "../build/sweepSection";
-import { cleanClosedContour } from "../../shapes/operations/cleanClosedContour";
+import { cleanContour2 } from "../topology/contours";
 
 export interface SweepSectionOptions {
     /** Control points of an open Catmull–Rom spine, in metres. */
@@ -51,7 +51,7 @@ export function sweepSectionResult({
         throw new RangeError("Sweep reference axis is zero");
     }
 
-    const unique = cleanClosedContour(section);
+    const unique = cleanContour2(section);
     const tangent = curve.getTangent(0).normalize();
     const u = fixed.clone().addScaledVector(
         tangent, -fixed.dot(tangent)
