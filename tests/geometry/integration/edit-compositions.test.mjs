@@ -1,30 +1,30 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import {GLTFExporter} from "three/addons/exporters/GLTFExporter.js";
+import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 
-import {sourceModule, toolbox} from "../../support/toolbox.mjs";
+import { sourceModule, toolbox } from "../../support/toolbox.mjs";
 
-const {boxMesh} = await toolbox("geometry/construction/boxMesh.ts");
-const {extrudeContour} = await toolbox("geometry/build/extrudeContour.ts");
-const {fillSurfacePatch} = await toolbox("geometry/build/fillSurfacePatch.ts");
-const {geometryResult, assertSelectionOwner} = await toolbox(
+const { boxMesh } = await toolbox("geometry/construction/boxMesh.ts");
+const { extrudeContour } = await toolbox("geometry/build/extrudeContour.ts");
+const { fillSurfacePatch } = await toolbox("geometry/build/fillSurfacePatch.ts");
+const { geometryResult, assertSelectionOwner } = await toolbox(
     "geometry/kernel/GeometryResult.ts"
 );
-const {topologyOf} = await toolbox("geometry/kernel/topology.ts");
-const {openPatch, recessPatch} = await toolbox("geometry/edit/patchOpening.ts");
-const {cutThrough} = await toolbox("geometry/edit/cutThrough.ts");
-const {splitByPlane} = await toolbox("geometry/edit/splitByPlane.ts");
-const {booleanSolids} = await toolbox("geometry/edit/booleanSolids.ts");
-const {reconstructPatchQuads} = await toolbox(
+const { topologyOf } = await toolbox("geometry/kernel/topology.ts");
+const { openPatch, recessPatch } = await toolbox("geometry/edit/patchOpening.ts");
+const { cutThrough } = await toolbox("geometry/edit/cutThrough.ts");
+const { splitByPlane } = await toolbox("geometry/edit/splitByPlane.ts");
+const { booleanSolids } = await toolbox("geometry/edit/booleanSolids.ts");
+const { reconstructPatchQuads } = await toolbox(
     "geometry/edit/reconstructPatchQuads.ts"
 );
-const {surfaceMesh} = await toolbox("geometry/mesh/surfaceMesh.ts");
-const {getControlOutline} = await toolbox("geometry/mesh/controlOutline.ts");
-const {getControlMesh} = await toolbox(
+const { surfaceMesh } = await toolbox("geometry/mesh/surfaceMesh.ts");
+const { getControlOutline } = await toolbox("geometry/mesh/controlOutline.ts");
+const { getControlMesh } = await toolbox(
     "geometry/mesh/toBufferGeometry.ts"
 );
-const {prepareRuntimeModel} = await sourceModule(
+const { prepareRuntimeModel } = await sourceModule(
     "core/export/prepareRuntimeModel.ts"
 );
 
@@ -315,13 +315,13 @@ test("through-bore -> annular plane split -> Boolean trim retains real interior 
     assert.ok(physicalVolume(carved) < physicalVolume(upper));
     assert.ok(uvSeamCount(carved) > 0);
     assert.equal(carved.geometry.quads.length, 0);
-    const {mesh, materials} = render(carved, "BoreTrim");
+    const { mesh, materials } = render(carved, "BoreTrim");
     mesh.geometry.dispose();
     Object.values(materials).forEach(material => material.dispose());
 });
 
 test("curved recess and curved opening preserve exact contour stations and distinct UV regions", () => {
-    const {source, chart, contour} = curvedSurface();
+    const { source, chart, contour } = curvedSurface();
     const original = source.geometry.vertices.map(v => v.clone());
     const opening = openPatch(source, source.patches.crown[0], contour);
     assert.equal(topologyOf(opening).openBoundaries().length, 2);
@@ -387,8 +387,7 @@ test("non-box extrusion -> plane partition -> Boolean -> Quad View and runtime G
     ));
     faceUVsAreFinite(result);
 
-    // Capture an actual model with two dissimilar edited pieces, so this
-    // is the same runtime material/UV boundary exercised by model export.
+    // Compile two independently edited pieces to verify the runtime material/UV boundary.
     const bore = chartedBox();
     const tunneled = cutThrough(bore, {
         entry: {patch: bore.patches.top[0], contour: square(0.32)},
@@ -435,7 +434,7 @@ test("non-box extrusion -> plane partition -> Boolean -> Quad View and runtime G
         runtime.dispose();
         if (previousReader === undefined) delete globalThis.FileReader;
         else globalThis.FileReader = previousReader;
-        for (const {mesh, materials} of pieces) {
+        for (const { mesh, materials } of pieces) {
             mesh.geometry.dispose();
             Object.values(materials).forEach(material =>
                 material.dispose()
