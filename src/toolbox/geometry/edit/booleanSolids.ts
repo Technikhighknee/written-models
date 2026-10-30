@@ -300,13 +300,11 @@ export async function booleanSolids(
     options: BooleanOptions = {}
 ): Promise<GeometryResult> {
     const policy = resolvePrecision(options.precision);
-    const leftSource = first;
-    const rightSource = second;
     if (!["union", "intersection", "difference"].includes(operation)) {
         fail("invalid-input", "Unknown boolean operation");
     }
-    validateSolid(leftSource);
-    validateSolid(rightSource);
+    validateSolid(first);
+    validateSolid(second);
 
     let left: InstanceType<Kernel["Manifold"]> | undefined;
     let right: InstanceType<Kernel["Manifold"]> | undefined;
@@ -317,10 +315,10 @@ export async function booleanSolids(
             region: string; smoothingGroup?: string
         }>();
         left = new wasm.Manifold(inputMesh(
-            leftSource, wasm, regions, "first:"
+            first, wasm, regions, "first:"
         ));
         right = new wasm.Manifold(inputMesh(
-            rightSource, wasm, regions,
+            second, wasm, regions,
             operation === "difference" ? "cut:" : "second:"
         ));
         output = operation === "union"

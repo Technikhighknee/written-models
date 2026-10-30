@@ -63,38 +63,38 @@ export function toBufferGeometry(
     const byMaterial = new Map<number, AuthoredTriangle[]>();
 
     const quantized = mesh.vertices.map(point => new THREE.Vector3(
-            Math.fround(point.x),
-            Math.fround(point.y),
-            Math.fround(point.z)
-        ));
+        Math.fround(point.x),
+        Math.fround(point.y),
+        Math.fround(point.z)
+    ));
 
-        for (const triangle of triangulateAuthoredFaces(mesh)) {
-            const ids = triangle.vertices;
-            const a = mesh.vertices[ids[0]]!;
-            const b = mesh.vertices[ids[1]]!;
-            const c = mesh.vertices[ids[2]]!;
-            const qa = quantized[ids[0]]!;
-            const qb = quantized[ids[1]]!;
-            const qc = quantized[ids[2]]!;
+    for (const triangle of triangulateAuthoredFaces(mesh)) {
+        const ids = triangle.vertices;
+        const a = mesh.vertices[ids[0]]!;
+        const b = mesh.vertices[ids[1]]!;
+        const c = mesh.vertices[ids[2]]!;
+        const qa = quantized[ids[0]]!;
+        const qb = quantized[ids[1]]!;
+        const qc = quantized[ids[2]]!;
 
-            const originalNormal = new THREE.Vector3().subVectors(b, a)
-                .cross(new THREE.Vector3().subVectors(c, a));
-            const outputNormal = new THREE.Vector3().subVectors(qb, qa)
-                .cross(new THREE.Vector3().subVectors(qc, qa));
+        const originalNormal = new THREE.Vector3().subVectors(b, a)
+            .cross(new THREE.Vector3().subVectors(c, a));
+        const outputNormal = new THREE.Vector3().subVectors(qb, qa)
+            .cross(new THREE.Vector3().subVectors(qc, qa));
 
-            if (
-                ![...qa.toArray(), ...qb.toArray(), ...qc.toArray()]
-                    .every(Number.isFinite) ||
-                !(outputNormal.lengthSq() > 0) ||
-                !(originalNormal.dot(outputNormal) > 0)
-            ) {
-                throw new GeometryOperationError(
-                    "toBufferGeometry", "precision-loss",
-                    "Float32 rendering collapses or reverses an authored triangle",
-                    { face: triangle.face }
-                );
-            }
+        if (
+            ![...qa.toArray(), ...qb.toArray(), ...qc.toArray()]
+                .every(Number.isFinite) ||
+            !(outputNormal.lengthSq() > 0) ||
+            !(originalNormal.dot(outputNormal) > 0)
+        ) {
+            throw new GeometryOperationError(
+                "toBufferGeometry", "precision-loss",
+                "Float32 rendering collapses or reverses an authored triangle",
+                { face: triangle.face }
+            );
         }
+    }
     const smoothNormals = new Map<string, Map<number, THREE.Vector3>>();
 
     for (const face of [...mesh.quads, ...(mesh.triangles ?? [])]) {

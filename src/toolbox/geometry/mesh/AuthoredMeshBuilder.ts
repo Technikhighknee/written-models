@@ -21,7 +21,7 @@ export class AuthoredMeshBuilder {
         if (!Number.isFinite(resolution) || resolution <= 0) {
             throw new RangeError("Invalid construction vertex resolution");
         }
-        if (options.weld !== "none" && options.weld !== "position") {
+        if (!options || (options.weld !== "none" && options.weld !== "position")) {
             throw new RangeError("Expected an explicit vertex welding policy");
         }
         this.weldResolution = resolution;

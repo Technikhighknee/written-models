@@ -4,7 +4,7 @@ import { loftBoard } from "../../toolbox/geometry/construction/loftBoard";
 import {
     geometryResult, type GeometryResult
 } from "../../toolbox/geometry/kernel/GeometryResult";
-import { adaptiveStations } from "../../toolbox/geometry/topology/adaptiveStations";
+import { sampleAdaptiveStations } from "../../toolbox/geometry/topology/adaptiveStations";
 import { weightedCuts } from "../../toolbox/spatial/layout/weightedCuts";
 import { seededVariation } from "../../toolbox/spatial/layout/seededVariation";
 
@@ -176,7 +176,7 @@ export function boardedSurface({
 
         const hasWear = [...startCorners, ...endCorners]
             .some(value => value > 0);
-        const stations = adaptiveStations(
+        const stations = sampleAdaptiveStations(
             progress => {
                 const section = sectionAt(progress);
                 return [...section.outer, ...section.inner];
@@ -188,7 +188,7 @@ export function boardedSurface({
                     knots: [cornerExtent, 1 - cornerExtent]
                 } : {})
             }
-        );
+        ).stations;
 
         return { sectionAt, stations };
     });
