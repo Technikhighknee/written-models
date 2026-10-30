@@ -135,33 +135,54 @@ When cleaning up existing tests:
 3. Review large suites case by case. Preserve meaningful edge cases;
    cut repetitive permutations.
 4. Give survivors useful names and straightforward fixtures.
-5. Push the cleanup and inspect the GitHub Actions Verify result for
-   the remaining tests, typecheck and build. Investigate CI failures
-   before treating the cleanup as verified.
+5. Verify the remaining tests, typecheck and build. Run them locally
+   when a working checkout is available, then inspect the GitHub Actions
+   results. Investigate failures before calling the cleanup verified.
 
 There's no deletion quota. The result should be less work to maintain
 without losing protection against the failures that matter.
 
-## CI is the test runner
+## Run tests in the environment you've got
 
-The repository's verification runs in GitHub Actions, defined in
-`.github/workflows/verify.yml`. Pushes to `main`, pull requests and
-manual workflow dispatch trigger the Verify job. With Node 22, the job
-installs dependencies via `npm ci`, then executes `npm run typecheck`,
-`npm test` and `npm run build`.
+### Local checkout
 
-Changes made through the GitHub integration cannot be locally verified
-against the repository's installed dependencies. The CI job's completed
-result and logs are the evidence: inspect failures, correct their cause,
-push the fix and verify the next run. A commit is not considered tested
-merely because it was written or pushed.
+If you have the repository and a working Node.js environment, run the
+checks yourself. Install dependencies with `npm ci` after checkout,
+then use the commands relevant to your change:
 
-The separate `.github/workflows/temporary.yml` workflow handles
-`tests/temporary/**/*.check.mjs` on pushes, pull requests and manual
-dispatch. It checks for files before installing dependencies; an empty
-directory results in no temporary test execution. No workflow edits are
-needed when adding or removing a temporary check.
+```sh
+npm run typecheck
+npm test
+npm run build
+```
 
-Review visual assets visually and in the target engine when needed.
+Focused checks can run with `node --test path/to/file.test.mjs`.
+Temporary `*.check.mjs` files can also be run explicitly. Fix problems
+before pushing whenever possible. GitHub Actions provides another check
+on the committed result.
+
+### ChatGPT using the GitHub Connector
+
+When working through the GitHub Connector without a local checkout,
+there's no pretending `npm test` ran somewhere it didn't. Commit the
+change, inspect the completed GitHub Actions run and its logs, then
+fix and push again if something failed.
+
+**A pushed commit is not a tested commit.** Report the CI result only
+after the workflow has actually finished.
+
+### GitHub Actions
+
+`.github/workflows/verify.yml` runs on pushes to `main`, pull requests
+and manual dispatch. It uses Node 22, installs dependencies with
+`npm ci`, then runs typecheck, the regular test suite and the build.
+
+`.github/workflows/temporary.yml` separately discovers
+`tests/temporary/**/*.check.mjs`. When checks exist, CI runs them.
+When the folder is empty, it skips installation and test execution.
+Nobody needs to edit a workflow just to add a temporary check.
+
+Review visual assets in the viewer and target engine when needed.
+A passing CI job cannot judge whether a model actually looks right.
 
 **Tests are here to protect the work. The work is not here to feed the tests.**
