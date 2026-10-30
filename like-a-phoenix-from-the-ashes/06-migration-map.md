@@ -1,5 +1,12 @@
 # 06 — Migration Map
 
+This document maps the original repository into the Phoenix architecture.
+It records *source-to-destination responsibilities*, not a final file list.
+The completed implementation removes the original `loftBoard`, `cutBoard`,
+`seamedPlankExtrusion` and `bandAroundProfile` constructors; the last
+model consumers compose general geometry operations instead. See
+[14](14-toolbox-audit.md) for the file-by-file reconciliation.
+
 The target is a set of shared geometric operations with consistent
 authored geometry results. This document assigns destinations to
 existing toolbox functions and maps each model to the shared paths.

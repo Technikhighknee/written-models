@@ -10,7 +10,7 @@ Start with `src/toolbox/geometry/kernel/index.ts` for the shared geometry-operat
 
 | Need | Look at |
 | --- | --- |
-| Construct a box, cylinder or authored board | `construction/boxMesh.ts`, `cylinderMesh.ts`, `loftBoard.ts` |
+| Construct a box, cylinder or authored board | `construction/boxMesh.ts`, `cylinderMesh.ts`, `build/loftPairedSurfaceRows.ts` |
 | Extrude, loft, sweep or revolve | `build/extrudeContour.ts`, `loftSectionWalls.ts`, `sweepSection.ts`, `revolveProfile.ts` |
 | Make profiles agree across adjoining pieces | `sampleAdaptiveStations`, `sampleProfile`, `partitionContour`, `samplePartition`, `correspondContours` |
 | Close, bridge or weld boundaries | `capBoundary`, `capSectionEnd`, `bridgeBoundaries`, `joinGeometry` |
@@ -35,13 +35,13 @@ This is the simple pattern for **construction → owned result → materialized 
 
 ### Hand-worked boards: `src/models/components/boardedSurface.ts`
 
-The board recipe generates individual cross-sections, samples each with `sampleAdaptiveStations()`, combines station positions **before** authoring neighboring strips, and then uses `loftBoard()` plus `geometryResult()`.
+The board recipe generates individual cross-sections, samples each with `sampleAdaptiveStations()`, combines station positions **before** authoring neighboring strips, and then uses `loftPairedSurfaceRows()` plus `geometryResult()`.
 
-Here `loftBoard()` is a reusable constructor returning `MeshData`; `geometryResult()` creates the owned output. The variations and wear patterns belong in the model composition. The shared stations protect real seams, not just the rendered appearance.
+Here `loftPairedSurfaceRows()` is a reusable constructor returning `MeshData`; `geometryResult()` creates the owned output. The variations and wear patterns belong in the model composition. The shared stations protect real seams, not just the rendered appearance.
 
 ### A curved vessel and fillable contents: `src/models/beerMug.ts`
 
-`cooperedStaves()` composes `samplePolarStripSections()` with `loftBoard()` and owned results. The tankard model assembles staves, fitted handle, bottom and metal bands; it does not require a dedicated *tankard* operation in the toolbox.
+`cooperedStaves()` composes `samplePolarStripSections()` with `loftPairedSurfaceRows()` and owned results. The tankard model assembles staves, fitted handle, bottom and metal bands; it does not require a dedicated *tankard* operation in the toolbox.
 
 `buildTankardServingCavity()` then passes **the actual inner stave faces** to `cavitySectionsFromSurfaces()`. `ProfiledCavity` converts those rings into a measurable volume and `createFillableVolume()` creates the movable contents.
 

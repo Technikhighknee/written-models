@@ -1266,7 +1266,7 @@ selection without a renderer dependency.
 ```ts
 surfaceMesh(options: {
   name: string;
-  geometry: MeshData | GeometryResult;
+  geometry: GeometryResult;
   materials: THREE.Material | Readonly<Record<string, THREE.Material>>;
   capMaterial?: THREE.Material;
   tint?: THREE.ColorRepresentation; // materials must enable vertexColors
@@ -1324,8 +1324,7 @@ The child-in-parent transform is
 Mating rotation is explicit. The attachment operation applies the
 result to the scene object and checks for hierarchy cycles.
 
-`attachAtFrames` is the only scene attachment equation. Existing
-`attachByFrames` delegates with identity mating; `attachByAnchors`
+`attachAtFrames` is the only scene attachment equation. `attachByAnchors`
 converts its nested source anchor to the child's local frame and
 delegates with an explicit half-turn mating rotation. New
 `frameFromAncestor`, `frameToWorld` and `frameToLocal` convert

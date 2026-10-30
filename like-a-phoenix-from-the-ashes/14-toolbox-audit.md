@@ -7,7 +7,7 @@ Stand: 30.10.2026. Ausgangsbasis: `main` @ `d18b2241fe4533bc71ffa90e1c544aa644f8
 - **BEHALTEN** = Die Implementierung hat eine konkret benennbare, im Phoenix-Plan vorgesehene eigene Verantwortung. Dies ist eine Prüfung der Quelltexte, Importbeziehungen und der Architekturzuordnung, **kein Beweis vollständiger Laufzeitkorrektheit**.
 - **BEREINIGT** = Die Datei bleibt; ein nachweislich ersetzter zweiter Algorithmus wurde daraus entfernt.
 - **ENTFERNT** = Aus der Ausgangsbasis tatsächlich entfernt, nachdem die aktuelle Quelltext-/Test-Verbraucherprüfung keinen benötigten Gebrauch zeigte und eine Phoenix-Operation denselben Aufgabenbereich bedient.
-- **OFFEN** = Die Dateiexistenz ist erklärbar, aber ihre Einordnung als geometrische Toolbox-Fähigkeit oder modellgebundenes Rezept widerspricht teilweise den Grundsätzen in 06/13. Nicht stillschweigend als vollständig migriert oder als sicher löschbar verbuchen.
+- **OFFEN** = Die Einordnung einer Ausgangsdatei war zum Inventurzeitpunkt ungeklärt; diese vier Entscheidungen sind inzwischen getroffen und in der Ausgangsmatrix als **ENTFERNT** ausgewiesen.
 
 Geprüfte Quellen: alle 13 Phoenix-Dokumente plus README, `docs/ARCHITECTURE.md`, die 105 Toolbox-TypeScript-Dateien, sämtliche 29 weiteren TypeScript-Dateien in `src/` und die 49 Test-/Support-MJS-Dateien auf explizite Verbraucher der bereinigten APIs. Die Dateimatrix erfasst Funktionen und Verantwortlichkeiten; sie ersetzt keinen Godot-/GLB-Sichttest und keinen ausführbaren Typecheck. Diese wurden im Rahmen **dieses** Audits nicht ausgeführt.
 
@@ -17,14 +17,14 @@ Geprüfte Quellen: alle 13 Phoenix-Dokumente plus README, `docs/ARCHITECTURE.md`
 2. `geometry/uv/boxUVsInMeters.ts` änderte `THREE.BoxGeometry`-UV-Attribute direkt und wurde im aktiven `src/` nicht importiert. Das ist nicht die authored-UV-Pipeline. `boxMesh` liefert physikalische UVs aus authored Quads, `projectAuthoredUvs` die allgemeine UV-Projektion. Das renderseitige Altmodul wurde entfernt. Die Aussage in 06 („keep general physical UV projection“) bleibt damit **funktional**, nicht dateinamentreu, erfüllt.
 3. `geometry/construction/profiledCavity.ts::cavityFromMeshSurfaces` rekonstruierte Ringe noch einmal über quantisierte Punkt-/Kanten-Maps. Kein aktiver Quell- oder Testverbraucher wurde gefunden. `queries/cavitySectionsFromSurfaces` ist der neue spezifizierte Extraktionspfad; `ProfiledCavity` bleibt für Querschnitts-/Volumeninterpolation erhalten. Nur die veraltete Zweitextraktion wurde entfernt.
 
-## Echte, noch offene Architekturrechnungen
+## Abgearbeitete Architekturgrenzen
 
-| Pfad | Plan / Ist | Abschlussentscheidung noch nötig |
+| Pfad | Ersatz / getroffene Architekturentscheidung | Konsequenz |
 | --- | --- | --- |
-| `geometry/construction/loftBoard.ts` | 06 fordert allgemeine Boundary-Bridge; 07.1 bezeichnet `loftBoard` ausdrücklich als behalten. Ist benutzt allgemeinen Quad-Loft und Polyline-Stitching, exponiert aber `BoardSection` und feste Brettoberflächen. | Eigenständige generische Operation oder Brettrezept nach `models/components` verlagern? Ohne Vergleich aller Quads/UVs/Nahtkanten nicht löschen. |
-| `geometry/construction/cutBoard.ts` | Ist wandelt Brett-Zapfenausschnitte in `layeredGridSolid` um. 06 will allgemeine Patch-/Through-Cut-Operationen; 07.1 bewahrt den Wrapper trotzdem auf. | Modellrezept oder geometrischer Endnutzer-API-Vertrag? Funktionale Doppelung zu `cutThrough` ist nicht bewiesen, ihr spezifischer Zuschnitt bleibt offen. |
-| `geometry/construction/seamedPlankExtrusion.ts` | 07.1 gestattet `seamedPlankExtrusionData` ausdrücklich, 06/13 fordern jedoch Extraktion gemeinsamer Seams/Reliefs. Ist eine umfangreiche Holzoberflächen-/Naht-Konstruktion, kein GPU-Adapter. | Welche Teile gehören wirklich in allgemeine Seams/Relief-Operationen und welche in `cooperedHead`? Die Datei nicht allein wegen des Namens entfernen. |
-| `geometry/construction/bandAroundProfile.ts` | 07.2 behält `bandAroundProfileData`; Ist baut eigenständige komplette radial geführte Band-Quads, obwohl allgemeine Sweep- und Clearance-Operationen existieren. | Geometrisch erforderliche Unterschiede gegenüber `sweepSection` explizit beweisen oder als Komposition auf gemeinsamen Kern reduzieren. |
+| `geometry/construction/loftBoard.ts` | `build/loftPairedSurfaceRows.ts` verbindet unabhängige Zeilen über `loftSideQuads` und generisches `bridgeBoundaries`. | Alte API und privater Cap-Stitcher entfernt; dieselbe Operation dient Brett, Stuhl und Fassdaube. |
+| `geometry/construction/cutBoard.ts` | Stuhl erstellt seine eigenen Zell-/Zapfenanordnungen aus `layeredGridSolid`. | Kein Brett-Zapfenalgorithmus mehr in der allgemeinen Toolbox. |
+| `geometry/construction/seamedPlankExtrusion.ts` | `cooperedHead` kombiniert jetzt Konturpartition und `extrudeContour`. | Alter unabhängiger Meshgenerator entfernt; bisherige Reliefdetails nicht mit einem zweiten Algorithmus gerettet. |
+| `geometry/construction/bandAroundProfile.ts` | `models/components/forgedBand.ts` wählt Eisenprofil und Clearance und nutzt `build/sweepSection`. | Kein eigenes Bandmeshing in der Toolbox mehr. |
 
 ### Abgegrenzte ähnliche Namen (keine erwiesene Doppelimplementierung)
 
@@ -45,6 +45,8 @@ Geprüfte Quellen: alle 13 Phoenix-Dokumente plus README, `docs/ARCHITECTURE.md`
 6. 13 plant die Phoenix-Dokumente als temporär ein. Bis die vier offenen Codeentscheidungen geklärt sind, ist die Planungsbasis und dieser Auditbeleg absichtlich erhalten.
 
 ## Vollständige Ausgangsmatrix — 105 / 105
+
+Neuer generischer Bestandteil: `geometry/build/loftPairedSurfaceRows.ts` (für die aktuelle Datei-Inventur zusätzlich zu den 105 Ursprungsdateien).
 
 ### `geometry/build/` (22)
 
@@ -77,15 +79,15 @@ Geprüfte Quellen: alle 13 Phoenix-Dokumente plus README, `docs/ARCHITECTURE.md`
 
 | Datei | Urteil | Tatsächliche Aufgabe / Phoenix-Zuordnung |
 | --- | --- | --- |
-| `bandAroundProfile.ts` | **OFFEN** | Profilfolgende Bänder mit Clearance; spezialisiertes vollständiges Sweep-Rezept |
+| `bandAroundProfile.ts` | **ENTFERNT** | Profilfolgende Bänder mit Clearance; spezialisiertes vollständiges Sweep-Rezept |
 | `boxMesh.ts` | **BEHALTEN** | Authored Box-Quads samt UVs statt BoxGeometry-Rückkonvertierung |
-| `cutBoard.ts` | **OFFEN** | Brett-/Zapfenausschnitt-Rezept über layeredGridSolid |
+| `cutBoard.ts` | **ENTFERNT** | Brett-/Zapfenausschnitt-Rezept über layeredGridSolid |
 | `cylinderMesh.ts` | **BEHALTEN** | Authored Zylinder mit Seiten-Quads und Kappentriangeln |
 | `fillableVolume.ts` | **BEHALTEN** | GLB-Morphcontroller für volumenrichtige Füllstände |
-| `loftBoard.ts` | **OFFEN** | Detaillierte und einfache Flächenreihen mit gemischten Kappen |
+| `loftBoard.ts` | **ENTFERNT** | Detaillierte und einfache Flächenreihen mit gemischten Kappen |
 | `profiledCavity.ts` | **BEREINIGT** | Profilinterpolation und exakte Volumenberechnung; alte Mesh-Extraktion entfernt |
 | `profiledSolid.ts` | **BEHALTEN** | Profilspannen über axialProfileSolid zusammensetzen |
-| `seamedPlankExtrusion.ts` | **OFFEN** | Holz-/Nahtrelief-Algorithmus mit gemeinsamer Längsabnahme |
+| `seamedPlankExtrusion.ts` | **ENTFERNT** | Holz-/Nahtrelief-Algorithmus mit gemeinsamer Längsabnahme |
 | `sectionsBetweenPlanes.ts` | **BEHALTEN** | Profilenden an zwei tatsächlichen Ebenen schneiden |
 | `sweepSection.ts` | **BEHALTEN** | Catmull-Rom-Sweep als Komposition des allgemeinen Sweeps |
 
@@ -253,6 +255,6 @@ Geprüfte Quellen: alle 13 Phoenix-Dokumente plus README, `docs/ARCHITECTURE.md`
 
 ## Abschlussbedingungen und Stand
 
-Die drei erkannten Altpfade wurden gezielt entfernt; kein Quell- oder Testverbraucher dieser API-Namen wurde im geprüften Bestand gefunden. **Die Migration ist nicht abschließend freigegeben.** Vier spezialisierte Konstruktionsdateien brauchen die oben bezeichneten kontraktbasierten Architekturentscheidungen, die veralteten 06/09-Vertragstexte einen Soll-Ist-Abgleich und die tatsächliche Ausführung von Typecheck/Tests/GLB nach den Änderungen ist hier nicht nachgewiesen.
+Die sechs aus dem Ausgangsbestand entfernten Spezial-/Altpfade besitzen keine Quell- oder Testverbraucher mehr. Hinzugekommen ist die generische Operation `geometry/build/loftPairedSurfaceRows.ts`: aus 105 Ausgangsdateien wurden 100 aktuelle Toolbox-TypeScript-Dateien. Die vier zunächst ungeklärten Spezialkonstruktionen sind architektonisch entschieden. Typecheck, Tests und Build werden über den Verify-Workflow geprüft. Eine erneute Sichtabnahme im Zielrenderer ist durch diese Quellmigration nicht behauptet.
 
-Das Audit ist eine vollständige **Datei-Inventur mit begründeter Zuständigkeit**, kein Beweis, dass jede geometrische Randbedingung in allen 105 Implementierungen korrekt ist. Neue Entscheidungen müssen anhand konkreter Querschnitts-, Topologie-, UV- und Verbraucherbefunde getroffen werden. Ohne diesen Nachweis weder „Phoenix fertig“ behaupten noch zusätzliche Dateien blind löschen.
+Das Audit ist eine vollständige **Datei-Inventur mit begründeter Zuständigkeit**, kein Beweis, dass jede geometrische Randbedingung in allen 105 Implementierungen korrekt ist. Neue Entscheidungen müssen anhand konkreter Querschnitts-, Topologie-, UV- und Verbraucherbefunde getroffen werden. Ein sichtbares Qualitätsurteil über die geänderten Modelle erfordert eine neue Abnahme; das Vorhandensein alter APIs ist dagegen kein akzeptierter Grund, ihre Implementation zu behalten.

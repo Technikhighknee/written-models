@@ -6,7 +6,7 @@ The toolbox contains reusable, deliberately authored 3D construction capabilitie
 
 ## What already exists
 
-- **Forms and structures:** `extrudeContour`, `loftSectionWalls`, `sweepSection` and `revolveProfile` build solid, curved or hollow geometry with actual surfaces. `capSectionEnd` and `capBoundary` finish open ends.
+- **Forms and structures:** `extrudeContour`, `loftSectionWalls`, `loftPairedSurfaceRows`, `sweepSection` and `revolveProfile` build solid, curved or hollow geometry with actual surfaces. `capSectionEnd` and `capBoundary` finish open ends.
 - **Shared construction boundaries:** `sampleProfile`, `partitionContour`, `samplePartition`, `correspondContours`, `bridgeBoundaries` and `joinGeometry` construct and connect individually authored pieces without silently inventing vertices at their interfaces.
 - **Local surface editing:** `openPatch`, `recessPatch`, `cutThrough` and `shapeSurfaceRelief` create real holes, pockets, straight through-bores and relief on supported charted patches.
 - **Solid and edge editing:** `clipContour`, `splitByPlane`, `booleanSolids`, `subdivideEdges` and `bevelEdges` make actual topology changes. `reconstructPatchQuads` can recover *real* quads from compatible triangulated patches.

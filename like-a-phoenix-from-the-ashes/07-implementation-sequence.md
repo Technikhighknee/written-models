@@ -827,93 +827,35 @@ and failure conditions are enforced.
 **Result:** The toolbox has one discoverable family of geometry
 operations, with no live consumers of superseded specialized logic.
 
-- [x] **7.1** Remove replaced board, stave, timber, vessel,
-      cap/loft, topology-query and attachment algorithms.
-      First cleanup removed unused fitting adapters
-      (`fitBetweenSupports`, `fitBoundaryToSurface`,
-      `supportFacePlane`), the stale `profiledMesh` wrapper and
-      the unused rectangle-specific corner-mount generator.
-      Fitted timbers in the table/trestle assembly now construct both
-      plane-cut and surface-fitted ends through the same authored
-      `loftSectionWalls` and `capBoundary` path, without the model's
-      earlier `beamBetweenPlanes`/`loftSections` dependency.
-      The superseded render-first `beams.ts`, `beamBetweenPlanes.ts`
-      and `timber.ts` have no remaining model consumers and were
-      removed. Fitted member normals now have a neutral geometry
-      definition rather than depending on a rendering constructor.
-      The `radialStaves` and `radialStripLayout` compatibility
-      constructors are removed. Barrel/tankard and clearance tests now
-      inspect the actual `cooperedStaves` results and their authored
-      surfaces instead of comparing against superseded stave geometry.
-      Chord clearance and polar points remain general build operations.
-      The rectangle-only `loftSections` adapter is removed; its tests
-      now use `loftSectionWalls` and `capBoundary` directly. Plank
-      integrations validate authored stations, topology, UVs and export
-      without a second copy of the obsolete constructor.
-      The unused `loftRings` and `loftAxialProfile` wrappers are
-      removed as well. Dagger regression checks now validate sampled
-      section positions, physical quads, material/smoothing transitions,
-      endpoint topology and runtime GLB instead of building a duplicate
-      dagger with the compatibility path.
-      Unused vessel recipes `turnedVessel`, `latheMeridian`
-      and the render-first `revolveShell` wrapper are removed.
-      Revolution tests directly exercise `revolveMeridianMesh` on
-      closed hollow shells, pole-capped vessels, material regions
-      and radial variation.
-      The superseded `boardPanel` and `straightBoard`
-      constructors are removed. Table, bench and chair tests now
-      assert closed real quads, aligned section stations, surface UVs
-      and nonoverlapping seams on the actual model results.
-      The chair crest now samples its model-owned silhouette through
-      `sampleAdaptiveStations` and constructs its closed quads through
-      `loftBoard`, preserving its end wear, cross-section crown and
-      materials. The no-longer-used `profiledBoard` constructor is removed.
-      The render-first `circularPlankPanel` and the
-      `seamedPlankExtrusion` GPU adapter (including its render-object
-      station cache) are removed. Barrel head regression tests now
-      inspect the real `cooperedHead` geometry: watertight
-      independent planks, circular outline, UVs and worn seam regions.
-      The general authored `seamedPlankExtrusionData` remains.
-      The pure forwarding `attachByFrames` helper is removed; tests
-      now use `attachAtFrames` directly. Named-anchor attachment
-      remains supported through `attachByAnchors` because it applies
-      its own contact-frame relationship.
-      The render-dependent `MeshSurfaceQuery` is retired; geometric
-      fitting and surface hits use the authored-face
-      `raycastSurface` / `surfaceTriangles` path instead.
-      Retained constructors supply distinct authored capabilities:
-      `loftBoard` handles independently sampled face rows,
-      `cutBoard` preserves sloped through-housings,
-      `seamedPlankExtrusionData` handles worked joinery,
-      `sweepSectionResult` defines smooth fitted grips, and
-      `fillableVolume` preserves the tankard's active fill morph.
-      These are compositions, not competing geometric kernels.
-- [x] **7.2** Remove duplicate render material classification
-      paths, stale exports and compatibility adapters once their
-      consumers have migrated. Removed `assignMaterialsByNormal`,
-      `classifyExtrudedSurfaces`, `assignExtrudedTimberSurfaces`
-      and the GPU-mutating `warpGeometry`. The authored
-      `classifyAuthoredFaces`, `deformVertices`, `surfaceMesh`
-      and `toBufferGeometry` paths remain. Remaining construction
-      helpers have distinct model or geometric responsibilities.
-      The `bandAroundProfile` GPU wrapper was removed; its authored
-      `bandAroundProfileData` geometry remains in use by the barrel
-      and tankard. Tests compile those authored faces using
-      `toBufferGeometry` and verify the tankard bands' actual section,
-      clearance, regions and UVs.
-      The mutating `geometry/uv/offsetMeshUvs` adapter is removed:
-      authored UV offsets go through the non-mutating
-      `geometry/edit/geometryEdits` operation. The old MeshData-only
-      `sweepSection` compatibility export is also removed in favor
-      of `sweepSectionResult`, which retains owned selections.
-      The obsolete render-first `shapes/operations/extrude` path
-      is retired. Its shared extrusion capability remains in
-      `extrudeContour`, including polygon loops, holes, offset
-      layers and authored caps; callers export with the normal
-      `surfaceMesh` / `toBufferGeometry` pipeline.
-      The remaining model paths produce authored MeshData or
-      GeometryResult before material and runtime conversion; no
-      render-first duplicate is required by those models.
+- [x] **7.1** Remove superseded specialized geometry paths.
+      No board, timber, stave, vessel, cap/loft or render-first
+      compatibility constructor remains solely to preserve the earlier
+      toolbox API. `cutBoard` is now a chair-owned composition of
+      `layeredGridSolid`. `loftBoard` was replaced by the
+      geometry-wide `loftPairedSurfaceRows`, whose caps are produced
+      by the shared `bridgeBoundaries` operation, not another cap
+      triangulation algorithm. The barrel head composes
+      `partitionConvexPolygon`, `weightedCuts` and
+      `extrudeContour` rather than retaining the independent
+      `seamedPlankExtrusionData` geometry implementation.
+      The cooper's hoop and mug bands compose the general
+      `sweepSection` operation in `models/components/forgedBand.ts`,
+      replacing `bandAroundProfileData`.
+      Model detail lost through this replacement is explicitly NOT
+      recreated by a compatibility shim. Any future detail must be
+      authored through the general geometry operations.
+
+- [x] **7.2** Keep exactly one authored geometry-to-render path and
+      remove obsolete adapters. Faces, region classification, authored
+      UVs, lofting, bridges and cavities are resolved in the generic
+      geometry layers before rendering or export.
+      `cleanClosedContour` was removed in favor of `cleanContour2`;
+      `boxUVsInMeters` was removed in favor of authored UV
+      projection and `boxMesh` UVs. The old cavity-extraction routine
+      in `profiledCavity` was removed in favor of
+      `cavitySectionsFromSurfaces`. Nothing in the active source or
+      tests imports these retired APIs.
+
 - [x] **7.3** Keep imports following the module dependency
       direction in [06](06-migration-map.md).
       The shared `ellipticalRing` sampler and axial profile types
