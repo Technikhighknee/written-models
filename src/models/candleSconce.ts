@@ -103,6 +103,10 @@ export function buildSconceGeometry() {
     );
 
     const cupCenter = armAt(1);
+    const endRing = arm.boundaries["end-outer"]![0]!;
+    const radial = arm.geometry.vertices[endRing.vertices[0]!]!
+        .clone().sub(cupCenter).normalize();
+
     const cup = revolveProfile({
         closed: false,
         points: [
@@ -122,8 +126,8 @@ export function buildSconceGeometry() {
         ]
     }, {
         axisOrigin: cupCenter,
-        axisDirection: new THREE.Vector3(0, 1, 0),
-        radialDirection: new THREE.Vector3(1, 0, 0),
+        axisDirection: armTangent(1),
+        radialDirection: radial,
         angle: 2 * Math.PI,
         segments: 24,
         surfaceAt: ({ meridianInterval }) =>
