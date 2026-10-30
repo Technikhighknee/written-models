@@ -62,9 +62,14 @@ function create(): THREE.Group {
         roughness: 1
     });
 
+    const authored = buildSandingPaperGeometry();
+    const minimumY = Math.min(
+        ...authored.geometry.vertices.map(vertex => vertex.y)
+    );
+
     const paper = surfaceMesh({
         name: "Paper",
-        geometry: buildSandingPaperGeometry(),
+        geometry: authored,
         materials: {
             px: backing,
             nx: backing,
@@ -75,9 +80,8 @@ function create(): THREE.Group {
         }
     });
 
-    // Position from the deformed geometry's actual minimum, not an
-    // undeformed box or an assumed fold height.
-    paper.position.y = mm(1) - paper.geometry.boundingBox!.min.y;
+    // Ground the authored deformation before rendering.
+    paper.position.y = mm(1) - minimumY;
     sandingpaper.add(paper);
 
     return sandingpaper;
