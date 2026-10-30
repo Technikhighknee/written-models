@@ -135,54 +135,9 @@ When cleaning up existing tests:
 3. Review large suites case by case. Preserve meaningful edge cases;
    cut repetitive permutations.
 4. Give survivors useful names and straightforward fixtures.
-5. Verify the remaining tests, typecheck and build. Run them locally
-   when a working checkout is available, then inspect the GitHub Actions
-   results. Investigate failures before calling the cleanup verified.
+5. Keep the surviving tests focused, reliable and worth their cost.
 
 There's no deletion quota. The result should be less work to maintain
 without losing protection against the failures that matter.
-
-## Run tests in the environment you've got
-
-### Local checkout
-
-If you have the repository and a working Node.js environment, run the
-checks yourself. Install dependencies with `npm ci` after checkout,
-then use the commands relevant to your change:
-
-```sh
-npm run typecheck
-npm test
-npm run build
-```
-
-Focused checks can run with `node --test path/to/file.test.mjs`.
-Temporary `*.check.mjs` files can also be run explicitly. Fix problems
-before pushing whenever possible. GitHub Actions provides another check
-on the committed result.
-
-### ChatGPT using the GitHub Connector
-
-When working through the GitHub Connector without a local checkout,
-there's no pretending `npm test` ran somewhere it didn't. Commit the
-change, inspect the completed GitHub Actions run and its logs, then
-fix and push again if something failed.
-
-**A pushed commit is not a tested commit.** Report the CI result only
-after the workflow has actually finished.
-
-### GitHub Actions
-
-`.github/workflows/verify.yml` runs on pushes to `main`, pull requests
-and manual dispatch. It uses Node 22, installs dependencies with
-`npm ci`, then runs typecheck, the regular test suite and the build.
-
-`.github/workflows/temporary.yml` separately discovers
-`tests/temporary/**/*.check.mjs`. When checks exist, CI runs them.
-When the folder is empty, it skips installation and test execution.
-Nobody needs to edit a workflow just to add a temporary check.
-
-Review visual assets in the viewer and target engine when needed.
-A passing CI job cannot judge whether a model actually looks right.
 
 **Tests are here to protect the work. The work is not here to feed the tests.**
