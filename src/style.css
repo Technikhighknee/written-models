@@ -425,3 +425,122 @@ button:disabled {
     margin-bottom: 6px;
   }
 }
+
+/* Catalog navigation */
+
+.catalog-page .page-header { margin-bottom: 30px; }
+
+.catalog-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 22px;
+}
+
+.catalog-header .muted,
+.catalog-page .page-header > .muted {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.catalog-action {
+  flex-shrink: 0;
+  padding: 10px 0;
+  color: #a9c9ef;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.catalog-action:hover { text-decoration: underline; }
+
+.category-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.category-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 200px;
+  padding: 23px;
+  border: 1px solid #353e49;
+  border-radius: 12px;
+  background: #222831;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.category-card:hover {
+  border-color: #8099b8;
+  background: #2a323d;
+}
+
+.category-card-top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.category-icon {
+  display: grid;
+  width: 43px;
+  height: 43px;
+  place-items: center;
+  border: 1px solid #46556a;
+  border-radius: 10px;
+  color: #bfd6f2;
+  background: #303d4d;
+}
+
+.category-icon svg { width: 24px; height: 24px; }
+
+.category-arrow { color: #91a3b9; font-size: 1.1rem; }
+
+.category-card-title { font-size: 1.17rem; font-weight: 650; }
+
+.category-card-description {
+  color: #9aa5b2;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.category-card-count {
+  margin-top: auto;
+  padding-top: 8px;
+  color: #a9c9ef;
+  font-size: 0.79rem;
+  font-weight: 600;
+}
+
+.catalog-title-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.catalog-title-line h1 { margin: 0 0 10px; }
+
+.catalog-count { color: #9aa5b2; font-size: 0.82rem; }
+
+.catalog-page .back-link {
+  display: inline-block;
+  font-size: 0.86rem;
+}
+
+.category-card:focus-visible,
+.model-card:focus-visible,
+.catalog-action:focus-visible,
+.back-link:focus-visible {
+  outline: 2px solid #b5d2f5;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  .catalog-header { align-items: start; flex-direction: column; gap: 8px; }
+  .category-list { grid-template-columns: 1fr; }
+  .category-card { min-height: 170px; }
+}

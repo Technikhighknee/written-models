@@ -17,7 +17,8 @@ export default {
     create,
     slug: "tavern-chair",
     title: "Oak Tavern Chair",
-    description: "A pegged oak frame chair with a boarded seat and a raked, panelled back."
+    description: "A pegged oak frame chair with a boarded seat and a raked, panelled back.",
+    category: "furniture" as const
 };
 
 function create(): THREE.Group {

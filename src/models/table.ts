@@ -41,7 +41,8 @@ export default {
     create,
     slug: "table",
     title: "Tavern Trestle Table",
-    description: "A broad oak board resting on two braced trestles."
+    description: "A broad oak board resting on two braced trestles.",
+    category: "furniture" as const
 };
 
 function create(): THREE.Group {

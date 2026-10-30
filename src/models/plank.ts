@@ -11,7 +11,8 @@ export default {
     create,
     slug: "plank",
     title: "Wooden Plank",
-    description: "A humble piece of wood."
+    description: "A humble piece of wood.",
+    category: "materials" as const
 };
 
 const LENGTH = m(1.2);

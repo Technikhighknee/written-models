@@ -19,6 +19,7 @@ export default {
     slug: "barrel",
     title: "Wooden Barrel",
     description: "A barrel of possibilities.",
+    category: "vessels" as const
 };
 
 function create(): THREE.Group {

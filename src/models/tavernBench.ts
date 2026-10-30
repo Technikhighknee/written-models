@@ -16,7 +16,8 @@ export default {
     create,
     slug: "tavern-bench",
     title: "Oak Tavern Bench",
-    description: "A long, hand-planed oak form with paired braced trestles and a pegged stretcher."
+    description: "A long, hand-planed oak form with paired braced trestles and a pegged stretcher.",
+    category: "furniture" as const
 };
 
 const SEAT_LENGTH = m(1.52);

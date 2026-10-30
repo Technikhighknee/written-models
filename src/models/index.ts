@@ -1,4 +1,5 @@
 import type { Object3D } from "three";
+import type { ModelCategorySlug } from "./categories";
 
 import table from "./table";
 import barrel from "./barrel";
@@ -13,6 +14,7 @@ export interface ModelDefinition {
     slug: string;
     title: string;
     description: string;
+    category: ModelCategorySlug;
     create: () => Object3D
 }
 

@@ -1,6 +1,9 @@
 import "./style.css";
 
 import { models } from "./models/index";
+import type { ModelDefinition } from "./models/index";
+import { categories } from "./models/categories";
+import type { ModelCategorySlug } from "./models/categories";
 import { resolveRoute } from "./core/router";
 import { ModelViewer } from "./core/ModelViewer";
 import { exportGlb } from "./core/exportGlb";
@@ -18,34 +21,68 @@ function requireElement<T extends HTMLElement>(
   return element;
 }
 
+
+function renderModelList(entries: readonly ModelDefinition[]): string {
+  return `
+    <section class="model-list" aria-label="Models">
+      ${entries.map(model => `
+        <a class="model-card" href="/${model.slug}">
+          <span class="model-card-title">
+            ${model.title}
+            <span aria-hidden="true">↗</span>
+          </span>
+          <span class="muted">${model.description}</span>
+          <span class="model-path">/${model.slug}</span>
+        </a>
+      `).join("")}
+    </section>
+  `;
+}
+
+function categoryIcon(slug: ModelCategorySlug): string {
+  const paths: Record<ModelCategorySlug, string> = {
+    furniture: '<path d="M5 11V6a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v5"/><path d="M4 11h16a2 2 0 0 1 2 2v5H2v-5a2 2 0 0 1 2-2Z"/><path d="M5 18v3m14-3v3"/>',
+    vessels: '<path d="M7 3h10l2 5v8l-2 5H7l-2-5V8l2-5Z"/><path d="M6 8h12M6 16h12M9 3v18m6-18v18"/>',
+    weapons: '<path d="m14 10 6-6 1-3-3 1-6 6M4 20l8-8M2 15l7 7M10 14l4-4"/>',
+    tools: '<path d="M14.5 6.5a5 5 0 0 0-6.3 6.3L3 17.5a2.1 2.1 0 0 0 3 3l5.2-5.2a5 5 0 0 0 6.3-6.3L14 12l-3-3 3.5-2.5Z"/>',
+    materials: '<path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5"/>'
+  };
+  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${paths[slug]}</svg>`;
+}
+
 const app = requireElement<HTMLElement>("#app");
 const route = resolveRoute(window.location.pathname);
 
 if (route.type === "home") {
+  const populated = categories.map(category => ({
+    category,
+    count: models.filter(model => model.category === category.slug).length
+  })).filter(item => item.count > 0);
+
+  document.title = "Explore Models · Written Models";
   app.innerHTML = `
-    <main class="layout">
-      <header class="page-header">
-        <p class="eyebrow"> Written Models</p>
-        <h1>Models</h1>
-        <p class="muted">
-          Handmade Assets – one model per file.
-        </p>
+    <main class="layout catalog-page">
+      <header class="page-header catalog-header">
+        <div>
+          <p class="eyebrow">Written Models</p>
+          <h1>Explore Models</h1>
+          <p class="muted">Browse the collection by category.</p>
+        </div>
+        <a class="catalog-action" href="/models">View all ${models.length} models ↗</a>
       </header>
-
-      <section class="model-list">
-        ${models.map(model => `
-          <a class="model-card" href="/${model.slug}">
-            <span class="model-card-title">
-              ${model.title}
-              <span aria-hidden="true">↗</span>
+      <section class="category-list" aria-label="Model categories">
+        ${populated.map(({ category, count }) => `
+          <a class="category-card" href="/categories/${category.slug}">
+            <span class="category-card-top">
+              <span class="category-icon">${categoryIcon(category.slug)}</span>
+              <span class="category-arrow" aria-hidden="true">↗</span>
             </span>
-
-            <span class="muted">
-              ${model.description}
-            </span>
-
-            <span class="model-path">
-              /${model.slug}
+            <span class="category-card-title">${category.title}</span>
+            <span class="category-card-description">${category.description}</span>
+            <span class="category-card-count">
+              ${count} ${count === 1 ? "model" : "models"}
             </span>
           </a>
         `).join("")}
@@ -54,15 +91,53 @@ if (route.type === "home") {
   `;
 }
 
+else if (route.type === "category") {
+  const { category } = route;
+  const entries = models.filter(model => model.category === category.slug);
+
+  document.title = `${category.title} · Written Models`;
+  app.innerHTML = `
+    <main class="layout catalog-page">
+      <header class="page-header">
+        <a class="back-link" href="/">← All categories</a>
+        <div class="catalog-title-line">
+          <h1>${category.title}</h1>
+          <span class="catalog-count">${entries.length} ${entries.length === 1 ? "model" : "models"}</span>
+        </div>
+        <p class="muted">${category.description}</p>
+      </header>
+      ${renderModelList(entries)}
+    </main>
+  `;
+}
+
+else if (route.type === "all-models") {
+  document.title = "All Models · Written Models";
+  app.innerHTML = `
+    <main class="layout catalog-page">
+      <header class="page-header">
+        <a class="back-link" href="/">← All categories</a>
+        <div class="catalog-title-line">
+          <h1>All Models</h1>
+          <span class="catalog-count">${models.length} ${models.length === 1 ? "model" : "models"}</span>
+        </div>
+        <p class="muted">Every model in the collection.</p>
+      </header>
+      ${renderModelList(models)}
+    </main>
+  `;
+}
+
 else if (route.type === "model") {
   const { model } = route;
 
+  document.title = `${model.title} · Written Models`;
   app.innerHTML = `
     <main class="layout viewer-page">
       <header class="viewer-header">
         <div>
-          <a class="back-link" href="/">
-            ← All models
+          <a class="back-link" href="/categories/${model.category}">
+            ← ${categories.find(category => category.slug === model.category)?.title ?? "All categories"}
           </a>
 
           <h1>${model.title}</h1>
@@ -226,14 +301,14 @@ else if (route.type === "model") {
 else {
   app.innerHTML = `
     <main class="layout">
-      <h1>Model not found</h1>
+      <h1>Page not found</h1>
       
       <p class="muted">
-        There is no model registered for this URL.
+        There is no category or model registered for this URL.
       </p>
 
       <a class="back-link" href="/">
-        ← Back to model-overview
+        ← All categories
       </a>
     </main>
   `;

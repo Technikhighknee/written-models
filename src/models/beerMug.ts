@@ -28,7 +28,8 @@ export default {
     create,
     slug: "beer-mug",
     title: "Wooden Tavern Tankard",
-    description: "A practical wooden drinking mug with staves and two iron bands."
+    description: "A practical wooden drinking mug with staves and two iron bands.",
+    category: "vessels" as const
 };
 
 export interface TankardGeometry {

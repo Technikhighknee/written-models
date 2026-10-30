@@ -10,7 +10,8 @@ export default {
     create,
     slug: "sandingpaper",
     title: "Sanding Paper",
-    description: "The backbone of modern society."
+    description: "The backbone of modern society.",
+    category: "tools" as const
 };
 
 const WIDTH = cm(23);

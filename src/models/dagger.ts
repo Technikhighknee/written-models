@@ -14,7 +14,8 @@ export default {
     create,
     slug: "dagger",
     title: "Common Quillon Dagger",
-    description: "A practical late-medieval steel dagger with a fitted oak-and-iron hilt."
+    description: "A practical late-medieval steel dagger with a fitted oak-and-iron hilt.",
+    category: "weapons" as const
 };
 
 // The blade, integral quillon and continuous grip use common profile,
