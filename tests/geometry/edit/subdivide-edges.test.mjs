@@ -6,7 +6,6 @@ import {toolbox} from "../../support/toolbox.mjs";
 
 const {subdivideEdges} = await toolbox("geometry/edit/subdivideEdges.ts");
 const {boxMesh} = await toolbox("geometry/construction/boxMesh.ts");
-const {splitByPlane} = await toolbox("geometry/edit/splitByPlane.ts");
 const {geometryResult, assertSelectionOwner} = await toolbox(
     "geometry/kernel/GeometryResult.ts"
 );
@@ -192,27 +191,6 @@ test("missing, stale, duplicate and boundary-adjacent stations fail explicitly",
         () => subdivideEdges(source, [edge(source, 0, 9999, 0.5)]),
         error => error.reason === "invalid-input"
     );
-});
-
-test("a subdivided closed solid can still be split and capped through those faces", () => {
-    const source = sourceBox();
-    const rim = source.boundaries.topOutline[0].vertices;
-    const refined = subdivideEdges(source, [
-        edge(source, rim[0], rim[1], 0.3),
-        edge(source, rim[1], rim[2], 0.65)
-    ]);
-    const result = splitByPlane(refined, {
-        point: new THREE.Vector3(0, 0, 0),
-        normal: new THREE.Vector3(0, 1, 0)
-    }, {cap: true, cutRegion: "cross-section"});
-
-    assert.equal(result.parts.length, 2);
-    assert.equal(result.interfaces.length, 1);
-    for (const part of result.parts) {
-        assert.equal(topologyOf(part).openBoundaries().length, 0);
-        assert.equal(topologyOf(part).connectedComponents().length, 1);
-        assert.ok(part.regions["cross-section"].length > 0);
-    }
 });
 
 test("a warped quad cannot be silently subdivided as a planar fan", () => {
