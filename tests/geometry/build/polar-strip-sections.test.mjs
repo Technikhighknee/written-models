@@ -4,15 +4,8 @@ import * as THREE from "three";
 
 import { toolbox } from "../../support/toolbox.mjs";
 
-const { samplePolarStripSections } = await toolbox(
+const { samplePolarStripSections, polarPoint } = await toolbox(
     "geometry/build/samplePolarStripSections.ts"
-);
-const {
-    radialStripLayout,
-    radialPoint
-} = await toolbox("geometry/construction/radialStripLayout.ts");
-const { radialStaves } = await toolbox(
-    "geometry/construction/radialStaves.ts"
 );
 const { loftSectionWalls } = await toolbox(
     "geometry/build/loftSectionWalls.ts"
@@ -79,7 +72,7 @@ test("unequal polar row densities build exact closed section loops", () => {
         new THREE.Vector3(
             points[0].x, points[0].y, points[0].z
         ).distanceTo(
-            radialPoint(
+            polarPoint(
                 settings.outerRadiusAt(base, 0, 0),
                 0,
                 firstAngle
@@ -94,12 +87,12 @@ test("unequal polar row densities build exact closed section loops", () => {
         new THREE.Vector3(
             last.x, last.y, last.z
         ).distanceTo(
-            radialPoint(base - 0.14, 0, firstAngle)
+            polarPoint(base - 0.14, 0, firstAngle)
         ) < 1e-12
     );
 
     const otherEdge = points[4];
-    const expectedEnd = radialPoint(
+    const expectedEnd = polarPoint(
         settings.outerRadiusAt(base, 0, 1),
         0,
         firstAngle + span
@@ -134,52 +127,6 @@ test("zero-gap neighboring strips share the same seam coordinates", () => {
         strips[0][0].outer.points[4],
         strips[1][0].outer.points[0]
     );
-});
-
-test("existing stave layout uses exactly the new sampler's coordinates", () => {
-    const settings = options();
-    const newSections = samplePolarStripSections(settings);
-    const legacy = radialStripLayout({
-        profile: settings.meridian,
-        count: settings.count,
-        seamGap: settings.gap,
-        angleOffset: settings.angleOffset,
-        outerSamples: settings.outerStations,
-        innerSamples: settings.innerStations,
-        outerRadius: settings.outerRadiusAt,
-        innerRadius: settings.innerRadiusAt
-    });
-
-    for (let strip = 0; strip < legacy.length; strip++) {
-        for (let row = 0; row < meridian.length; row++) {
-            const original = legacy[strip][row];
-            const loop = newSections[strip][row].outer.points;
-
-            assert.deepEqual(
-                original.outer.map(point => point.toArray()),
-                loop.slice(0, outerStations.length).map(point => point.toArray())
-            );
-
-            assert.deepEqual(
-                original.inner.map(point => point.toArray()),
-                loop.slice(outerStations.length).reverse()
-                    .map(point => point.toArray())
-            );
-        }
-    }
-
-    const staves = radialStaves(meridian, {
-        count: 12,
-        thickness: 0.14,
-        seamGap: 0.004,
-        edgeRoundover: 0.012,
-        innerWidthSamples: [0, 1]
-    });
-
-    assert.equal(staves.length, 12);
-    assert.ok(staves.every(piece =>
-        piece.quads.length > 0 && (piece.triangles?.length ?? 0) > 0
-    ));
 });
 
 test("one polar stave stays connected through loft, end caps and Quad View", () => {

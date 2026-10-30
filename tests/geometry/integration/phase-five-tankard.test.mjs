@@ -6,9 +6,6 @@ import { sourceModule, toolbox } from "../../support/toolbox.mjs";
 
 const { buildTankardGeometry, buildTankardServingCavity } =
     await sourceModule("models/beerMug.ts");
-const { radialStaves } = await toolbox(
-    "geometry/construction/radialStaves.ts"
-);
 const { bandAroundProfile } = await toolbox(
     "geometry/construction/bandAroundProfile.ts"
 );
@@ -68,22 +65,31 @@ function equivalentMeshes(actual, previous) {
 
 test("the migrated tankard retains all twelve stave sections and both forged hoops", () => {
     const parts = buildTankardGeometry();
-    const previous = radialStaves(profile, {
-        count: 12,
-        thickness: 0.008,
-        edgeRoundover: 0.0008,
-        innerWidthSamples: [0, 1],
-        angleOffset: offset
-    });
 
     assert.equal(parts.staves.length, 12);
     assert.equal(parts.bands.length, 2);
 
     for (let index = 0; index < 12; index++) {
         const stave = parts.staves[index];
-        equivalentMeshes(stave.geometry, previous[index]);
+        const mesh = stave.geometry;
+        const theta = offset + index * Math.PI * 2 / 12;
+
+        assert.equal(mesh.vertices.length, profile.length * 7);
+        assert.equal(mesh.quads.length, (profile.length - 1) * 7);
+        assert.equal(mesh.triangles.length, 10);
         assert.equal(topologyOf(stave).openBoundaries().length, 0);
-        assert.ok(stave.geometry.triangles.length > 0);
+        assert.equal(topologyOf(stave).connectedComponents().length, 1);
+
+        const outer = mesh.vertices[0];
+        const inner = mesh.vertices[6];
+        nearly(outer.x, (profile[0].x - 0.0008) * Math.sin(theta));
+        nearly(outer.z, (profile[0].x - 0.0008) * Math.cos(theta));
+        nearly(inner.x, (profile[0].x - 0.008) * Math.sin(theta));
+        nearly(inner.z, (profile[0].x - 0.008) * Math.cos(theta));
+        nearly(outer.y, profile[0].y);
+        nearly(inner.y, profile[0].y);
+        assert.ok(mesh.quads.some(face => face.surface === "outer"));
+        assert.ok(mesh.quads.some(face => face.surface === "inner"));
     }
 
     for (const [index, y] of [0.01, 0.1405].entries()) {

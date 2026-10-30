@@ -35,8 +35,8 @@ const { bandAroundProfileData, bandAroundProfile } = await toolbox(
 const { bulgedProfile } = await toolbox(
     "shapes/profiles/bulged.ts"
 );
-const { radialStaves } = await toolbox(
-    "geometry/construction/radialStaves.ts"
+const { cooperedStaves } = await sourceModule(
+    "models/components/cooperedStaves.ts"
 );
 const { surfaceClearance } = await toolbox(
     "geometry/queries/surfaceClearance.ts"
@@ -268,10 +268,9 @@ test("the barrel's real iron band remains outside its faceted staves", () => {
         points: 9,
         curve: "quadratic"
     });
-    const staves = radialStaves(profile, {
+    const staves = cooperedStaves(profile, {
         count: 24,
         thickness: 0.024,
-        innerWidthSamples: [0, 1],
         edgeRoundover: 0.0022
     });
     const bandOptions = {
@@ -299,8 +298,8 @@ test("the barrel's real iron band remains outside its faceted staves", () => {
     const shell = { vertices: [], quads: [] };
     for (const stave of staves) {
         const offset = shell.vertices.length;
-        shell.vertices.push(...stave.vertices);
-        for (const face of stave.quads) {
+        shell.vertices.push(...stave.geometry.vertices);
+        for (const face of stave.geometry.quads) {
             if (face.surface !== "outer") continue;
             shell.quads.push({
                 ...face,

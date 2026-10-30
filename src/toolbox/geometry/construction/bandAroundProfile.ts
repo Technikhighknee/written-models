@@ -2,7 +2,8 @@ import * as THREE from "three";
 import type { MeshData, QuadFace } from "../mesh/MeshData";
 import { toBufferGeometry } from "../mesh/toBufferGeometry";
 import { linearProfile } from "../../shapes/profiles/linearProfile";
-import { polygonalRadiusOutside, radialPoint } from "./radialStripLayout";
+import { polygonalRadiusOutside } from "../build/polygonalRadiusOutside";
+import { polarPoint } from "../build/samplePolarStripSections";
 
 export interface BandAroundProfileOptions {
     y: number;
@@ -146,7 +147,7 @@ export function bandAroundProfileData(
 
         for (let j = 0; j < count; j++) {
             const radius = sectionRadii[j]!;
-            vertices.push(radialPoint(radius, section[j]!.height, theta));
+            vertices.push(polarPoint(radius, section[j]!.height, theta));
         }
     }
 

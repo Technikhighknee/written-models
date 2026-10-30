@@ -836,9 +836,13 @@ operations, with no live consumers of superseded specialized logic.
       and `timber.ts` have no remaining model consumers and were
       removed. Fitted member normals now have a neutral geometry
       definition rather than depending on a rendering constructor.
-      Still active in the model-test corpus: older board, stave,
-      vessel and loft constructors. Migrate those consumers before
-      removing their implementations.
+      The `radialStaves` and `radialStripLayout` compatibility
+      constructors are removed. Barrel/tankard and clearance tests now
+      inspect the actual `cooperedStaves` results and their authored
+      surfaces instead of comparing against superseded stave geometry.
+      Chord clearance and polar points remain general build operations.
+      Older board, vessel and loft constructors still have test
+      consumers; migrate those before removing their implementations.
 - [ ] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
       consumers have migrated. Removed `assignMaterialsByNormal`,

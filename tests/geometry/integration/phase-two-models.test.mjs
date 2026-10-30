@@ -19,14 +19,11 @@ const { loftAxialProfile } = await toolbox(
 const { profileSpans } = await toolbox(
     "shapes/profiles/profileSpans.ts"
 );
-const { radialStaves } = await toolbox(
-    "geometry/construction/radialStaves.ts"
+const { cooperedStaves } = await sourceModule(
+    "models/components/cooperedStaves.ts"
 );
 const { bulgedProfile } = await toolbox(
     "shapes/profiles/bulged.ts"
-);
-const { geometryResult } = await toolbox(
-    "geometry/kernel/GeometryResult.ts"
 );
 const { topologyOf } = await toolbox(
     "geometry/kernel/topology.ts"
@@ -165,22 +162,23 @@ test("twenty-four barrel staves keep sparse inner rows and closed end grain", ()
         curve: "quadratic"
     });
 
-    const staves = radialStaves(profile, {
+    const staves = cooperedStaves(profile, {
         count: 24,
         thickness: 0.024,
-        innerWidthSamples: [0, 1],
         edgeRoundover: 0.0022
     });
 
     assert.equal(staves.length, 24);
 
     for (const stave of staves) {
-        assert.equal(stave.vertices.length, 9 * 7);
-        assert.equal(stave.quads.length, 8 * 7);
-        assert.equal(stave.triangles.length, 10);
-        assert.equal(topologyOf(geometryResult(stave)).openBoundaries().length, 0);
-        assert.ok(stave.quads.some(face => face.surface === "outer"));
-        assert.ok(stave.quads.some(face => face.surface === "inner"));
+        const mesh = stave.geometry;
+
+        assert.equal(mesh.vertices.length, 9 * 7);
+        assert.equal(mesh.quads.length, 8 * 7);
+        assert.equal(mesh.triangles.length, 10);
+        assert.equal(topologyOf(stave).openBoundaries().length, 0);
+        assert.ok(mesh.quads.some(face => face.surface === "outer"));
+        assert.ok(mesh.quads.some(face => face.surface === "inner"));
     }
 });
 

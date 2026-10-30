@@ -11,9 +11,6 @@ const { cooperedStaves } = await sourceModule(
 const { cooperedHead } = await sourceModule(
     "models/components/cooperedHead.ts"
 );
-const { radialStaves } = await toolbox(
-    "geometry/construction/radialStaves.ts"
-);
 const { groovedCircularPlankPanel } = await toolbox(
     "geometry/construction/circularPlankPanel.ts"
 );
@@ -98,19 +95,30 @@ test("all 24 staves retain the actual low-density interior and bevel geometry", 
         thickness: 0.024,
         edgeRoundover: 0.0022
     });
-    const reference = radialStaves(profile, {
-        count: 24,
-        thickness: 0.024,
-        innerWidthSamples: [0, 1],
-        edgeRoundover: 0.0022
-    });
 
     assert.equal(newStaves.length, 24);
     for (let i = 0; i < newStaves.length; i++) {
         const result = newStaves[i];
         assert.equal(topologyOf(result).openBoundaries().length, 0);
         assert.equal(topologyOf(result).connectedComponents().length, 1);
-        sameAuthoredShape(result.geometry, reference[i]);
+        const mesh = result.geometry;
+        assert.equal(mesh.vertices.length, profile.length * 7);
+        assert.equal(mesh.quads.length, (profile.length - 1) * 7);
+        assert.equal(mesh.triangles.length, 10);
+
+        const theta = i * Math.PI * 2 / 24;
+        const outer = new THREE.Vector3(
+            (profile[0].x - 0.0022) * Math.sin(theta),
+            profile[0].y,
+            (profile[0].x - 0.0022) * Math.cos(theta)
+        );
+        const inner = new THREE.Vector3(
+            (profile[0].x - 0.024) * Math.sin(theta),
+            profile[0].y,
+            (profile[0].x - 0.024) * Math.cos(theta)
+        );
+        assert.ok(mesh.vertices[0].distanceTo(outer) < 1e-12);
+        assert.ok(mesh.vertices[6].distanceTo(inner) < 1e-12);
 
         assert.ok(result.geometry.quads.some(face =>
             face.surface === "outer"
