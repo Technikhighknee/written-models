@@ -85,12 +85,13 @@ Answer these questions:
 If the answers are weak, **don't write the test**.
 
 Debugging experiments and one-off verification scripts belong in
-`tests/temporary/`. Keep that folder out of the regular test suite: use
-names like `geometry-probe.check.mjs`, run them explicitly with
-`node --test tests/temporary/geometry-probe.check.mjs`, and delete them
-when the investigation is done. The folder stays; its contents shouldn't.
-Fixing a bug doesn't automatically entitle it to a permanent regression
-test either.
+`tests/temporary/`. Name them `*.check.mjs` so the regular `npm test`
+discovery skips them. If a temporary check needs to run, add an explicit
+step for that file to the GitHub Actions Verify workflow, push the change
+and inspect the CI result. Remove the temporary check and its workflow
+step when the investigation is done. The folder stays; its contents
+shouldn't. Fixing a bug doesn't automatically entitle it to a permanent
+regression test either.
 
 ## Kill tests that have outlived their usefulness
 
@@ -134,23 +135,29 @@ When cleaning up existing tests:
 3. Review large suites case by case. Preserve meaningful edge cases;
    cut repetitive permutations.
 4. Give survivors useful names and straightforward fixtures.
-5. Run the remaining suite, typecheck and build.
+5. Push the cleanup and inspect the GitHub Actions Verify result for
+   the remaining tests, typecheck and build. Investigate CI failures
+   before treating the cleanup as verified.
 
 There's no deletion quota. The result should be less work to maintain
 without losing protection against the failures that matter.
 
-## Run what's relevant
+## CI is the test runner
 
-The existing tooling is enough:
+The repository's verification runs in GitHub Actions, defined in
+`.github/workflows/verify.yml`. Pushes to `main`, pull requests and
+manual workflow dispatch trigger the Verify job. With Node 22, the job
+installs dependencies via `npm ci`, then executes `npm run typecheck`,
+`npm test` and `npm run build`.
 
-```sh
-npm run typecheck
-npm test
-npm run build
-```
+Changes made through the GitHub integration cannot be locally verified
+against the repository's installed dependencies. The CI job's completed
+result and logs are the evidence: inspect failures, correct their cause,
+push the fix and verify the next run. A commit is not considered tested
+merely because it was written or pushed.
 
-During development, run the tests relevant to the shared behavior being
-changed. Run the full suite after broad changes or test cleanup. Review
-visual assets visually.
+The current workflow always runs the full suite; targeted temporary
+checks require an explicit temporary CI step. Review visual assets
+visually and in the target engine when needed.
 
 **Tests are here to protect the work. The work is not here to feed the tests.**
