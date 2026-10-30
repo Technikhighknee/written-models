@@ -877,6 +877,11 @@ operations, with no live consumers of superseded specialized logic.
       `classifyAuthoredFaces`, `deformVertices`, `surfaceMesh`
       and `toBufferGeometry` paths remain. Other compatibility
       constructors and render-first adapters still need review.
+      The `bandAroundProfile` GPU wrapper was removed; its authored
+      `bandAroundProfileData` geometry remains in use by the barrel
+      and tankard. Tests compile those authored faces using
+      `toBufferGeometry` and verify the tankard bands' actual section,
+      clearance, regions and UVs.
 - [x] **7.3** Keep imports following the module dependency
       direction in [06](06-migration-map.md).
       The shared `ellipticalRing` sampler and axial profile types

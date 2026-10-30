@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import type { MeshData, QuadFace } from "../mesh/MeshData";
-import { toBufferGeometry } from "../mesh/toBufferGeometry";
 import { linearProfile } from "../../shapes/profiles/linearProfile";
 import { polygonalRadiusOutside } from "../build/polygonalRadiusOutside";
 import { polarPoint } from "../build/samplePolarStripSections";
@@ -219,19 +218,3 @@ export function bandAroundProfileData(
     return { vertices, quads };
 }
 
-/** Compile a profile band for the renderer without losing its authored source. */
-export function bandAroundProfile(
-    profile: readonly THREE.Vector2Like[],
-    options: BandAroundProfileOptions
-): THREE.BufferGeometry {
-    return toBufferGeometry(bandAroundProfileData(profile, options), {
-        bottom: 0,
-        "lower-bevel": 0,
-        outside: 0,
-        "upper-bevel": 0,
-        top: 0,
-        inside: 0,
-        "cap-start": 0,
-        "cap-end": 0
-    });
-}

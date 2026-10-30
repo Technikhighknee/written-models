@@ -29,7 +29,7 @@ const { getControlOutline } = await toolbox(
     "geometry/mesh/controlOutline.ts"
 );
 
-const { bandAroundProfileData, bandAroundProfile } = await toolbox(
+const { bandAroundProfileData } = await toolbox(
     "geometry/construction/bandAroundProfile.ts"
 );
 const { bulgedProfile } = await toolbox(
@@ -287,7 +287,16 @@ test("the barrel's real iron band remains outside its faceted staves", () => {
     assert.ok(band.quads.some(face => face.surface === "inside"));
     assert.ok(band.quads.some(face => face.surface === "outside"));
 
-    const compiled = bandAroundProfile(profile, bandOptions);
+    const compiled = toBufferGeometry(band, {
+        bottom: 0,
+        "lower-bevel": 0,
+        outside: 0,
+        "upper-bevel": 0,
+        top: 0,
+        inside: 0,
+        "cap-start": 0,
+        "cap-end": 0
+    });
     try {
         assert.equal(getControlOutline(compiled).quadCount,
             band.quads.length);
