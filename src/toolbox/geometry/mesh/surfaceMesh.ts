@@ -46,6 +46,17 @@ export function surfaceMesh({
         indices[face.surface] = index;
     }
 
+    // Color attributes are invisible unless every selected material
+    // actually consumes vertex colors. Fail rather than silently discard
+    // a requested authored tint in the viewer or exported asset.
+    if (tint !== undefined && palette.some(material =>
+        !("vertexColors" in material) || material.vertexColors !== true
+    )) {
+        throw new RangeError(
+            "Tint requires vertexColors enabled on every surface material"
+        );
+    }
+
     const rendered = toBufferGeometry(geometry, indices);
     if (tint !== undefined) {
         tintVertices(rendered, new THREE.Color(tint));
