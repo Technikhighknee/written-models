@@ -2,136 +2,142 @@
 
 > Just because something can be tested doesn't mean it fucking should be.
 
-## Purpose
+## Why this exists
 
-Tests exist to catch important regressions before they become expensive to
-find and fix. They also impose costs: execution time, test fixtures, false
-alarms and maintenance whenever the code evolves.
+We're building a geometry toolbox and the models it makes possible.
+We're not building a monument to automated testing.
 
-**A test belongs in the suite only while its protection justifies those
-costs.** A passing test is not automatically a useful test. There are no
-coverage targets, test-count goals or requirements to accompany every
-change with a test.
+Tests should catch expensive mistakes before they spread. Every test also
+costs something: time to write, fixtures to maintain, failures to investigate
+and assumptions that can outlive the code they describe.
 
-The goal is a dependable geometry toolbox and the freedom to keep building
-models without maintaining a second implementation in the test suite.
+**If a test creates more work than the bugs it prevents, it needs to go.**
+A green checkmark doesn't make it valuable. Neither does a clever assertion,
+a new feature or an impressive test count.
 
-## What to test
+## Test the dangerous stuff
 
-### Shared geometry contracts
+A bug in a shared geometry operation can quietly break dozens of models.
+That's where automation earns its keep.
 
-Prioritize behavior that many models depend on, especially when errors
-can produce plausible-looking but invalid geometry:
+Protect contracts that are hard to verify by eye and costly to break:
 
-- **Topology:** intended closed surfaces have no open edges or invalid
-  face connections; deliberately open surfaces preserve their boundaries.
-- **Construction:** adjoining pieces retain matching boundary vertices,
-  consistent winding and the requested geometric shape.
-- **Editing:** operations preserve valid selections, regions and surface
-  data, or explicitly report when they cannot.
-- **Spatial queries:** fitting and clearance use actual finite surfaces
-  and consistent physical units.
-- **Rendering and export:** authored faces, UV coordinates, material
-  regions and required runtime data survive conversion.
-- **Numerical safety:** unsupported or degenerate inputs fail clearly,
-  without silently producing corrupted geometry.
+- **Topology:** Closed solids stay closed. Open boundaries are deliberate.
+  Faces have valid winding and connections.
+- **Construction:** Pieces that are supposed to meet actually share the
+  right boundaries. No missing stations, accidental gaps or T-junctions.
+- **Editing:** Selections, regions and surface data survive operations
+  that promise to preserve them.
+- **Spatial queries:** Contacts, clearances and distances describe real,
+  finite geometry in consistent units.
+- **Export:** Authored faces, UVs, materials and required runtime data
+  survive conversion.
+- **Failure handling:** Unsupported or degenerate inputs fail clearly
+  instead of silently producing garbage.
 
-Choose a small input and assert the relevant invariant. Add another case
-only when it represents a different failure mode.
+Use the smallest geometry that proves the contract. Test distinct ways
+it can fail. There's no prize for testing the same thing twenty times.
 
-### Operation boundaries
+## Stop testing every damn model
 
-A limited number of integration tests can protect interactions that
-individual operation tests cannot verify. For example, a surface edited
-by one operation may need to remain usable by a subsequent operation.
+Models are meant to change. Their dimensions, silhouettes, details and
+materials are design decisions, not permanent assertions.
 
-Such a test should protect a specific interface contract. Combining more
-operations merely to increase the scope of a test adds complexity without
-necessarily increasing confidence.
+**A new model does not need a test.** Building one doesn't earn it a test
+file, and changing one shouldn't send CI into a meltdown because a board
+moved five centimeters.
 
-### Runtime behavior
+Inspect models in the viewer. Inspect exported assets in the target engine
+when necessary. That's how visual quality and actual appearance are judged.
 
-Test serialized or exported data when a failure could be silent or costly.
-Relevant properties may include the presence of UV attributes, material
-assignments, animation data or morph targets in an exported asset.
+When a model exposes a reusable geometry bug, fix the shared operation.
+Consider a focused regression test there if the risk justifies it.
 
-Use representative inputs to verify shared export behavior. Full exports
-of every model are unnecessary unless a particular model has an exceptional
-runtime contract that merits its own regression test.
+Model-specific automation is an exception for important behavior that
+could fail silently and cannot reasonably be covered by shared tests.
+An exported morph target is a possible example: the useful assertion
+checks that required runtime data is present and correct, regardless of
+the model's appearance.
 
-## Model acceptance
+## Integration tests aren't trophies
 
-Models are evaluated as visual assets. Their proportions, materials,
-surface details and construction choices are expected to change.
+Some bugs live between otherwise correct operations. A focused integration
+test can protect one of those boundaries.
 
-New models do not require automated tests. Review their geometry and
-appearance in the viewer, and inspect exported assets in the target engine
-when applicable. Recheck the affected parts when a relevant change occurs.
+That's enough. A growing chain of operations isn't automatically a better
+test. Running every model through every export path doesn't automatically
+make the system safer.
 
-A defect discovered while building a model should normally lead to a fix
-in the reusable operation responsible for it. Add a focused test for that
-operation if the failure risk warrants one.
+**One clear failure signal beats ten overlapping demonstrations.**
 
-Model-specific tests are reserved for behavior that is important, easy to
-break unnoticed and impractical to protect through shared-toolbox tests.
-Normal artistic decisions and incidental part counts are not stable test
-contracts.
+## Before adding a test
 
-## Deciding whether a test is worth writing
+Answer these questions:
 
-Before adding a permanent test, determine:
+1. **What breaks?** Name a specific failure and why it matters.
+2. **Why won't we catch it otherwise?** Check existing coverage and
+   ordinary inspection.
+3. **What proves it?** Assert observable behavior, not implementation
+   details or today's artistic choices.
+4. **What will it cost?** Count future maintenance, brittle fixtures,
+   runtime and false alarms.
 
-1. **Risk:** What concrete defect could occur?
-2. **Impact:** What would that defect break, and how costly would it be
-   to discover later?
-3. **Detection:** Can an assertion reliably distinguish the defect from
-   valid changes?
-4. **Overlap:** Is that risk already covered by another test or by normal
-   inspection?
-5. **Maintenance:** Will the test remain understandable and inexpensive
-   as the implementation evolves?
+If the answers are weak, **don't write the test**.
 
-When the answers do not establish a clear benefit, skip the test.
+Debugging experiments and one-off verification scripts are perfectly useful.
+They don't have to live in the repository forever. Fixing a bug doesn't
+automatically entitle it to a permanent regression test either.
 
-A temporary diagnostic can be useful during development without becoming
-a permanent test. A bug fix likewise does not require a regression test
-unless recurrence and impact make the ongoing cost worthwhile.
+## Kill tests that have outlived their usefulness
 
-## Keeping the suite maintainable
+Tests aren't sacred. Reevaluate them when the code changes.
 
-Review existing tests by the same criteria used for new ones.
+- Duplicate coverage? Remove it.
+- Obsolete behavior? Remove it.
+- A fixture more complicated than the behavior it checks? Simplify it
+  or remove it.
+- Breaks every time a model is legitimately redesigned? Remove it.
+- Still catches a serious, distinct regression cheaply? Keep it.
 
-- Remove duplicated assertions and tests for obsolete behavior.
-- Remove tests that regularly fail because of intentional design changes.
-- Consolidate related cases when doing so improves clarity.
-- Keep fixtures minimal and assertions focused on observable behavior.
-- Delete tests outright when their remaining benefit is too small.
+**Deletion doesn't create a debt to write another test.** Acceptable risks
+can remain unautomated.
 
-Removal does not require a replacement. An acceptable risk can be handled
-through inspection or left unautomated.
+When CI fails, find out whether the code violated a real contract or the
+test is clinging to an outdated assumption. Fix whichever is wrong.
+Don't bend working code to appease a bad test.
 
-When a test fails, investigate the implementation and the expectation.
-Fix the actual defect, or update/remove an assertion whose contract no
-longer applies. The purpose of CI is to reveal problems worth fixing.
+## Names should tell us something
 
-## Organization
+Use descriptive, lowercase kebab-case filenames based on the behavior
+being protected: `join-geometry.test.mjs`,
+`surface-clearance.test.mjs`, `runtime-export.test.mjs`.
 
-Name files for the capability or behavior they verify, using descriptive
-lowercase kebab-case names such as `join-geometry.test.mjs` or
-`surface-clearance.test.mjs`.
+Names like `phase-five-something.test.mjs` are useless once that phase is
+over. Test files aren't diary entries. Comments shouldn't require someone
+to know when, why or in which conversation the code was written.
 
-Keep related cases together. Split files when they cover independent
-responsibilities. Avoid names based on development phases, dates or
-temporary implementation milestones.
+Keep related cases together. Split them when they have genuinely different
+responsibilities, not because another file looks tidy.
 
-Test descriptions and comments should explain the current behavior under
-test. They must make sense without knowing the history of the project or
-the conversation in which a test was introduced.
+## Keep the suite lean
 
-## Verification
+When cleaning up existing tests:
 
-Use targeted tests while working on a particular shared contract. Run
-the full suite after cross-cutting changes and test-suite maintenance.
+1. Start with per-model checks. Remove incidental dimensions, part counts
+   and repeated export smoke tests.
+2. Compare integration tests with the shared-operation tests they overlap.
+   Keep only the combinations that catch something genuinely different.
+3. Review large suites case by case. Preserve meaningful edge cases;
+   cut repetitive permutations.
+4. Give survivors useful names and straightforward fixtures.
+5. Run the remaining suite, typecheck and build.
+
+There's no deletion quota. The result should be less work to maintain
+without losing protection against the failures that matter.
+
+## Run what's relevant
+
+The existing tooling is enough:
 
 ```sh
 npm run typecheck
@@ -139,8 +145,8 @@ npm test
 npm run build
 ```
 
-Automated checks complement visual and target-engine inspection when an
-asset needs it.
+During development, run the tests relevant to the shared behavior being
+changed. Run the full suite after broad changes or test cleanup. Review
+visual assets visually.
 
-**The suite should catch costly mistakes and stay out of the way the rest
-of the time.**
+**Tests are here to protect the work. The work is not here to feed the tests.**
