@@ -11,9 +11,6 @@ const { getRenderTriangleSources } = await toolbox(
     "geometry/mesh/toBufferGeometry.ts"
 );
 const { surfaceMesh } = await toolbox("geometry/mesh/surfaceMesh.ts");
-const { raycastSurface } = await toolbox(
-    "geometry/queries/raycastSurface.ts"
-);
 
 const vertex = (x, y, z = 0) => new THREE.Vector3(x, y, z);
 const uv = (x, y) => new THREE.Vector2(x, y);
@@ -100,55 +97,4 @@ test("render material sorting preserves every authored triangle's provenance", (
         wood.dispose();
         iron.dispose();
     }
-});
-
-test("authored ray hits retain corner barycentrics and never flip normals", () => {
-    const geometry = geometryResult(authored).geometry;
-    const target = { geometry, localToWorld: new THREE.Matrix4() };
-    const cast = (from, direction) => raycastSurface(target, {
-        origin: vertex(...from),
-        direction: vertex(...direction),
-        maxDistance: 10
-    });
-
-    const front = cast([0.25, 0.75, 1], [0, 0, -1]);
-    assert.ok(front);
-    assert.deepEqual(front.face, { kind: "quad", index: 0 });
-    assert.deepEqual(front.faceCorners, [0, 2, 3]);
-    assert.equal(front.region, "wood");
-    assert.equal(front.frontFacing, true);
-    assert.ok(front.normal.z > 0.999);
-    assert.ok(Math.abs(front.distance - 1) < 1e-9);
-    const face = geometry.quads[front.face.index];
-    const interpolated = new THREE.Vector2();
-    front.faceCorners.forEach((corner, i) =>
-        interpolated.addScaledVector(face.uvs[corner], front.barycentric[i])
-    );
-    assert.ok(interpolated.distanceTo(uv(0.25, 0.75)) < 1e-9);
-
-    const back = cast([0.25, 0.75, -1], [0, 0, 1]);
-    assert.ok(back);
-    assert.equal(back.frontFacing, false);
-    assert.ok(back.normal.z > 0.999);
-});
-
-test("raycast uses world transforms, including reflected winding", () => {
-    const target = {
-        geometry: geometryResult(authored).geometry,
-        localToWorld: new THREE.Matrix4().makeScale(-1, 1, 1)
-    };
-    const hit = raycastSurface(target, {
-        origin: vertex(-0.25, 0.75, 1),
-        direction: vertex(0, 0, -1),
-        maxDistance: 2
-    });
-    assert.ok(hit);
-    assert.deepEqual(hit.face, { kind: "quad", index: 0 });
-    assert.ok(hit.normal.z < -0.999);
-    assert.equal(hit.frontFacing, false);
-    assert.equal(raycastSurface(target, {
-        origin: vertex(9, 9, 1),
-        direction: vertex(0, 0, -1),
-        maxDistance: 2
-    }), null);
 });

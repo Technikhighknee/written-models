@@ -76,6 +76,8 @@ test("affine shears and reflections keep world hit normals and corner barycentri
     );
 
     const normal = triangle.normal;
+    assert.ok(normal.z < -0.99);
+
     const front = raycastSurface(target, {
         origin: hitPoint.clone().addScaledVector(normal, 0.75),
         direction: normal.clone().multiplyScalar(-6),
