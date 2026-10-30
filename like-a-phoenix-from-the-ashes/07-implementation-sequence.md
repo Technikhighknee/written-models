@@ -937,6 +937,9 @@ operations, with no live consumers of superseded specialized logic.
       and `revolveProfile` (a hollow cup). The integration proof
       checks manifold topology, authored quads, region UVs,
       actual plate contact, Quad View and exported GLB.
+      The assembly is also available as the `candle-sconce` viewer
+      model. The same authored geometry feeds both the interactive
+      preview and the integration proof.
 
 **Gate:** The permanent toolbox code and documentation embody
 the architecture, and all model-specific capabilities remain.
