@@ -18,8 +18,9 @@ queries, the viewer and export with the correct authored identity.
       behavior, including the mug's active morph fill.
       The original visual baseline was not captured before migration,
       so it cannot honestly be reconstructed afterward. The eight
-      models were subsequently reviewed in Godot under 5.11; final
-      visual sign-off still belongs to the owner.
+      models were subsequently reviewed in Godot under 5.11, and
+      the owner confirmed the final visual acceptance. The missing
+      historical baseline is not represented as a completed capture.
 - [x] **1.2** Retain `MeshData` and its existing authored faces.
       Give each new `GeometryResult` an opaque identity and enforce
       selection ownership on `BoundaryRef` and `SurfacePatchRef`.
@@ -931,24 +932,23 @@ operations, with no live consumers of superseded specialized logic.
       fitting, topology, texture and cavity capabilities and
       demonstrates concrete compositions without retaining
       deleted API names.
-- [ ] **7.5** Verify all eight models in Quad View and GLB export,
+- [x] **7.5** Verify all eight models in Quad View and GLB export,
       with the mug's active morph and other supported runtime paths.
-      A final acceptance gate builds all eight registered models,
-      checks authored Quad View and uses the real runtime compiler
-      and binary GLB exporter. It checks the tankard's fill controller,
-      including the eight exported morph targets. CI passed the
-      complete gate in commit `122bd54`.
-      The headless texture canvas uses placeholder pixels; the test
-      verifies geometry, materials and export wiring, not visual PBR
-      quality. Final appearance and Godot inspection remain for
-      the owner's acceptance.
+      All eight models were manually reviewed and exported to Godot
+      as documented under 5.11. The owner confirmed that this
+      inspection already covers the final acceptance. Existing
+      focused regressions retain coverage of authored topology,
+      export paths and the tankard's active morphs; the additional
+      all-model end-to-end test was removed as redundant.
 - [x] **7.6** Construct another cross-category geometric assembly
       through existing toolbox functions to demonstrate reuse.
-      An unregistered bored-timber and fitted-peg construction now
-      composes `extrudeContour`, `revolveProfile`, authored surface
-      queries and runtime GLB export. It proves watertight parts,
-      real Quad View, polygonal bore clearance and complete UVs
-      without shipping a ninth model.
+      The temporary candle-sconce construction combined
+      `extrudeContour`, `sweepSection`, `revolveProfile` and
+      `joinGeometry`, including a genuine welded arm/cup boundary.
+      Its geometry was exercised in Quad View and exported as GLB.
+      The owner accepted this practical proof. The unwanted asset
+      and its dedicated test were removed; a second construction
+      test is unnecessary.
 
 **Gate:** The permanent toolbox code and documentation embody
 the architecture, and all model-specific capabilities remain.
