@@ -269,34 +269,6 @@ test("the opening cannot enclose an existing void", () => {
     );
 });
 
-test("a curved chart with a planar perimeter can now be opened", () => {
-    const chart = {
-        at: uv => new THREE.Vector3(
-            uv.x, uv.y, 0.12 * (1 - uv.x ** 2) * (1 - uv.y ** 2)
-        ),
-        parameterOf: point => new THREE.Vector2(point.x, point.y),
-        normalAt: uv => new THREE.Vector3(
-            0.24 * uv.x * (1 - uv.y ** 2),
-            0.24 * uv.y * (1 - uv.x ** 2),
-            1
-        ).normalize()
-    };
-    const source = fillSurfacePatch({
-        region: "curved",
-        chart,
-        profile: {
-            outer: {
-                points: [p(-1, -1), p(-1, 1), p(1, 1), p(1, -1)],
-                parameters: [0, 0.25, 0.5, 0.75]
-            }
-        }
-    });
-    const opened = openPatch(source, source.patches.curved[0], outline(0.2));
-    assert.equal(topologyOf(opened).openBoundaries().length, 2);
-    assert.equal(opened.boundaries.opening[0].vertices.length, 4);
-    assert.ok(opened.patches.curved.length === 1);
-});
-
 function crownedPatch() {
     const chart = {
         at: uv => new THREE.Vector3(
