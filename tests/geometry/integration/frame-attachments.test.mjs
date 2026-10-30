@@ -7,9 +7,6 @@ import { toolbox } from "../../support/toolbox.mjs";
 const { attachAtFrames } = await toolbox(
     "spatial/relationships/attachAtFrames.ts"
 );
-const { attachByFrames } = await toolbox(
-    "spatial/relationships/attachByFrames.ts"
-);
 const { attachByAnchors } = await toolbox(
     "spatial/relationships/attachByAnchor.ts"
 );
@@ -63,7 +60,7 @@ test("frame attachment uses parent-local and child-local contacts", () => {
     sameFrame(local, parentFrame);
 
     const other = new THREE.Group();
-    attachByFrames(parent, other, parentFrame, childFrame);
+    attachAtFrames({parent, child: other, parentFrame, childFrame});
     sameFrame(other.matrix, child.matrix);
 });
 

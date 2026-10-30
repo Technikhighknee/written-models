@@ -22,7 +22,8 @@ export interface SectionsBetweenPlanesOptions {
  * and asymmetric polygonal profiles, without assuming timber or quads.
  *
  * The returned rings are expressed in the caller's coordinate system.
- * Loft them with loftSections (4 corners) or loftRings (arbitrary outline).
+ * Pass them as authored sections to loftSectionWalls and finish the
+ * selected ends with capBoundary.
  */
 export function sectionsBetweenPlanes({
     start, end, section

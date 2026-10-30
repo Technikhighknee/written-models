@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import type { MeshData } from "../mesh/MeshData";
 import type { GeometryResult } from "../kernel/GeometryResult";
 import { sweepSection as sweepPath } from "../build/sweepSection";
 import { cleanClosedContour } from "../../shapes/operations/cleanClosedContour";
@@ -118,7 +117,3 @@ export function sweepSectionResult({
     return result;
 }
 
-/** Compatibility convenience for consumers that need only authored faces. */
-export function sweepSection(options: SweepSectionOptions): MeshData {
-    return sweepSectionResult(options).geometry;
-}

@@ -869,6 +869,10 @@ operations, with no live consumers of superseded specialized logic.
       inspect the real `cooperedHead` geometry: watertight
       independent planks, circular outline, UVs and worn seam regions.
       The general authored `seamedPlankExtrusionData` remains.
+      The pure forwarding `attachByFrames` helper is removed; tests
+      now use `attachAtFrames` directly. Named-anchor attachment
+      remains supported through `attachByAnchors` because it applies
+      its own contact-frame relationship.
 - [ ] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
       consumers have migrated. Removed `assignMaterialsByNormal`,
@@ -882,6 +886,11 @@ operations, with no live consumers of superseded specialized logic.
       and tankard. Tests compile those authored faces using
       `toBufferGeometry` and verify the tankard bands' actual section,
       clearance, regions and UVs.
+      The mutating `geometry/uv/offsetMeshUvs` adapter is removed:
+      authored UV offsets go through the non-mutating
+      `geometry/edit/geometryEdits` operation. The old MeshData-only
+      `sweepSection` compatibility export is also removed in favor
+      of `sweepSectionResult`, which retains owned selections.
 - [x] **7.3** Keep imports following the module dependency
       direction in [06](06-migration-map.md).
       The shared `ellipticalRing` sampler and axial profile types
