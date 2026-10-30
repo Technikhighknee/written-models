@@ -1,16 +1,6 @@
 import * as THREE from "three";
 import type { ContactNormals } from "../../toolbox/geometry/definitions/geometry";
 
-/** Timber assembled in the caller's coordinate system and material family. */
-export type TrestleTimberFactory = (
-    name: string,
-    start: THREE.Vector3,
-    end: THREE.Vector3,
-    width: number,
-    depth: number,
-    contacts?: ContactNormals
-) => THREE.Mesh;
-
 export interface TrestleSupportOptions {
     /** Height of the underside of the tabletop above the floor. */
     height: number;
@@ -77,7 +67,7 @@ export function trestleTimbers(
         braceSize >= postDepth ||
         footLength <= postDepth + braceSize * 4
     ) {
-        throw new RangeError("Invalid trestle dimensions or timber factory");
+        throw new RangeError("Invalid trestle dimensions");
     }
 
     const members: TrestleTimber[] = [];
@@ -143,31 +133,4 @@ export function trestleTimbers(
     }
 
     return members;
-}
-
-/** Build the rendered trestle from its authored five-member cut list. */
-export function createTrestleSupport(
-    options: TrestleSupportOptions,
-    makeTimber: TrestleTimberFactory
-): THREE.Group {
-    if (typeof makeTimber !== "function") {
-        throw new RangeError("Invalid trestle timber factory");
-    }
-    const trestle = new THREE.Group();
-    trestle.name = "TrestleSupport";
-
-    for (const member of trestleTimbers(options)) {
-        const wood = makeTimber(
-            member.name,
-            member.start,
-            member.end,
-            member.width,
-            member.depth,
-            member.contacts
-        );
-        wood.name = member.name;
-        trestle.add(wood);
-    }
-
-    return trestle;
 }

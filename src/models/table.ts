@@ -9,11 +9,8 @@ import {
     tableTimberBetweenSurfaces,
     type TableTimberGeometry
 } from "./components/tableTimberGeometry";
-import { getControlResult } from "../toolbox/geometry/mesh/toBufferGeometry";
-import type { ContactNormals } from "../toolbox/geometry/definitions/geometry";
 import {
-    createTrestleSupport,
-    type TrestleTimberFactory,
+    trestleTimbers,
     type TrestleSupportOptions
 } from "./components/trestleSupport";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
@@ -127,92 +124,60 @@ function buildTrestles(
     topCenterHeight: number
 ): void {
     let timberNumber = 0;
-    const members = new Map<string, THREE.Mesh>();
 
-    function asSurface(
-        mesh: THREE.Mesh,
+    function surfaceOf(
+        member: TableTimberGeometry,
         parentTransform = new THREE.Matrix4()
     ) {
-        const data = getControlResult(mesh.geometry)?.geometry;
-        if (!data) {
-            throw new Error("Trestle part has no authored geometry");
-        }
-
-        mesh.updateMatrix();
         return {
-            geometry: data,
-            localToWorld: parentTransform.clone().multiply(mesh.matrix)
+            geometry: member.geometry.geometry,
+            localToWorld: parentTransform.clone().multiply(
+                member.localToParent
+            )
         };
     }
 
-    // A fixed set of related oak cuts, and dedicated UV windows, keep
-    // the framing related to the tabletop without repeating its pattern.
-    const createTimber = (
+    function renderTimber(
         name: string,
-        start: THREE.Vector3,
-        end: THREE.Vector3,
-        width: number,
-        depth: number,
-        contacts?: ContactNormals,
-        supplied?: TableTimberGeometry
-    ): THREE.Mesh => {
+        member: TableTimberGeometry
+    ): THREE.Mesh {
         const piece = timberNumber++;
         const seed = (piece * 5 + 1) % 8;
         const material = oakVariant(seed);
-        const faces = {
-            face: oakBoardFace(seed),
-            endGrain: material.tinted.endGrain
-        };
+        const face = oakBoardFace(seed);
+        const endGrain = material.tinted.endGrain;
         const uvOffset = {
             u: cm(1.4) + (piece * cm(3.7)) % cm(16),
             v: (piece * cm(31)) % cm(49)
         };
 
-        const brace = contacts && (name === "BraceBack" ||
-            name === "BraceFront");
-        const foot = members.get("Foot");
-        const post = members.get("Post");
-        const member = supplied ?? (
-            brace && foot && post
-                ? tableTimberBetweenSurfaces({
-                    first: {target: asSurface(foot), near: start},
-                    last: {target: asSurface(post), near: end},
-                    width, depth,
-                    referenceDirection: new THREE.Vector3(1, 0, 0)
-                })
-                : tableTimberGeometry(start, end, width, depth, contacts)
-        );
-        const geometry = offsetAuthoredUvs(
-            member.geometry, uvOffset.u, uvOffset.v
-        );
-
         const beam = surfaceMesh({
             name,
-            geometry,
+            geometry: offsetAuthoredUvs(
+                member.geometry, uvOffset.u, uvOffset.v
+            ),
             materials: member.fitted
                 ? {
-                    "side-0": faces.face,
-                    "side-1": faces.face,
-                    "side-2": faces.face,
-                    "side-3": faces.face,
-                    "cap-start": faces.endGrain,
-                    "cap-end": faces.endGrain
+                    "side-0": face,
+                    "side-1": face,
+                    "side-2": face,
+                    "side-3": face,
+                    "cap-start": endGrain,
+                    "cap-end": endGrain
                 }
                 : {
-                    px: faces.face,
-                    nx: faces.face,
-                    py: faces.endGrain,
-                    ny: faces.endGrain,
-                    pz: faces.face,
-                    nz: faces.face
+                    px: face,
+                    nx: face,
+                    py: endGrain,
+                    ny: endGrain,
+                    pz: face,
+                    nz: face
                 },
             tint: new THREE.Color(0.97, 0.97, 0.97)
         });
         beam.applyMatrix4(member.localToParent);
-        members.set(name, beam);
         return beam;
-    };
-    const timber: TrestleTimberFactory = createTimber;
+    }
 
     const support: TrestleSupportOptions = {
         height: spec.surfaceHeight - spec.thickness,
@@ -227,47 +192,75 @@ function buildTrestles(
     };
 
     const supportX = cm(60);
-    const trestles = new Map<string, THREE.Group>();
+    const posts: {
+        part: TableTimberGeometry;
+        transform: THREE.Matrix4;
+    }[] = [];
 
     for (const [name, x] of [
         ["LeftTrestle", -supportX],
         ["RightTrestle", supportX]
     ] as const) {
-        members.clear();
-        const trestle = createTrestleSupport(support, timber);
+        const authored = new Map<string, TableTimberGeometry>();
+
+        // Author every contact and cut before compiling any render mesh.
+        for (const cut of trestleTimbers(support)) {
+            const foot = authored.get("Foot");
+            const post = authored.get("Post");
+            const brace = cut.contacts &&
+                (cut.name === "BraceBack" || cut.name === "BraceFront");
+
+            const member = brace && foot && post
+                ? tableTimberBetweenSurfaces({
+                    first: {
+                        target: surfaceOf(foot),
+                        near: cut.start
+                    },
+                    last: {
+                        target: surfaceOf(post),
+                        near: cut.end
+                    },
+                    width: cut.width,
+                    depth: cut.depth,
+                    referenceDirection: new THREE.Vector3(1, 0, 0)
+                })
+                : tableTimberGeometry(
+                    cut.start, cut.end, cut.width, cut.depth, cut.contacts
+                );
+            authored.set(cut.name, member);
+        }
+
+        const trestle = new THREE.Group();
         trestle.name = name;
-        trestles.set(name, trestle);
-
-        // All framing belongs to the table top's coordinate frame.
-        // Reposition or rotate TableTop, and the whole assembly follows.
+        for (const [memberName, member] of authored) {
+            trestle.add(renderTimber(memberName, member));
+        }
         trestle.position.set(x, -topCenterHeight, 0);
+        trestle.updateMatrix();
         parent.add(trestle);
-    }
 
-    // Resolve the complete tie ends against the *actual* inward post
-    // faces, including finite footprint checks, in TableTop coordinates.
-    const left = trestles.get("LeftTrestle")!;
-    const right = trestles.get("RightTrestle")!;
-    const leftPost = left.getObjectByName("Post") as THREE.Mesh;
-    const rightPost = right.getObjectByName("Post") as THREE.Mesh;
-    left.updateMatrix();
-    right.updateMatrix();
+        posts.push({
+            part: authored.get("Post")!,
+            transform: trestle.matrix.clone()
+        });
+    }
 
     const tieHeight = cm(34) - topCenterHeight;
     const start = new THREE.Vector3(-supportX, tieHeight, 0);
     const end = new THREE.Vector3(supportX, tieHeight, 0);
     const fittedTie = tableTimberBetweenSurfaces({
-        first: {target: asSurface(leftPost, left.matrix), near: start},
-        last: {target: asSurface(rightPost, right.matrix), near: end},
+        first: {
+            target: surfaceOf(posts[0]!.part, posts[0]!.transform),
+            near: start
+        },
+        last: {
+            target: surfaceOf(posts[1]!.part, posts[1]!.transform),
+            near: end
+        },
         width: cm(10.5),
         depth: cm(10.5),
         referenceDirection: new THREE.Vector3(0, 1, 0)
     });
 
-    parent.add(createTimber(
-        "LongStretcher",
-        start, end,
-        cm(10.5), cm(10.5),
-        undefined, fittedTie
-    ));
+    parent.add(renderTimber("LongStretcher", fittedTie));
 }
