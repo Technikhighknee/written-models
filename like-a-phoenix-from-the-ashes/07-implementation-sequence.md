@@ -16,6 +16,10 @@ queries, the viewer and export with the correct authored identity.
 - [ ] **1.1** Preserve a baseline of the eight models' visual forms,
       Quad View topology, material appearance and supported GLB
       behavior, including the mug's active morph fill.
+      The original visual baseline was not captured before migration,
+      so it cannot honestly be reconstructed afterward. The eight
+      models were subsequently reviewed in Godot under 5.11; final
+      visual sign-off still belongs to the owner.
 - [x] **1.2** Retain `MeshData` and its existing authored faces.
       Give each new `GeometryResult` an opaque identity and enforce
       selection ownership on `BoundaryRef` and `SurfacePatchRef`.
@@ -929,12 +933,15 @@ operations, with no live consumers of superseded specialized logic.
       deleted API names.
 - [ ] **7.5** Verify all eight models in Quad View and GLB export,
       with the mug's active morph and other supported runtime paths.
-      A final acceptance gate now builds each of the eight registered
-      models, checks authored Quad View and runs the real runtime
-      compiler and binary GLB exporter; the tankard fill morph is
-      also checked. Its headless texture canvas is only a structural
-      test fixture. Actual PBR appearance and the final Godot import
-      still require visual acceptance.
+      A final acceptance gate builds all eight registered models,
+      checks authored Quad View and uses the real runtime compiler
+      and binary GLB exporter. It checks the tankard's fill controller,
+      including the eight exported morph targets. CI passed the
+      complete gate in commit `122bd54`.
+      The headless texture canvas uses placeholder pixels; the test
+      verifies geometry, materials and export wiring, not visual PBR
+      quality. Final appearance and Godot inspection remain for
+      the owner's acceptance.
 - [x] **7.6** Construct another cross-category geometric assembly
       through existing toolbox functions to demonstrate reuse.
       An unregistered bored-timber and fitted-peg construction now
