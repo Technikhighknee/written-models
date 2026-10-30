@@ -1,75 +1,82 @@
 # Architecture
 
-Written Models constructs intentionally authored 3D assets in TypeScript. Geometry exists independently of rendering; a model combines reusable operations, spatial relationships and material recipes into an asset.
+Written Models authors 3D geometry in TypeScript. The geometry is independent of Three.js rendering; models assemble reusable operations into deliberately designed objects. This is a guide to the **contracts between layers**, not an API reference. For exact signatures, limitations and return selections, read the implementation.
 
-This document records **current system contracts**, not a migration plan. Read the implementation when the exact input shape, supported domain or operation behavior matters.
-
-## Responsibilities and direction
+## Where responsibilities live
 
 | Location | Responsibility |
 | --- | --- |
-| `src/toolbox/geometry/definitions/` and `kernel/` | Geometry types, owned results, topology, selections, triangulation and precision |
-| `src/toolbox/geometry/build/` | Construct geometry and establish explicit boundaries |
-| `src/toolbox/geometry/edit/` | Change existing geometry and its actual topology |
-| `src/toolbox/geometry/queries/` | Intersections, surface contact, fitting, clearance and cavity extraction |
-| `src/toolbox/geometry/uv/` | Project UVs onto authored surfaces |
-| `src/toolbox/geometry/construction/` | Reusable higher-level constructions composed from geometry operations |
-| `src/toolbox/geometry/mesh/` | Authored mesh representation and render-geometry conversion |
-| `src/toolbox/shapes/`, `spatial/`, `units/` | Shape definitions, frames/placement/variation, physical units |
-| `src/toolbox/texturing/` | Generic texture fields and map baking |
-| `src/materials/` | Reusable physical appearance recipes and cached PBR materials |
-| `src/models/` | Object-specific dimensions, composition, shapes, details and artistic choices |
-| `src/core/` | Viewer, routes, runtime preparation and GLB export |
+| `src/toolbox/geometry/definitions/`, `kernel/` | Geometry contracts, owned results, selections, topology, triangulation and precision |
+| `src/toolbox/geometry/build/` | Contour, profile, section and surface construction; explicit boundaries |
+| `src/toolbox/geometry/edit/` | Topology-changing edits, deformation, UV offsets and Boolean operations |
+| `src/toolbox/geometry/queries/` | Authored-face queries, finite contacts, fitting, clearance and cavities |
+| `src/toolbox/geometry/uv/`, `mesh/`, `materials/` | UV projection, authored mesh data, rendering adapters and face classification |
+| `src/toolbox/geometry/construction/` | Higher-level reusable compositions and primitive constructors |
+| `src/toolbox/shapes/`, `spatial/`, `texturing/`, `units/` | Definitions, transforms and placement, procedural texture fields, measurements |
+| `src/materials/` | Reusable appearance and PBR materials |
+| `src/models/` | Object-specific proportions, composition, detailing and artistic decisions |
+| `src/core/` | Viewer, Quad View, runtime preparation and GLB export |
 
-Dependencies in the geometry kernel and shared build/edit/query layers must point toward lower-level geometry, not model recipes or renderer adapters. `tests/geometry/kernel/dependency-direction.test.mjs` protects the principal import boundaries. A reusable helper does not belong in the toolbox merely because two particular models happen to need it.
+The geometry kernel must not depend on models, materials, the viewer or runtime-export implementations. Shared operations must not import model recipes. `tests/geometry/kernel/dependency-direction.test.mjs` protects the main import boundaries.
 
-## Authored geometry is the source
+A helper belongs in the toolbox because it expresses a **general geometric capability**, not merely because it is shared by two wooden objects.
 
-`MeshData` carries shared vertex positions and **authored quad and triangle faces**, including per-face-corner UVs and surface labels. Do not treat the render mesh as a substitute for this representation.
+## One authored geometry pipeline
 
-`geometryResult()` validates and copies authored data into a `GeometryResult`, whose identity owns its boundaries, face regions and optional charted patches. `BoundaryRef`, `EdgeRef` and `SurfacePatchRef` refer to that result, not arbitrarily to another geometry result. Edits must preserve, transfer or replace selections according to their actual contract; never silently reuse stale handles.
+```text
+contours / sections / procedural constructors
+    ↓
+MeshData (vertices, real quads/triangles, per-corner UVs, face regions)
+    ↓ geometryResult()
+GeometryResult (owned snapshot, regions, boundaries, optional charted patches)
+    ├── build / edit / topology operations → new GeometryResults
+    └── surfaceMesh() → toBufferGeometry() → Three.js / Quad View / GLB
+```
 
-`topologyOf()` reads authored connectivity, not GPU triangles. Boundary traversal relies on meaningful edge winding and rejects ambiguous/nonmanifold junctions where required. A surface label selects faces; it is not itself a promise of one connected patch or one boundary.
+`MeshData` is the canonical **authoring payload**, not obsolete code. Some primitive and model-construction helpers return it; wrap those results with `geometryResult()` before passing them into owned operations or `surfaceMesh()`.
 
-**Quads are not a rendering convention.** A genuinely triangulated cut or Boolean result may remain triangles. `reconstructPatchQuads()` can recover real quads where the input geometry allows it; manufacturing fake quads is not a solution.
+`surfaceMesh()` and `toBufferGeometry()` accept **`GeometryResult`**, not an alternative raw-`MeshData` rendering path. Render conversion preserves the authored control geometry and triangle-to-face provenance for Quad View.
 
-## Construction, edits and interfaces
+Geometric queries such as `raycastSurface()` and `cavitySectionsFromSurfaces()` deliberately consume an authored `MeshData` through a target with an explicit transform. Passing `result.geometry` is **not** a legacy render path: queries work on faces, not a renderer's `BufferGeometry`. Consult each operation's signature; not every low-level input needs to be a `GeometryResult`.
 
-Adjacent authored parts need compatible **physical boundaries and stations**. Sample or partition their shared construction deliberately, then connect them with operations such as `bridgeBoundaries()` or `joinGeometry()`. A visually coincident seam is not necessarily a welded topological seam.
+## Ownership, topology and selections
 
-Operations have domains rather than universal promises:
+`geometryResult()` validates and deep-copies authored data. Treat a returned result as an **immutable snapshot**, including its nested THREE vectors. An edit creates a new owner identity; its selections do not automatically belong to the previous or next result.
 
-- Patch operations use their supported face selections and surface charts. `openPatch()`, `recessPatch()` and `shapeSurfaceRelief()` are distinct edits.
-- `cutThrough()` makes the supported straight-through connection between appropriate surfaces; `booleanSolids()` performs general solid Boolean work through Manifold.
-- `splitByPlane()`, `subdivideEdges()` and `bevelEdges()` alter actual mesh topology; each has its own preconditions and follow-on selection semantics.
-- Queries and fitting use finite authored surfaces and explicit coordinate transforms, not infinite support planes unless a caller intentionally provides that form.
+- `FaceRef` uses a result-local face index; `BoundaryRef`, `EdgeRef` and `SurfacePatchRef` carry ownership.
+- Face regions are semantic labels, **not** guarantees of one connected surface, one boundary or one UV chart.
+- `topologyOf()` derives connectivity from authored faces and vertex identities, not rendered triangles.
+- Edits return valid remapped selections where promised; they drop consumed boundaries or charts they cannot preserve. Use the **returned** references.
+- Quads are authored quads. Actual cut/Boolean triangles remain triangles unless `reconstructPatchQuads()` can legitimately recover quads.
 
-Reject unsupported cases with meaningful errors instead of silently approximating a different shape. `GeometryOperationError` communicates the operation, reason and relevant context.
+Coincident positions do **not** imply shared topology. `AuthoredMeshBuilder` requires an explicit welding policy (`"position"` or `"none"`). In independent constructions, shared physical interfaces need compatible stations and positions; `joinGeometry()` performs declared, validated welding. Do not conceal T-junctions, detached contacts or degenerate faces in rendering.
 
-## Physical coordinates and precision
+## Operation domains
 
-One world unit equals **one meter**; use `mm()`, `cm()`, `m()` and `km()` from `src/toolbox/units/length.ts` where useful.
+The toolbox does not promise universal editing on arbitrary geometry:
 
-Construction precision is separate from output precision. The shared precision policy handles absolute/relative length and angular tolerances. Rendering and runtime formats use Float32 positions, so geometry valid during authoring can still fail output precision checks. An operation must not silently collapse, invert or misidentify geometry to make an export pass.
+- `fillSurfacePatch()` creates a charted patch from an explicitly sampled profile; `shapeSurfaceRelief()`, `openPatch()` and `recessPatch()` have their own chart, selection and outline constraints.
+- `cutThrough()` is for its supported paired-surface through-cuts. `booleanSolids()` uses Manifold for closed authored solids and may return genuine triangulated faces.
+- `clipContour()` edits a **2D profile**. `splitByPlane()` partitions authored 3D geometry. They are not interchangeable.
+- `fitBetweenSurfaces()`, `fitBoundary()` and clearance queries use **finite** authored contacts and explicit transforms, not hypothetical infinite supports.
+- `sampleAdaptiveStations()` reports sampled deviation and saturation. Observed error is not a mathematical bound for arbitrary curves.
 
-Frames and transforms must be explicit when fitting, joining or placing independently modeled parts. Never compare local-space points with world-space surfaces without applying the intended transform.
+Operations reject unsupported or degenerate inputs explicitly, often with `GeometryOperationError` (operation, reason, context). Do not silently change the geometric problem to force a successful result.
 
-## Rendering, Quad View and export
+## Spaces, precision and repeatability
 
-`surfaceMesh()` requires an owned `GeometryResult`, maps its authored surface labels to Three.js materials, and delegates geometry compilation to `toBufferGeometry()`. Raw `MeshData` is a construction payload, not an alternative rendering input. That conversion triangulates as needed for the GPU, while retaining the authored control representation and triangle provenance for tooling. Quad View and triangle wireframe answer different questions.
+One world unit is **one meter**. Use `mm()`, `cm()`, `m()` and `km()` in `src/toolbox/units/length.ts` when appropriate.
 
-`src/core/exportGlb.ts` and `src/core/export/prepareRuntimeModel.ts` prepare and export runtime assets, including supported textures, vertex tints, geometry and morph data. This is a separate representation from authored geometry. Runtime batching/atlas choices must not corrupt exported appearance or behavior.
+Authored positions use JavaScript number precision. Rendering and export use Float32, so a geometrically valid tiny or far-from-origin feature may collapse or reverse after quantization. The owned rendering compiler checks that failure; `geometryResult()` validation and Float32 output checks solve **different** problems.
 
-Authored UV scale is physical. The shared material library builds consistent PBR maps, including distinct face/end-grain treatments where a model requires them. Don't modify shared cached texture transforms to create per-part variation; author appropriate UVs or per-piece tints.
+Construction-local geometry, world-space query results and parent-local scene attachment frames must never be mixed implicitly. Use an explicit transform when composing them. With identical deterministic inputs, seeded variation and authored sampling should give reproducible geometry; don't let render/export steps redefine the construction.
 
-A `createFillableVolume()` controller can change a mesh while authoring/running in TypeScript. GLB can carry supported morph targets and weights, **not the TypeScript controller itself**. Inspect the actual export and target engine before claiming feature parity.
+## Materials, runtime and inspection
 
-## Extending the system
+Materials are assigned from **authored face regions**; GPU material groups do not classify source topology. Physical UV tiling comes from the appropriate authored UV projection or construction recipe. Verify any existing primitive's mapping rather than assuming every UV was authored in meters. Never mutate a shared cached texture's transform to create per-object variation.
 
-1. Inspect an existing composition and the operation implementations before designing a new capability.
-2. Keep the operation generic; leave proportions, object-specific detailing and artistic decisions in the model.
-3. Preserve actual topology, selections, UVs and source provenance through promised conversions and edits.
-4. Keep modeling, rendering and runtime behavior conceptually separate.
-5. Protect costly shared invariants only when appropriate; see [TESTING.md](TESTING.md).
+`src/core/export/prepareRuntimeModel.ts` builds a separate runtime representation: supported static meshes can be batched/atlased, while morph and skinned data follow specialized preservation paths. `exportGlb.ts` exports copies without optimizing the live editor model in place.
 
-For a capability-oriented index and real composition examples, see [TOOLBOX.md](TOOLBOX.md).
+`createFillableVolume()` uses a persistent mesh with morph targets and TypeScript fill controls. GLB retains the supported morph shapes and weights, **not** its TypeScript controller. Verify runtime behavior in the target engine; successful compilation does not prove correct appearance.
+
+For discovering actual capabilities and combinations, see [TOOLBOX.md](TOOLBOX.md). For economical regression coverage, see [TESTING.md](TESTING.md).
