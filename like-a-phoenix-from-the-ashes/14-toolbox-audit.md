@@ -273,6 +273,10 @@ Geometrie- und Renderingpfade geprüft. Bereinigt wurden:
   die Geometrie direkt. Die ehemalige Toolbox-Komposition
   `geometry/construction/sweepSection.ts` ist entfernt.
 
+- `models/sandingpaper.ts`: Die Bodenplatzierung wird unmittelbar aus
+  den authored Vertex-Positionen berechnet, nicht mehr aus dem
+  `THREE.BufferGeometry.boundingBox` des Renderers.
+
 Andere Bauteile verwenden bereits die gemeinsamen Geometrieoperationen
 oder definieren ausschließlich modellabhängige Formen und Materialien.
 Die Existenz spezifischer Modellrezepte allein ist kein Altcode-Befund.
