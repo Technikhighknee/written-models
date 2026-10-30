@@ -12,7 +12,7 @@ const { geometryResult, assertSelectionOwner } = await toolbox(
 const { topologyOf } = await toolbox("geometry/kernel/topology.ts");
 
 test("snapshot owns its geometry and selections", () => {
-    const builder = new AuthoredMeshBuilder();
+    const builder = new AuthoredMeshBuilder({ weld: "position" });
     builder.addFace(
         [
             new THREE.Vector3(0, 0, 0),

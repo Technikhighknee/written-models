@@ -276,7 +276,9 @@ test("actual Boolean triangles can be reconstructed only on an explicitly select
             v.clone().add(new THREE.Vector3(0.25, 0.1, 0.2))
         )
     };
-    const boolean = await booleanSolids(base, shifted, "difference");
+    const boolean = await booleanSolids(
+        geometryResult(base), geometryResult(shifted), "difference"
+    );
     const region = "first:py";
     assert.ok(boolean.regions[region]?.length >= 2);
     const output = reconstructPatchQuads(boolean, region);
