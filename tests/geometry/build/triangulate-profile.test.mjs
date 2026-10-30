@@ -7,9 +7,11 @@ import { toolbox } from "../../support/toolbox.mjs";
 const { triangulateProfile } = await toolbox(
     "geometry/build/triangulateProfile.ts"
 );
-const { extrude } = await toolbox("shapes/operations/extrude.ts");
-const { getControlMesh } = await toolbox(
-    "geometry/mesh/toBufferGeometry.ts"
+const { extrudeContour } = await toolbox(
+    "geometry/build/extrudeContour.ts"
+);
+const { topologyOf } = await toolbox(
+    "geometry/kernel/topology.ts"
 );
 
 test("planar caps retain collinear authored boundary stations", () => {
@@ -43,27 +45,36 @@ test("planar caps retain collinear authored boundary stations", () => {
     }
 });
 
-test("existing shape extrusion retains control faces across cap seams", () => {
-    const shape = new THREE.Shape([
-        new THREE.Vector2(0, 0),
-        new THREE.Vector2(1, 0),
-        new THREE.Vector2(2, 0),
-        new THREE.Vector2(2, 1),
-        new THREE.Vector2(0, 1)
-    ]);
+test("collinear cap stations remain authored through closed extrusion", () => {
+    const profile = [
+        [0, 0], [1, 0], [2, 0],
+        [2, 1], [0, 1]
+    ].map(([x, y]) => new THREE.Vector2(x, y));
 
-    const buffer = extrude(shape, {
-        thickness: 0.4,
-        curveSegments: 1
+    const result = extrudeContour({
+        outer: {points: profile, closed: true}
+    }, {
+        frame: new THREE.Matrix4(),
+        depth: 0.4
     });
 
-    try {
-        const authored = getControlMesh(buffer);
+    assert.equal(result.geometry.vertices.length, 10);
+    assert.equal(result.regions.outer.length, 5);
+    assert.equal(result.geometry.quads.filter(face =>
+        face.surface === "outer"
+    ).length, 5);
+    assert.ok(result.regions["cap-start"].length > 0);
+    assert.ok(result.regions["cap-end"].length > 0);
+    assert.equal(topologyOf(result).openBoundaries().length, 0);
+    assert.equal(topologyOf(result).connectedComponents().length, 1);
 
-        assert.ok(authored);
-        assert.equal(authored.quads.length, 5);
-        assert.ok(authored.triangles.length >= 6);
-    } finally {
-        buffer.dispose();
+    for (const z of [0, 0.4]) {
+        const stations = result.geometry.vertices.filter(point =>
+            Math.abs(point.z - z) < 1e-12
+        );
+        assert.ok(stations.some(point =>
+            Math.abs(point.x - 1) < 1e-12 &&
+            Math.abs(point.y) < 1e-12
+        ));
     }
 });
