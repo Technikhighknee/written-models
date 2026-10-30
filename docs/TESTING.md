@@ -1,5 +1,7 @@
 # Testing
 
+> Just because something can be tested doesn't mean it fucking should be.
+
 ## Purpose
 
 The test suite protects the contracts that allow written-models to construct,
