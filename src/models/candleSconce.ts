@@ -52,16 +52,36 @@ export function buildSconceGeometry() {
         ]
     });
 
-    // The arm turns upright before reaching the candle tray. Its last
-    // section is the first ring of the tray itself, not an embedded cap.
-    const spine = new THREE.CubicBezierCurve3(
-        new THREE.Vector3(0, 0.025, 0.01),
-        new THREE.Vector3(0, 0.052, 0.13),
-        new THREE.Vector3(0, 0.118, 0.29),
-        new THREE.Vector3(0, 0.17, 0.29)
+    // Preserve the original diagonal through most of the arm.
+    // Only its short upper neck turns upward to meet the level cup.
+    const neckStart = 0.8;
+    const diagonalAt = (t: number) => new THREE.Vector3(
+        0,
+        0.025 + 0.145 * t,
+        0.01 + 0.28 * t - 0.022 * Math.sin(Math.PI * t)
     );
-    const armAt = (t: number) => spine.getPoint(t);
-    const armTangent = (t: number) => spine.getTangent(t);
+    const diagonalTangent = (t: number) => new THREE.Vector3(
+        0,
+        0.145,
+        0.28 - 0.022 * Math.PI * Math.cos(Math.PI * t)
+    );
+
+    const neckBase = diagonalAt(neckStart);
+    const neck = new THREE.CubicBezierCurve3(
+        neckBase,
+        neckBase.clone().addScaledVector(
+            diagonalTangent(neckStart), (1 - neckStart) / 3
+        ),
+        new THREE.Vector3(0, 0.165, 0.29),
+        new THREE.Vector3(0, 0.185, 0.29)
+    );
+
+    const armAt = (t: number) => t <= neckStart
+        ? diagonalAt(t)
+        : neck.getPoint((t - neckStart) / (1 - neckStart));
+    const armTangent = (t: number) => t < neckStart
+        ? diagonalTangent(t).normalize()
+        : neck.getTangent((t - neckStart) / (1 - neckStart));
     const tangent = armTangent(0).normalize();
     const across = new THREE.Vector3(1, 0, 0);
     const upright = new THREE.Vector3()

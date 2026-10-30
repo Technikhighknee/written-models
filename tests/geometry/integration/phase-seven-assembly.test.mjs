@@ -72,6 +72,29 @@ test("a pierced sconce assembles extrusion, transported sweep and revolution int
     assert.ok(armAt(0).y < 0.16 && armAt(0).y > -0.08);
     assert.ok(armAt(1).distanceTo(cupCenter) < 1e-12);
 
+    // The old diagonal stays intact until the short forged neck.
+    for (const t of [0, 0.25, 0.5, 0.75, 0.8]) {
+        const original = new THREE.Vector3(
+            0,
+            0.025 + 0.145 * t,
+            0.01 + 0.28 * t - 0.022 * Math.sin(Math.PI * t)
+        );
+        assert.ok(armAt(t).distanceTo(original) < 1e-12,
+            `The original diagonal shifted at t=${t}`);
+    }
+
+    // Its actual welded top rim is horizontal, not a tilted stack of
+    // independently capped meshes.
+    const rim = armAndCup.geometry.vertices.slice(8 * 24, 9 * 24);
+    assert.equal(rim.length, 24);
+    for (const vertex of rim) {
+        assert.ok(Math.abs(vertex.y - cupCenter.y) < 1e-9);
+        assert.ok(Math.abs(
+            Math.hypot(vertex.x - cupCenter.x, vertex.z - cupCenter.z) -
+            0.016
+        ) < 1e-9);
+    }
+
     const registered = models.find(model => model.slug === "candle-sconce");
     assert.ok(registered, "The sconce must appear in the model browser");
 
