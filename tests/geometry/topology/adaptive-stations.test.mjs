@@ -30,7 +30,7 @@ test("adaptive stations retain authored landmarks and report achieved accuracy",
     assert.equal(report.saturated.length, 0);
     assert.ok(report.observedMaxDeviation <= options.maxDeviation);
 
-    // Old model constructors still receive the same station sequence.
+    // Both sampling APIs produce the same station sequence.
     assert.deepEqual(adaptiveStations(curvedSection, options), report.stations);
 });
 

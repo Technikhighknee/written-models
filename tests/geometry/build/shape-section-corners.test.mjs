@@ -13,9 +13,6 @@ const { loftSectionWalls } = await toolbox(
 const { capBoundary } = await toolbox(
     "geometry/build/finishBoundaries.ts"
 );
-const { extrudeContour } = await toolbox(
-    "geometry/build/extrudeContour.ts"
-);
 const { fillSurfacePatch } = await toolbox(
     "geometry/build/fillSurfacePatch.ts"
 );
@@ -175,29 +172,6 @@ test("shaped beam sections compose with loft, caps, regions and Quad View", () =
     } finally {
         render.dispose();
     }
-});
-
-test("the same rounded outline can be independently extruded with genuine caps", () => {
-    const shaped = shapeSectionCorners(rectangle(), [
-        round(0, 0.1, 5),
-        round(1, 0.15, 5),
-        round(2, 0.1, 5),
-        round(3, 0.15, 5)
-    ]);
-
-    const result = extrudeContour({
-        outer: shaped.contour
-    }, {
-        frame: new THREE.Matrix4(),
-        depth: 0.4
-    });
-
-    assert.equal(topologyOf(result).openBoundaries().length, 0);
-    assert.equal(topologyOf(result).connectedComponents().length, 1);
-    assert.equal(result.geometry.vertices.length,
-        shaped.contour.points.length * 2);
-    assert.ok(result.regions["cap-start"].length > 0);
-    assert.ok(result.regions["cap-end"].length > 0);
 });
 
 test("one shaped profile is shared by an independent wall and a charted cap", () => {

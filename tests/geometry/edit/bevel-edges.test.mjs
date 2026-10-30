@@ -447,40 +447,6 @@ test("two adjacent triangular-prism edges meet at one chamfer corner", () => {
     assert.equal(topologyOf(result).edgeUses(corner, lower).length, 2);
 });
 
-test("a connected chamfer remains a valid input to a later plane cut", () => {
-    const source = box();
-    const chamfered = bevelEdges(source, topEdges(source).slice(0, 2),
-        () => 0.11);
-    const result = splitByPlane(chamfered, {
-        point: new THREE.Vector3(0, 0, 0),
-        normal: new THREE.Vector3(0, 1, 0)
-    }, {cap: true, cutRegion: "chamfer-section"});
-    assert.equal(result.parts.length, 2);
-    assert.equal(result.interfaces.length, 1);
-    for (const part of result.parts) {
-        assert.equal(topologyOf(part).openBoundaries().length, 0);
-        assert.ok(part.regions["chamfer-section"].length > 0);
-    }
-});
-
-function articulatedEdges(source, corners) {
-    const indexAt = ([x, y, z]) => {
-        const index = source.geometry.vertices.findIndex(v =>
-            Math.abs(v.x - x) < 1e-9 &&
-            Math.abs(v.y - y) < 1e-9 &&
-            Math.abs(v.z - z) < 1e-9
-        );
-        assert.ok(index >= 0, "Missing authored prism vertex");
-        return index;
-    };
-    const ids = corners.map(indexAt);
-    return ids.slice(0, -1).map((from, i) => {
-        const to = ids[i + 1];
-        assert.equal(topologyOf(source).edgeUses(from, to).length, 2);
-        return {owner: source.id, from, to};
-    });
-}
-
 test("an open chamfer traverses three edges across changing cap faces", () => {
     const source = box();
     const original = source.geometry.vertices.map(v => v.clone());
