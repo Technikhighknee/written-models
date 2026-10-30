@@ -79,9 +79,11 @@ export function buildSconceGeometry() {
     const armAt = (t: number) => t <= neckStart
         ? diagonalAt(t)
         : neck.getPoint((t - neckStart) / (1 - neckStart));
-    const armTangent = (t: number) => t < neckStart
-        ? diagonalTangent(t).normalize()
-        : neck.getTangent((t - neckStart) / (1 - neckStart));
+    const armTangent = (t: number) => t >= 1
+        ? new THREE.Vector3(0, 1, 0)
+        : t < neckStart
+            ? diagonalTangent(t).normalize()
+            : neck.getTangent((t - neckStart) / (1 - neckStart));
     const tangent = armTangent(0).normalize();
     const across = new THREE.Vector3(1, 0, 0);
     const upright = new THREE.Vector3()
