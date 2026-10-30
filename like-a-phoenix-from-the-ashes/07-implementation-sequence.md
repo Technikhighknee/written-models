@@ -891,6 +891,11 @@ operations, with no live consumers of superseded specialized logic.
       `geometry/edit/geometryEdits` operation. The old MeshData-only
       `sweepSection` compatibility export is also removed in favor
       of `sweepSectionResult`, which retains owned selections.
+      The obsolete render-first `shapes/operations/extrude` path
+      is retired. Its shared extrusion capability remains in
+      `extrudeContour`, including polygon loops, holes, offset
+      layers and authored caps; callers export with the normal
+      `surfaceMesh` / `toBufferGeometry` pipeline.
 - [x] **7.3** Keep imports following the module dependency
       direction in [06](06-migration-map.md).
       The shared `ellipticalRing` sampler and axial profile types
