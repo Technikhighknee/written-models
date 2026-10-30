@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { TimberContactNormals } from "../../toolbox/geometry/construction/timber";
+import type { ContactNormals } from "../../toolbox/geometry/definitions/geometry";
 
 /** Timber assembled in the caller's coordinate system and material family. */
 export type TrestleTimberFactory = (
@@ -8,7 +8,7 @@ export type TrestleTimberFactory = (
     end: THREE.Vector3,
     width: number,
     depth: number,
-    contacts?: TimberContactNormals
+    contacts?: ContactNormals
 ) => THREE.Mesh;
 
 export interface TrestleSupportOptions {
@@ -44,7 +44,7 @@ export interface TrestleTimber {
     end: THREE.Vector3;
     width: number;
     depth: number;
-    contacts?: TimberContactNormals;
+    contacts?: ContactNormals;
 }
 
 /**
@@ -88,7 +88,7 @@ export function trestleTimbers(
         end: THREE.Vector3,
         width: number,
         depth: number,
-        contacts?: TimberContactNormals
+        contacts?: ContactNormals
     ): void => {
         members.push({
             name, start, end, width, depth,
@@ -96,8 +96,8 @@ export function trestleTimbers(
         });
     };
 
-    // createTimberBetween() aligns the long axis with the endpoints.
-    // For cross timbers along Z, width maps to X and depth maps to Y.
+    // Long axes follow the member endpoints. For cross timbers along Z,
+    // width maps to X and depth maps to Y.
     add(
         "Foot",
         new THREE.Vector3(0, footHeight / 2, -footLength / 2),

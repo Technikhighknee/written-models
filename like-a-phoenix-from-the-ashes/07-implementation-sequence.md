@@ -832,6 +832,10 @@ operations, with no live consumers of superseded specialized logic.
       plane-cut and surface-fitted ends through the same authored
       `loftSectionWalls` and `capBoundary` path, without the model's
       earlier `beamBetweenPlanes`/`loftSections` dependency.
+      The superseded render-first `beams.ts`, `beamBetweenPlanes.ts`
+      and `timber.ts` have no remaining model consumers and were
+      removed. Fitted member normals now have a neutral geometry
+      definition rather than depending on a rendering constructor.
       Still active in the model-test corpus: older board, stave,
       vessel and loft constructors. Migrate those consumers before
       removing their implementations.

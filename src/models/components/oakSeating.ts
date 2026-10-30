@@ -6,7 +6,7 @@ import {
     type TableTimberGeometry
 } from "./tableTimberGeometry";
 
-import type { TimberContactNormals } from "../../toolbox/geometry/construction/timber";
+import type { ContactNormals } from "../../toolbox/geometry/definitions/geometry";
 import { cylinderMesh } from "../../toolbox/geometry/construction/cylinderMesh";
 import { geometryResult, type GeometryResult } from "../../toolbox/geometry/kernel/GeometryResult";
 import { surfaceMesh } from "../../toolbox/geometry/mesh/surfaceMesh";
@@ -107,7 +107,7 @@ export interface OakTimberShop {
         end: THREE.Vector3,
         width: number,
         depth: number,
-        contacts?: TimberContactNormals
+        contacts?: ContactNormals
     ): THREE.Mesh;
     peg(
         name: string,

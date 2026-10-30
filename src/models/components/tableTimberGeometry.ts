@@ -4,15 +4,14 @@ import { fitBetweenSurfaces, type SurfaceAttachment } from
     "../../toolbox/geometry/queries/fitBetweenSurfaces";
 import { loftSectionWalls } from "../../toolbox/geometry/build/loftSectionWalls";
 import { capBoundary } from "../../toolbox/geometry/build/finishBoundaries";
-import type { Section3 } from "../../toolbox/geometry/definitions/geometry";
+import type {
+    Section3, ContactNormals
+} from "../../toolbox/geometry/definitions/geometry";
 import { boxMesh } from "../../toolbox/geometry/construction/boxMesh";
 import { sectionsBetweenPlanes } from "../../toolbox/geometry/construction/sectionsBetweenPlanes";
 import {
     geometryResult, type GeometryResult
 } from "../../toolbox/geometry/kernel/GeometryResult";
-import type {
-    TimberContactNormals
-} from "../../toolbox/geometry/construction/timber";
 
 export interface TableTimberGeometry {
     geometry: GeometryResult;
@@ -32,7 +31,7 @@ export function tableTimberGeometry(
     end: THREE.Vector3Like,
     width: number,
     depth: number,
-    contacts?: TimberContactNormals
+    contacts?: ContactNormals
 ): TableTimberGeometry {
     const from = new THREE.Vector3(start.x, start.y, start.z);
     const to = new THREE.Vector3(end.x, end.y, end.z);

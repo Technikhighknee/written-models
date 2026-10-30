@@ -43,6 +43,12 @@ export interface Section3 {
     inner?: readonly Contour3[];
 }
 
+/** Outward-facing support normals at the start and end of a fitted member. */
+export interface ContactNormals {
+    startNormal: THREE.Vector3Like;
+    endNormal: THREE.Vector3Like;
+}
+
 export interface Path3 {
     at(t: number): THREE.Vector3Like;
     tangent(t: number): THREE.Vector3Like;

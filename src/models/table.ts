@@ -10,7 +10,7 @@ import {
     type TableTimberGeometry
 } from "./components/tableTimberGeometry";
 import { getControlResult } from "../toolbox/geometry/mesh/toBufferGeometry";
-import type { TimberContactNormals } from "../toolbox/geometry/construction/timber";
+import type { ContactNormals } from "../toolbox/geometry/definitions/geometry";
 import {
     createTrestleSupport,
     type TrestleTimberFactory,
@@ -153,7 +153,7 @@ function buildTrestles(
         end: THREE.Vector3,
         width: number,
         depth: number,
-        contacts?: TimberContactNormals,
+        contacts?: ContactNormals,
         supplied?: TableTimberGeometry
     ): THREE.Mesh => {
         const piece = timberNumber++;
