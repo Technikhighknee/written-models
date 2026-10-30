@@ -929,11 +929,19 @@ operations, with no live consumers of superseded specialized logic.
       deleted API names.
 - [ ] **7.5** Verify all eight models in Quad View and GLB export,
       with the mug's active morph and other supported runtime paths.
-- [ ] **7.6** Construct another cross-category geometric assembly
+      A final acceptance gate now builds each of the eight registered
+      models, checks authored Quad View and runs the real runtime
+      compiler and binary GLB exporter; the tankard fill morph is
+      also checked. Its headless texture canvas is only a structural
+      test fixture. Actual PBR appearance and the final Godot import
+      still require visual acceptance.
+- [x] **7.6** Construct another cross-category geometric assembly
       through existing toolbox functions to demonstrate reuse.
-      The experimental candle-sconce asset and its model-specific
-      integration test were discarded; this proof still needs an
-      independent replacement that does not ship an unwanted model.
+      An unregistered bored-timber and fitted-peg construction now
+      composes `extrudeContour`, `revolveProfile`, authored surface
+      queries and runtime GLB export. It proves watertight parts,
+      real Quad View, polygonal bore clearance and complete UVs
+      without shipping a ninth model.
 
 **Gate:** The permanent toolbox code and documentation embody
 the architecture, and all model-specific capabilities remain.
