@@ -497,9 +497,8 @@ while keeping its visual and runtime behavior.
       control quads, UVs, shared seams, crown and wood cuts match
       the previous `boardPanel` result in the regression proof.
       `trestleTimbers` exposes the five-member support cut list
-      independently of any renderer; `createTrestleSupport` still
-      assembles that same list for existing callers. The bench
-      constructs two complete authored trestles through
+      independently of any renderer. Table and bench now
+      construct complete authored trestles through
       `tableTimberGeometry` and `tableTimberBetweenSurfaces`.
       Both diagonal braces are fitted against finite foot and
       post faces. The full 75 mm longitudinal stretcher is

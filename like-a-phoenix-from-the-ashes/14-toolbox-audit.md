@@ -28,7 +28,7 @@ Geprüfte Quellen: alle 13 Phoenix-Dokumente plus README, `docs/ARCHITECTURE.md`
 
 ### Abgegrenzte ähnliche Namen (keine erwiesene Doppelimplementierung)
 
-- `build/loftSideQuads` ist der geteilte Quad-Strip-Kern, `build/loftSectionWalls` die owned Section-/Boundary-Schicht; `construction/sweepSectionResult` spezifiziert eine Catmull-Rom-Bahn über `build/sweepSection`.
+- `build/loftSideQuads` ist der geteilte Quad-Strip-Kern, `build/loftSectionWalls` die owned Section-/Boundary-Schicht; die Henkelkurve gehört zu `models/components/tankardHandle.ts`, das direkt `build/sweepSection` verwendet.
 - `build/triangulateProfile` trianguliert planare Konturprofile; `kernel/triangulation` trianguliert authored Flächen für Render und Query.
 - `shapes/operations/clipConvexPolygon` ist ein konvexer Teilalgorithmus; `geometry/edit/clipContour` ist die komplexere concave/Holes-Operation.
 - `queries/fitBetweenSurfaces` prüft endliche Flächenkontaktabdrücke; `construction/sectionsBetweenPlanes` löst die einfachere reine Schnittrechnung an expliziten Ebenen.
@@ -252,6 +252,32 @@ Neuer generischer Bestandteil: `geometry/build/loftPairedSurfaceRows.ts` (für d
 | Datei | Urteil | Tatsächliche Aufgabe / Phoenix-Zuordnung |
 | --- | --- | --- |
 | `length.ts` | **BEHALTEN** | Meterbasierte Maßeinheiten |
+
+## Nachprüfung aller 19 Modell-TypeScript-Dateien
+
+Die Modell- und Komponenten-Dateien wurden am 30.10.2026 erneut auf alte
+Geometrie- und Renderingpfade geprüft. Bereinigt wurden:
+
+- `models/table.ts`: Kontaktgeometrie wird nicht länger aus gerenderten
+  `THREE.Mesh`-Objekten mittels `getControlResult()` zurückgelesen. Fuß,
+  Pfosten, Streben und Längsverbindung werden als authored Bauteile berechnet,
+  bevor ein einziges Mesh gerendert wird.
+- `models/components/trestleSupport.ts`: Die alte Renderfactory
+  `createTrestleSupport()` samt `TrestleTimberFactory` ist entfernt.
+  `trestleTimbers()` liefert weiterhin die modellabhängige Schnittliste.
+- `models/components/oakSeating.ts`: Unbenutzte `OakTimberShop.timber()`-
+  API entfernt; die Materialzusammensetzung verarbeitet fertige authored
+  `TableTimberGeometry`.
+- `models/components/tankardHandle.ts`: Die Catmull-Rom-Kurve und die
+  Henkelkontur sind Modellentscheidungen; der allgemeine Sweep erzeugt
+  die Geometrie direkt. Die ehemalige Toolbox-Komposition
+  `geometry/construction/sweepSection.ts` ist entfernt.
+
+Andere Bauteile verwenden bereits die gemeinsamen Geometrieoperationen
+oder definieren ausschließlich modellabhängige Formen und Materialien.
+Die Existenz spezifischer Modellrezepte allein ist kein Altcode-Befund.
+Eine erneute Godot-Sichtabnahme ist unabhängig vom erfolgreichen
+Typecheck/Tests/Build erforderlich, um die Bildqualität zu beurteilen.
 
 ## Abschlussbedingungen und Stand
 
