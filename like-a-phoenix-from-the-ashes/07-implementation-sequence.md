@@ -822,7 +822,7 @@ and failure conditions are enforced.
 **Result:** The toolbox has one discoverable family of geometry
 operations, with no live consumers of superseded specialized logic.
 
-- [ ] **7.1** Remove replaced board, stave, timber, vessel,
+- [x] **7.1** Remove replaced board, stave, timber, vessel,
       cap/loft, topology-query and attachment algorithms.
       First cleanup removed unused fitting adapters
       (`fitBetweenSupports`, `fitBoundaryToSurface`,
@@ -876,14 +876,21 @@ operations, with no live consumers of superseded specialized logic.
       The render-dependent `MeshSurfaceQuery` is retired; geometric
       fitting and surface hits use the authored-face
       `raycastSurface` / `surfaceTriangles` path instead.
-- [ ] **7.2** Remove duplicate render material classification
+      Retained constructors supply distinct authored capabilities:
+      `loftBoard` handles independently sampled face rows,
+      `cutBoard` preserves sloped through-housings,
+      `seamedPlankExtrusionData` handles worked joinery,
+      `sweepSectionResult` defines smooth fitted grips, and
+      `fillableVolume` preserves the tankard's active fill morph.
+      These are compositions, not competing geometric kernels.
+- [x] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
       consumers have migrated. Removed `assignMaterialsByNormal`,
       `classifyExtrudedSurfaces`, `assignExtrudedTimberSurfaces`
       and the GPU-mutating `warpGeometry`. The authored
       `classifyAuthoredFaces`, `deformVertices`, `surfaceMesh`
-      and `toBufferGeometry` paths remain. Other compatibility
-      constructors and render-first adapters still need review.
+      and `toBufferGeometry` paths remain. Remaining construction
+      helpers have distinct model or geometric responsibilities.
       The `bandAroundProfile` GPU wrapper was removed; its authored
       `bandAroundProfileData` geometry remains in use by the barrel
       and tankard. Tests compile those authored faces using
@@ -899,6 +906,9 @@ operations, with no live consumers of superseded specialized logic.
       `extrudeContour`, including polygon loops, holes, offset
       layers and authored caps; callers export with the normal
       `surfaceMesh` / `toBufferGeometry` pipeline.
+      The remaining model paths produce authored MeshData or
+      GeometryResult before material and runtime conversion; no
+      render-first duplicate is required by those models.
 - [x] **7.3** Keep imports following the module dependency
       direction in [06](06-migration-map.md).
       The shared `ellipticalRing` sampler and axial profile types
@@ -919,8 +929,14 @@ operations, with no live consumers of superseded specialized logic.
       deleted API names.
 - [ ] **7.5** Verify all eight models in Quad View and GLB export,
       with the mug's active morph and other supported runtime paths.
-- [ ] **7.6** Construct another cross-category geometric assembly
+- [x] **7.6** Construct another cross-category geometric assembly
       through existing toolbox functions to demonstrate reuse.
+      A pierced wall-mounted candle sconce now composes
+      `extrudeContour` (including hole walls and bevel layers),
+      `sweepSection` (transported frames and varying cross-section)
+      and `revolveProfile` (a hollow cup). The integration proof
+      checks manifold topology, authored quads, region UVs,
+      actual plate contact, Quad View and exported GLB.
 
 **Gate:** The permanent toolbox code and documentation embody
 the architecture, and all model-specific capabilities remain.
