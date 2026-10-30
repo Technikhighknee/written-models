@@ -73,7 +73,7 @@ Construction-local geometry, world-space query results and parent-local scene at
 
 ## Materials, runtime and inspection
 
-Materials are assigned from **authored face regions**; GPU material groups do not classify source topology. Physical UV tiling comes from the appropriate authored UV projection or construction recipe. Verify any existing primitive's mapping rather than assuming every UV was authored in meters. Never mutate a shared cached texture's transform to create per-object variation.
+Materials are assigned from **authored face regions**; GPU material groups do not classify source topology. Physical UV tiling comes from the appropriate authored UV projection or construction recipe. Verify any existing primitive's mapping rather than assuming every UV was authored in meters. Never mutate a shared cached texture's transform to create per-object variation. A `surfaceMesh({ tint })` call requires vertex-color-enabled materials for **every** selected face region; an invisible tint is rejected rather than exported silently.
 
 `src/core/export/prepareRuntimeModel.ts` builds a separate runtime representation: supported static meshes can be batched/atlased, while morph and skinned data follow specialized preservation paths. `exportGlb.ts` exports copies without optimizing the live editor model in place.
 
