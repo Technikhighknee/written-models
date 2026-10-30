@@ -34,7 +34,7 @@ function makeTankardContents() {
     return { parts, cavity, contents };
 }
 
-test("the tankard's authored cavity retains the original serving calibration", () => {
+test("fillable volume preserves its serving range, UVs and morph controls", () => {
     const { parts, cavity, contents } = makeTankardContents();
     try {
         const physical = cavityFromMeshSurfaces(parts.staves.map(part => part.geometry)).between(

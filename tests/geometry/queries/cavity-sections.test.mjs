@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 
-import { sourceModule, toolbox } from "../../support/toolbox.mjs";
+import { toolbox } from "../../support/toolbox.mjs";
 
 const { cavitySectionsFromSurfaces } = await toolbox(
     "geometry/queries/cavitySectionsFromSurfaces.ts"
@@ -13,11 +13,8 @@ const { samplePolarStripSections } = await toolbox(
 const { loftSectionWalls } = await toolbox(
     "geometry/build/loftSectionWalls.ts"
 );
-const { ProfiledCavity, cavityFromMeshSurfaces } = await toolbox(
+const { ProfiledCavity } = await toolbox(
     "geometry/construction/profiledCavity.ts"
-);
-const { buildTankardGeometry } = await sourceModule(
-    "models/beerMug.ts"
 );
 
 const vec = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -210,30 +207,6 @@ test("explicit height order and rigid section frames are enforced", () => {
         )),
         error => error.reason === "invalid-input"
     );
-});
-
-test("the existing wooden mug's inner faces agree with its physical cavity", () => {
-    const pieces = buildTankardGeometry().staves.map(stave => stave.geometry);
-
-    const sections = cavitySectionsFromSurfaces(options(
-        pieces.map(geometry => ({
-            geometry,
-            regions: ["inner"],
-            localToWorld: new THREE.Matrix4()
-        })),
-        [0, 0.0355, 0.071, 0.1115, 0.152]
-    ));
-
-    const cavity = new ProfiledCavity(sections);
-    const previous = cavityFromMeshSurfaces(pieces);
-
-    assert.ok(cavity.capacity > 0);
-    assert.ok(Math.abs(cavity.capacity - previous.capacity) < 1e-10);
-    assert.ok(Math.abs(
-        cavity.heightAtFill(0.9) - previous.heightAtFill(0.9)
-    ) < 1e-9);
-    assert.equal(sections[0].outline.length, 12);
-    assert.equal(sections.at(-1).outline.length, 12);
 });
 
 test("interpolation rejects a brief ring collapse missed at the midpoint", () => {

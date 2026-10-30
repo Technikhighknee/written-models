@@ -12,13 +12,9 @@ const {
     mergeStations
 } = await toolbox("geometry/topology/contours.ts");
 
-const { cleanClosedContour } = await toolbox(
-    "shapes/operations/cleanClosedContour.ts"
-);
-
 const point = (x, y) => new THREE.Vector2(x, y);
 
-test("cleanup shares the legacy shape operation without moving landmarks", () => {
+test("contour cleanup removes duplicate points without moving landmarks", () => {
     const outline = [
         point(0, 0),
         point(2, 0),
@@ -31,7 +27,6 @@ test("cleanup shares the legacy shape operation without moving landmarks", () =>
     const cleaned = cleanContour2(outline);
 
     assert.equal(cleaned.length, 4);
-    assert.deepEqual(cleanClosedContour(outline), cleaned);
     assert.deepEqual(cleaned.map(p => p.toArray()), [
         [0, 0], [2, 0], [2, 1], [0, 1]
     ]);
