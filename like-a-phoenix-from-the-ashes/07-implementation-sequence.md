@@ -861,7 +861,12 @@ operations, with no live consumers of superseded specialized logic.
       and nonoverlapping seams on the actual model results.
       `profiledBoard` remains active for the chair's shaped crest
       and must be migrated without changing its authored form.
-      Round head geometry still needs consolidation.
+      The render-first `circularPlankPanel` and the
+      `seamedPlankExtrusion` GPU adapter (including its render-object
+      station cache) are removed. Barrel head regression tests now
+      inspect the real `cooperedHead` geometry: watertight
+      independent planks, circular outline, UVs and worn seam regions.
+      The general authored `seamedPlankExtrusionData` remains.
 - [ ] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
       consumers have migrated. Removed `assignMaterialsByNormal`,

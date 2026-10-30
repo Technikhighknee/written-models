@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { AuthoredMeshBuilder } from "../mesh/AuthoredMeshBuilder";
 import type { MeshData } from "../mesh/MeshData";
-import { toBufferGeometry } from "../mesh/toBufferGeometry";
 import { adaptiveStations } from "../topology/adaptiveStations";
 import { edgeRecessStations, edgeRecessDepth } from "../../shapes/profiles/edgeRecess";
 
@@ -13,15 +12,6 @@ export interface PlankVertex {
     x: number;
     y: number;
     z: number;
-}
-
-const tessellation = new WeakMap<THREE.BufferGeometry, readonly number[]>();
-
-/** Stations used to construct the actual surface, in increasing 0..1 order. */
-export function getPlankLongitudinalStations(
-    geometry: THREE.BufferGeometry
-): readonly number[] | undefined {
-    return tessellation.get(geometry);
 }
 
 export interface SeamedPlankOptions {
@@ -477,15 +467,3 @@ export function seamedPlankExtrusionData(
     return { geometry: mesh.build(), stations: fractions };
 }
 
-/** Compile the authored plank for callers that still consume GPU geometry. */
-export function seamedPlankExtrusion(
-    outline: readonly PanelPoint[],
-    options: SeamedPlankOptions
-): THREE.BufferGeometry {
-    const result = seamedPlankExtrusionData(outline, options);
-    const geometry = toBufferGeometry(result.geometry, {
-        face: 0, cut: 1, recess: 2
-    });
-    tessellation.set(geometry, result.stations);
-    return geometry;
-}
