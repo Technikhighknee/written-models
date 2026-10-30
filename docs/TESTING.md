@@ -84,12 +84,13 @@ Answer these questions:
 
 If the answers are weak, **don't write the test**.
 
-Debugging experiments and one-off verification scripts are perfectly useful.
-They don't have to live in the repository forever. Mark them unmistakably:
-use a searchable `TEMPORARY — REMOVE AFTER ...` marker with a concrete
-removal condition, so anything left behind practically screams,
-"HEY, I'M STILL HERE!" during the next review. Fixing a bug doesn't
-automatically entitle it to a permanent regression test either.
+Debugging experiments and one-off verification scripts belong in
+`tests/temporary/`. Keep that folder out of the regular test suite: use
+names like `geometry-probe.check.mjs`, run them explicitly with
+`node --test tests/temporary/geometry-probe.check.mjs`, and delete them
+when the investigation is done. The folder stays; its contents shouldn't.
+Fixing a bug doesn't automatically entitle it to a permanent regression
+test either.
 
 ## Kill tests that have outlived their usefulness
 
