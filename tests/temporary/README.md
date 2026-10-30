@@ -1,17 +1,14 @@
 # Temporary checks
 
 Disposable experiments and one-off verification scripts go here.
-Use `*.check.mjs` so the regular Node test discovery in `npm test`
-ignores these files.
 
-The repository's tests execute through GitHub Actions
-(`.github/workflows/verify.yml`). To exercise a temporary check, add
-a temporary step to the Verify job such as:
+Use `*.check.mjs` instead of `*.test.mjs`. The regular Verify suite
+will ignore these files.
 
-```yaml
-- run: node --test tests/temporary/geometry-probe.check.mjs
-```
+The dedicated GitHub Actions workflow,
+`.github/workflows/temporary.yml`, automatically discovers and runs all
+`*.check.mjs` files in this directory. Push a check and read its result
+in **Temporary Checks** under GitHub Actions. When there are no checks,
+the workflow skips dependency installation and test execution.
 
-Commit and push the check and workflow change, then inspect the CI logs.
-When the investigation is finished, delete the check and remove its
-CI step. Leave this directory empty apart from this README.
+Delete each check when the investigation is finished. This README stays.

@@ -1,0 +1,39 @@
+name: Temporary Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  temporary-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find temporary checks
+        id: checks
+        run: |
+          if find tests/temporary -type f -name '*.check.mjs' -print -quit | grep -q .; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No temporary checks to run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.checks.outputs.present == 'true'
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+        if: steps.checks.outputs.present == 'true'
+
+      - name: Run temporary checks
+        if: steps.checks.outputs.present == 'true'
+        shell: bash
+        run: |
+          mapfile -d '' checks < <(find tests/temporary -type f -name '*.check.mjs' -print0 | sort -z)
+          node --test "${checks[@]}"

@@ -86,11 +86,11 @@ If the answers are weak, **don't write the test**.
 
 Debugging experiments and one-off verification scripts belong in
 `tests/temporary/`. Name them `*.check.mjs` so the regular `npm test`
-discovery skips them. If a temporary check needs to run, add an explicit
-step for that file to the GitHub Actions Verify workflow, push the change
-and inspect the CI result. Remove the temporary check and its workflow
-step when the investigation is done. The folder stays; its contents
-shouldn't. Fixing a bug doesn't automatically entitle it to a permanent
+discovery skips them. The separate Temporary Checks workflow discovers
+and runs these files automatically through GitHub Actions. With no
+temporary checks present, it skips dependency installation and test
+execution. Delete checks when the investigation is done; the folder
+stays. Fixing a bug doesn't automatically entitle it to a permanent
 regression test either.
 
 ## Kill tests that have outlived their usefulness
@@ -156,8 +156,12 @@ result and logs are the evidence: inspect failures, correct their cause,
 push the fix and verify the next run. A commit is not considered tested
 merely because it was written or pushed.
 
-The current workflow always runs the full suite; targeted temporary
-checks require an explicit temporary CI step. Review visual assets
-visually and in the target engine when needed.
+The separate `.github/workflows/temporary.yml` workflow handles
+`tests/temporary/**/*.check.mjs` on pushes, pull requests and manual
+dispatch. It checks for files before installing dependencies; an empty
+directory results in no temporary test execution. No workflow edits are
+needed when adding or removing a temporary check.
+
+Review visual assets visually and in the target engine when needed.
 
 **Tests are here to protect the work. The work is not here to feed the tests.**
