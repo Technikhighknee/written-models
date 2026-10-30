@@ -272,7 +272,6 @@ Geometrie- und Renderingpfade geprüft. Bereinigt wurden:
   Henkelkontur sind Modellentscheidungen; der allgemeine Sweep erzeugt
   die Geometrie direkt. Die ehemalige Toolbox-Komposition
   `geometry/construction/sweepSection.ts` ist entfernt.
-
 - `models/sandingpaper.ts`: Die Bodenplatzierung wird unmittelbar aus
   den authored Vertex-Positionen berechnet, nicht mehr aus dem
   `THREE.BufferGeometry.boundingBox` des Renderers.
@@ -283,8 +282,42 @@ Die Existenz spezifischer Modellrezepte allein ist kein Altcode-Befund.
 Eine erneute Godot-Sichtabnahme ist unabhängig vom erfolgreichen
 Typecheck/Tests/Build erforderlich, um die Bildqualität zu beurteilen.
 
+## Einmalige integrierte Ausführungsprüfung
+
+Am 30.10.2026 wurden die tatsächlichen Konstruktionsfunktionen der acht
+registrierten Modelle aufgerufen. Alle geprüften Teile ließen sich als
+`GeometryResult` mit authored Flächen erzeugen und zeigten keine
+unbeabsichtigten offenen Topologiegrenzen.
+
+In einer zweiten einmaligen Prüfung wurden alle acht vollständigen
+Modelle einschließlich ihrer Materialien mit einem ersatzweisen
+Canvas-2D-Kontext konstruiert und mit `prepareRuntimeModel()` auf
+einen Runtime-Bestand abgebildet:
+
+| Modell | Quell-Meshes | Runtime-Meshes | Atlas-Seiten |
+| --- | ---: | ---: | ---: |
+| Tisch | 15 | 1 | 1 |
+| Fass | 50 | 3 | 1 |
+| Schleifpapier | 1 | 2 | 0 |
+| Holzplanke | 1 | 1 | 1 |
+| Dolch | 3 | 3 | 2 |
+| Bierkrug | 17 | 3 | 1 |
+| Stuhl | 32 | 1 | 1 |
+| Bank | 22 | 1 | 1 |
+
+Der Bierkrug bestand zudem einen Set/Get-Durchlauf seines
+Füllstandscontrollers. Dass Schleifpapier mehr Runtime-Meshes besitzt
+als Quell-Meshes, ist eine erlaubte Material-Batch-Aufteilung, kein
+Verlust von Geometrie.
+
+Die zugehörigen einmaligen Prüfungen liefen in GitHub Actions
+erfolgreich und wurden anschließend gemäß `docs/TESTING.md`
+aus `tests/temporary/` entfernt. Die Prüfungen ersetzen weder
+einen echten browserseitigen GLB-Download noch die Godot-Sichtabnahme;
+der Canvas-Kontext erzeugte keine realen Bilddaten.
+
 ## Abschlussbedingungen und Stand
 
-Die sechs aus dem Ausgangsbestand entfernten Spezial-/Altpfade besitzen keine Quell- oder Testverbraucher mehr. Hinzugekommen ist die generische Operation `geometry/build/loftPairedSurfaceRows.ts`: aus 105 Ausgangsdateien wurden 100 aktuelle Toolbox-TypeScript-Dateien. Die vier zunächst ungeklärten Spezialkonstruktionen sind architektonisch entschieden. Typecheck, Tests und Build werden über den Verify-Workflow geprüft. Eine erneute Sichtabnahme im Zielrenderer ist durch diese Quellmigration nicht behauptet.
+Die sieben aus dem Ausgangsbestand entfernten Spezial-/Altpfade besitzen keine Quell- oder Testverbraucher mehr. Hinzugekommen ist die generische Operation `geometry/build/loftPairedSurfaceRows.ts`: aus 105 Ausgangsdateien wurden 99 aktuelle Toolbox-TypeScript-Dateien. Die vier zunächst ungeklärten Spezialkonstruktionen sind architektonisch entschieden. Typecheck, Tests und Build werden über den Verify-Workflow geprüft. Eine erneute Sichtabnahme im Zielrenderer ist durch diese Quellmigration nicht behauptet.
 
 Das Audit ist eine vollständige **Datei-Inventur mit begründeter Zuständigkeit**, kein Beweis, dass jede geometrische Randbedingung in allen 105 Implementierungen korrekt ist. Neue Entscheidungen müssen anhand konkreter Querschnitts-, Topologie-, UV- und Verbraucherbefunde getroffen werden. Ein sichtbares Qualitätsurteil über die geänderten Modelle erfordert eine neue Abnahme; das Vorhandensein alter APIs ist dagegen kein akzeptierter Grund, ihre Implementation zu behalten.
