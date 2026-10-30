@@ -841,6 +841,10 @@ operations, with no live consumers of superseded specialized logic.
       inspect the actual `cooperedStaves` results and their authored
       surfaces instead of comparing against superseded stave geometry.
       Chord clearance and polar points remain general build operations.
+      The rectangle-only `loftSections` adapter is removed; its tests
+      now use `loftSectionWalls` and `capBoundary` directly. Plank
+      integrations validate authored stations, topology, UVs and export
+      without a second copy of the obsolete constructor.
       Older board, vessel and loft constructors still have test
       consumers; migrate those before removing their implementations.
 - [ ] **7.2** Remove duplicate render material classification

@@ -10,7 +10,7 @@ const { prepareRuntimeModel } = await sourceModule(
 );
 
 const { boxMesh } = await toolbox("geometry/construction/boxMesh.ts");
-const { loftSections } = await toolbox("geometry/construction/loftSections.ts");
+const { buildPlankGeometry } = await sourceModule("models/plank.ts");
 const { geometryResult } = await toolbox("geometry/kernel/GeometryResult.ts");
 const { topologyOf } = await toolbox("geometry/kernel/topology.ts");
 const { offsetMeshUvs, transformGeometry, deformVertices } = await toolbox(
@@ -29,23 +29,6 @@ class BinaryFileReader {
         this.result = await blob.arrayBuffer();
         this.onloadend?.();
     }
-}
-
-function fiveSectionPlank() {
-    const at = (z, lift) => [
-        new THREE.Vector3(-0.11, -0.015 + lift, z),
-        new THREE.Vector3(0.11, -0.015 + lift, z),
-        new THREE.Vector3(0.11, 0.015 + lift, z),
-        new THREE.Vector3(-0.11, 0.015 + lift, z)
-    ];
-
-    return loftSections([
-        at(-0.6, 0),
-        at(-0.3, 0.004),
-        at(0, 0.007),
-        at(0.3, 0.004),
-        at(0.6, 0)
-    ]);
 }
 
 function render(name, authored, material) {
@@ -77,7 +60,7 @@ test("a box and five-section plank survive edits, topology, Quad View and GLB", 
         widthSegments: 2
     }));
 
-    const plank = geometryResult(fiveSectionPlank());
+    const plank = buildPlankGeometry();
 
     assert.equal(topologyOf(box).connectedComponents().length, 1);
     assert.equal(topologyOf(plank).connectedComponents().length, 1);

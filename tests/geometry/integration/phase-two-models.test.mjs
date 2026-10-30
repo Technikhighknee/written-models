@@ -4,9 +4,6 @@ import * as THREE from "three";
 
 import { sourceModule, toolbox } from "../../support/toolbox.mjs";
 
-const { loftSections } = await toolbox(
-    "geometry/construction/loftSections.ts"
-);
 const { loftSectionWalls } = await toolbox(
     "geometry/build/loftSectionWalls.ts"
 );
@@ -56,7 +53,6 @@ test("the real five-section plank uses the same authored side topology", () => {
         plankSection(0.3, 0.004),
         plankSection(0.6, 0)
     ];
-    const original = loftSections(rings);
     let authored = loftSectionWalls(
         rings.map(points => ({
             outer: { points, closed: true }
@@ -81,9 +77,10 @@ test("the real five-section plank uses the same authored side topology", () => {
 
     assert.deepEqual(
         authored.geometry.vertices.map(point => point.toArray()),
-        original.vertices.map(point => point.toArray())
+        rings.flatMap(row => row.map(point => point.toArray()))
     );
-    assert.equal(authored.geometry.quads.length, original.quads.length);
+    assert.equal(authored.geometry.quads.length, 18);
+    assert.equal(authored.geometry.triangles?.length ?? 0, 0);
     assert.equal(topologyOf(authored).openBoundaries().length, 0);
 
     for (const region of ["side-0", "side-1", "side-2", "side-3"]) {

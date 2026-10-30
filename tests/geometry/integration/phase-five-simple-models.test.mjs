@@ -8,9 +8,6 @@ const { buildPlankGeometry } =
     await sourceModule("models/plank.ts");
 const { buildSandingPaperGeometry, default: paperDefinition } =
     await sourceModule("models/sandingpaper.ts");
-const { loftSections } = await toolbox(
-    "geometry/construction/loftSections.ts"
-);
 const { boxMesh } = await toolbox(
     "geometry/construction/boxMesh.ts"
 );
@@ -41,10 +38,10 @@ test("the migrated plank retains all five curved sections, UVs and actual quads"
         new THREE.Vector3(width / 2, thickness / 2 + lift, z),
         new THREE.Vector3(-width / 2, thickness / 2 + lift, z)
     ];
-    const oldBoard = loftSections([
+    const expectedSections = [
         section(-0.6), section(-0.3, 0.004), section(0, 0.007),
         section(0.3, 0.004), section(0.6)
-    ]);
+    ];
 
     assert.equal(newBoard.geometry.vertices.length, 20);
     assert.equal(newBoard.geometry.quads.length, 18);
@@ -54,20 +51,35 @@ test("the migrated plank retains all five curved sections, UVs and actual quads"
 
     assert.deepEqual(
         newBoard.geometry.vertices.map(p => p.toArray()),
-        oldBoard.vertices.map(p => p.toArray())
+        expectedSections.flatMap(row => row.map(p => p.toArray()))
     );
 
-    for (const actual of newBoard.geometry.quads) {
-        const expected = oldBoard.quads.find(face =>
-            face.surface === actual.surface &&
-            face.corners.every(id => actual.corners.includes(id))
+    for (let edge = 0; edge < 4; edge++) {
+        const faces = newBoard.geometry.quads.filter(face =>
+            face.surface === `side-${edge}`
         );
-        assert.ok(expected, `Missing original face ${actual.surface}`);
-        assert.deepEqual(actual.corners, expected.corners);
-        for (let i = 0; i < actual.uvs.length; i++) {
-            nearly(actual.uvs[i].x, expected.uvs[i].x);
-            nearly(actual.uvs[i].y, expected.uvs[i].y);
+        assert.equal(faces.length, 4);
+        for (let row = 0; row < 4; row++) {
+            assert.deepEqual(faces[row].corners, [
+                row * 4 + edge,
+                row * 4 + (edge + 1) % 4,
+                (row + 1) * 4 + (edge + 1) % 4,
+                (row + 1) * 4 + edge
+            ]);
+            assert.ok(faces[row].uvs.every(uv =>
+                Number.isFinite(uv.x) && Number.isFinite(uv.y)
+            ));
         }
+    }
+
+    for (const region of ["cap-start", "cap-end"]) {
+        const faces = newBoard.geometry.quads.filter(face =>
+            face.surface === region
+        );
+        assert.equal(faces.length, 1);
+        assert.ok(faces[0].uvs.every(uv =>
+            Number.isFinite(uv.x) && Number.isFinite(uv.y)
+        ));
     }
 
     // The model's wood textures require a DOM canvas; this test checks
