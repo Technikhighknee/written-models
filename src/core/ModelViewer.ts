@@ -139,7 +139,7 @@ export class ModelViewer {
         this.setWireframe(wasWireframe);
 
         this.setQuadView(
-            wasQuadView && this.getQuadCount() > 0
+            wasQuadView && this.hasControlOutline()
         );
 
         const bounds = new THREE.Box3().setFromObject(model);
@@ -304,6 +304,20 @@ export class ModelViewer {
                 outline
             });
         });
+    }
+
+    /** Whether any authored edges can be inspected, including triangles. */
+    hasControlOutline(): boolean {
+        if (!this.model) return false;
+
+        let available = false;
+        this.model.traverse(object => {
+            if (!(object instanceof THREE.Mesh) || available) return;
+            const data = getControlOutline(object.geometry);
+            available = !!data && data.positions.length > 0;
+        });
+
+        return available;
     }
 
     getQuadCount(): number {

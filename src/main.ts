@@ -157,12 +157,13 @@ else if (route.type === "model") {
     document.querySelectorAll<HTMLButtonElement>(".view-mode")
   );
   const quads = viewer.getQuadCount();
+  const hasControlOutline = viewer.hasControlOutline();
 
   const quadButton = modeButtons.find(
     button => button.dataset.mode === "quads"
   );
 
-  if (quadButton) quadButton.disabled = quads === 0;
+  if (quadButton) quadButton.disabled = !hasControlOutline;
 
   requireElement<HTMLElement>("#triangle-count").textContent =
     viewer.getTriangleCount().toLocaleString("en-US");
@@ -171,7 +172,7 @@ else if (route.type === "model") {
     quads.toLocaleString("en-US");
 
   function setMode(mode: ViewMode): void {
-    if (mode === "quads" && quads === 0) return;
+    if (mode === "quads" && !hasControlOutline) return;
 
     viewer.setQuadView(false);
     viewer.setWireframe(false);
@@ -200,7 +201,7 @@ else if (route.type === "model") {
   );
 
   exportButton.addEventListener("click", async () => {
-    exportButton.disabled = true
+    exportButton.disabled = true;
 
     const wasWireframe = viewer.wireframe;
     const wasQuadView = viewer.quadView;
@@ -212,7 +213,7 @@ else if (route.type === "model") {
       await exportGlb(asset, `${model.slug}.glb`);
     } catch (error) {
       console.error("GLB-Export failed:", error);
-      alert("GLB-Export failes. See console for details.");
+      alert("GLB export failed. See console for details.");
     } finally {
       viewer.setWireframe(wasWireframe);
       viewer.setQuadView(wasQuadView);
