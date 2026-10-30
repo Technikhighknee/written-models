@@ -845,8 +845,13 @@ operations, with no live consumers of superseded specialized logic.
       now use `loftSectionWalls` and `capBoundary` directly. Plank
       integrations validate authored stations, topology, UVs and export
       without a second copy of the obsolete constructor.
-      Older board, vessel and loft constructors still have test
-      consumers; migrate those before removing their implementations.
+      The unused `loftRings` and `loftAxialProfile` wrappers are
+      removed as well. Dagger regression checks now validate sampled
+      section positions, physical quads, material/smoothing transitions,
+      endpoint topology and runtime GLB instead of building a duplicate
+      dagger with the compatibility path.
+      Older board and vessel constructors still have test consumers;
+      migrate those before removing their implementations.
 - [ ] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
       consumers have migrated. Removed `assignMaterialsByNormal`,

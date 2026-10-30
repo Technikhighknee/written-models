@@ -14,8 +14,8 @@ const { profileSpans } = await toolbox(
 const { mirrorStations } = await toolbox(
     "shapes/profiles/mirrorStations.ts"
 );
-const { loftAxialProfile } = await toolbox(
-    "geometry/construction/loftAxialProfile.ts"
+const { sampleAxialSections } = await toolbox(
+    "geometry/build/sampleAxialSections.ts"
 );
 const { topologyOf } = await toolbox(
     "geometry/kernel/topology.ts"
@@ -33,21 +33,16 @@ const { prepareRuntimeModel } = await sourceModule(
     "core/export/prepareRuntimeModel.ts"
 );
 
-function previousGeometry(spec) {
+function sampledSections(spec) {
     const authored = profileSpans(spec.profile);
     const stations = spec.mirrorAround === undefined
         ? authored : mirrorStations(authored, spec.mirrorAround);
     const { profile, mirrorAround, ...shape } = spec;
-    return loftAxialProfile({ ...shape, stations });
+    return {
+        stations,
+        sections: sampleAxialSections({ ...shape, stations })
+    };
 }
-
-const sortedRegions = mesh => {
-    const counts = new Map();
-    for (const face of [...mesh.quads, ...(mesh.triangles ?? [])]) {
-        counts.set(face.surface, (counts.get(face.surface) ?? 0) + 1);
-    }
-    return [...counts].sort(([a], [b]) => a.localeCompare(b));
-};
 
 test("dagger blade, quillon and hilt preserve their authored geometry", () => {
     const migrated = buildDaggerGeometry();
@@ -55,29 +50,62 @@ test("dagger blade, quillon and hilt preserve their authored geometry", () => {
     for (const name of ["blade", "quillon", "hilt"]) {
         const result = migrated[name];
         const source = result.geometry;
-        const previous = previousGeometry(daggerShapes[name]);
+        const spec = daggerShapes[name];
+        const { stations, sections } = sampledSections(spec);
+        const count = sections[0].outer.points.length;
+        const expected = sections.flatMap(section => section.outer.points);
 
         assert.equal(topologyOf(result).openBoundaries().length, 0,
             `${name} has an open boundary`);
         assert.equal(topologyOf(result).connectedComponents().length, 1);
-        assert.equal(source.quads.length, previous.quads.length);
-        assert.equal(source.triangles.length, previous.triangles.length);
-        assert.deepEqual(sortedRegions(source), sortedRegions(previous));
-        assert.deepEqual(
-            source.vertices.map(point => point.toArray()),
-            previous.vertices.map(point => point.toArray())
-        );
+        assert.equal(source.quads.length, (sections.length - 1) * count);
+        assert.equal(source.vertices.length, expected.length +
+            Number(spec.tipStart !== undefined) +
+            Number(spec.tipEnd !== undefined));
+        assert.equal(source.triangles.length,
+            (spec.tipStart === undefined ? count - 2 : count) +
+            (spec.tipEnd === undefined ? count - 2 : count));
 
-        for (let i = 0; i < source.quads.length; i++) {
-            const current = source.quads[i];
-            const before = previous.quads[i];
-            assert.equal(current.surface, before.surface);
-            assert.equal(current.smoothingGroup, before.smoothingGroup);
-            assert.deepEqual(current.corners, before.corners);
-            assert.deepEqual(
-                current.uvs.map(point => point.toArray()),
-                before.uvs.map(point => point.toArray())
-            );
+        expected.forEach((point, index) => {
+            assert.ok(source.vertices[index].distanceTo(point) < 1e-12,
+                `${name}: station vertex ${index} moved`);
+        });
+
+        let intervalRegion = spec.surface ?? "side";
+        for (let row = 0; row < stations.length - 1; row++) {
+            const changed = stations[row].surface;
+            if (changed !== undefined) {
+                intervalRegion = changed === null ? spec.surface ?? "side"
+                    : changed;
+            }
+
+            for (let edge = 0; edge < count; edge++) {
+                const face = source.quads[row * count + edge];
+                const region = intervalRegion !== (spec.surface ?? "side")
+                    ? intervalRegion
+                    : spec.sideSurfaces?.[edge] ?? intervalRegion;
+                const smoothing = typeof spec.smoothing === "string"
+                    ? spec.smoothing : spec.smoothing?.[region];
+                const group = typeof spec.smoothing === "string"
+                    ? "shared" : region;
+                const expectedGroup = smoothing === "smooth"
+                    ? `axial-smooth-${group}`
+                    : smoothing === "faceted"
+                        ? `axial-facet-${group}-${edge}`
+                        : undefined;
+
+                assert.equal(face.surface, region);
+                assert.equal(face.smoothingGroup, expectedGroup);
+                assert.deepEqual(face.corners, [
+                    row * count + edge,
+                    row * count + (edge + 1) % count,
+                    (row + 1) * count + (edge + 1) % count,
+                    (row + 1) * count + edge
+                ]);
+                assert.ok(face.uvs.every(uv =>
+                    Number.isFinite(uv.x) && Number.isFinite(uv.y)
+                ));
+            }
         }
 
         assert.ok(source.triangles.some(face =>

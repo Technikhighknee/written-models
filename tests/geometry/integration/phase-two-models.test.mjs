@@ -10,8 +10,8 @@ const { loftSectionWalls } = await toolbox(
 const { capBoundary } = await toolbox(
     "geometry/build/finishBoundaries.ts"
 );
-const { loftAxialProfile } = await toolbox(
-    "geometry/construction/loftAxialProfile.ts"
+const { axialProfileSolid } = await toolbox(
+    "geometry/build/axialProfileSolid.ts"
 );
 const { profileSpans } = await toolbox(
     "shapes/profiles/profileSpans.ts"
@@ -132,18 +132,20 @@ test("the dagger's steel / oak / iron section boundaries remain authored", () =>
             intervals[interval] === "oak" ? "carved-oak" : "forged-iron"
     });
 
-    const legacy = loftAxialProfile({
+    const solid = axialProfileSolid({
         axis: "y",
         stations,
         surface: "iron",
         smoothing: { oak: "faceted", iron: "smooth" }
     });
 
-    assert.equal(authored.geometry.quads.length, legacy.quads.length);
+    assert.equal(authored.geometry.quads.length, solid.geometry.quads.length);
     assert.deepEqual(
         authored.geometry.quads.map(face => face.surface),
-        legacy.quads.map(face => face.surface)
+        solid.geometry.quads.map(face => face.surface)
     );
+    assert.equal(solid.geometry.triangles.length, 20);
+    assert.equal(topologyOf(solid).openBoundaries().length, 0);
     assert.ok(authored.regions.iron.length > 0);
     assert.ok(authored.regions.oak.length > 0);
     assert.equal(topologyOf(authored).openBoundaries().length, 2);
