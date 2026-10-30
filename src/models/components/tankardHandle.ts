@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { cm, mm } from "../../toolbox/units/length";
-import { sweepSectionResult } from "../../toolbox/geometry/construction/sweepSection";
+import { sweepSection } from "../../toolbox/geometry/build/sweepSection";
 import { fitBoundary } from "../../toolbox/geometry/queries/fitBoundary";
 import { topologyOf } from "../../toolbox/geometry/kernel/topology";
 import type { GeometryResult } from "../../toolbox/geometry/kernel/GeometryResult";
@@ -28,8 +28,8 @@ export function tankardHandle(
         [-w, d - bevel], [-w, -d + bevel]
     ].map(([x, y]) => new THREE.Vector2(x!, y!));
 
-    let handle = sweepSectionResult({
-        path: [
+    const path = new THREE.CatmullRomCurve3(
+        [
             new THREE.Vector3(cm(4.95), upperHandleY, 0),
             new THREE.Vector3(cm(6.55), cm(12.2), 0),
             new THREE.Vector3(cm(7.65), cm(11.85), 0),
@@ -41,11 +41,43 @@ export function tankardHandle(
             new THREE.Vector3(cm(7.55), cm(3.3), 0),
             new THREE.Vector3(cm(6.3), cm(3.2), 0),
             new THREE.Vector3(cm(4.95), cm(3.4), 0)
-        ],
-        section,
-        referenceAxis: new THREE.Vector3(0, 0, 1),
-        segments: 18,
-        endFlare: 0.03
+        ], false, "centripetal"
+    );
+    const tangent = path.getTangent(0).normalize();
+    const across = new THREE.Vector3(0, 0, 1);
+    const up = new THREE.Vector3()
+        .crossVectors(tangent, across).normalize();
+    const startingFrame = new THREE.Matrix4()
+        .makeBasis(across, up, tangent)
+        .setPosition(path.getPoint(0));
+
+    let handle = sweepSection({
+        path: {
+            at: progress => path.getPoint(progress),
+            tangent: progress => path.getTangent(progress)
+        },
+        sectionAt: progress => {
+            const nearEnd = Math.max(
+                Math.max(0, 1 - progress * 7) ** 2,
+                Math.max(0, 1 - (1 - progress) * 7) ** 2
+            );
+            const scale = 1 + 0.03 * nearEnd;
+
+            return {
+                outer: {
+                    points: section.map(point =>
+                        point.clone().multiplyScalar(scale)
+                    ),
+                    closed: true
+                }
+            };
+        },
+        startingFrame,
+        stations: Array.from({length: 19}, (_, i) => i / 18),
+        wall: {
+            outerRegion: "side",
+            smoothingGroupAt: () => "swept-section"
+        }
     });
 
     const target = {
