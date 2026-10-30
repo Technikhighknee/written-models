@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import type { QuadFace, TriangleFace } from "../mesh/MeshData";
 import {
     assertSelectionOwner,
     geometryResult,
@@ -65,7 +65,7 @@ function faceInfo(
 
 /** Reclassify authored faces without relying on GPU triangle order or groups. */
 export function classifyAuthoredFaces(
-    source: MeshData | GeometryResult,
+    source: GeometryResult,
     classify: (face: AuthoredFaceInfo) => FaceMetadata
 ): GeometryResult {
     if (typeof classify !== "function") {
@@ -75,8 +75,7 @@ export function classifyAuthoredFaces(
         );
     }
 
-    const owned = "geometry" in source;
-    const input = geometryResult(owned ? source.geometry : source);
+    const input = geometryResult(source.geometry);
     const classifyFace = <T extends QuadFace | TriangleFace>(
         face: T,
         ref: FaceRef
@@ -112,8 +111,6 @@ export function classifyAuthoredFaces(
             classifyFace(face, { kind: "triangle", index })
         )
     });
-
-    if (!owned) return result;
 
     const boundaries: Record<string, BoundaryRef[]> = Object.create(null);
     for (const [name, refs] of Object.entries(source.boundaries)) {

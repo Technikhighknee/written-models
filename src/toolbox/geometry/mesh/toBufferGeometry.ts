@@ -17,7 +17,6 @@ function authoredFace(mesh: MeshData, triangle: AuthoredTriangle): Face {
         : mesh.triangles![triangle.face.index]!;
 }
 
-const controlMeshes = new WeakMap<THREE.BufferGeometry, MeshData>();
 const controlResults = new WeakMap<THREE.BufferGeometry, GeometryResult>();
 const controlVertexIds = new WeakMap<THREE.BufferGeometry, readonly number[]>();
 const renderTriangleSources = new WeakMap<
@@ -41,7 +40,7 @@ export function getControlVertexIds(
 export function getControlMesh(
     geometry: THREE.BufferGeometry
 ): MeshData | undefined {
-    return controlMeshes.get(geometry);
+    return getControlResult(geometry)?.geometry;
 }
 
 /** Retrieves the exact authored result used to compile this render geometry. */
@@ -57,16 +56,13 @@ export function getControlResult(
  * triangle in the control mesh; no fake degenerates are introduced.
  */
 export function toBufferGeometry(
-    source: MeshData | GeometryResult,
+    source: GeometryResult,
     materialBySurface: Readonly<Record<string, number>>
 ): THREE.BufferGeometry {
-    const owned = "geometry" in source;
-    const mesh = owned ? source.geometry : source;
+    const mesh = source.geometry;
     const byMaterial = new Map<number, AuthoredTriangle[]>();
 
-    // Only migrated snapshots are validated here. Legacy raw MeshData
-    // still compiles unchanged until its owning model has been migrated.
-    if (owned) {
+    {
         const quantized = mesh.vertices.map(point => new THREE.Vector3(
             Math.fround(point.x),
             Math.fround(point.y),
@@ -264,10 +260,7 @@ export function toBufferGeometry(
     geometry.setIndex(indices);
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
-    controlMeshes.set(geometry, mesh);
-    if ("geometry" in source) {
-        controlResults.set(geometry, source);
-    }
+    controlResults.set(geometry, source);
     controlVertexIds.set(geometry, sourceVertexIds);
     renderTriangleSources.set(geometry, triangleSources);
     return geometry;

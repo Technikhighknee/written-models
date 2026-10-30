@@ -13,7 +13,6 @@ import { surfaceMesh } from "../../toolbox/geometry/mesh/surfaceMesh";
 import { offsetMeshUvs } from "../../toolbox/geometry/edit/geometryEdits";
 import { oakBoardFace, oakVariant } from "../../materials/wood/oak";
 import { cm, mm } from "../../toolbox/units/length";
-import type { MeshData } from "../../toolbox/geometry/mesh/MeshData";
 
 export interface OakPanel {
     name: string;
@@ -55,7 +54,7 @@ export function oakPanelGeometry(spec: OakPanel): GeometryResult[] {
 /** Give any authored board real oak surfaces and separate end grain. */
 export function oakPlank(
     name: string,
-    data: MeshData | GeometryResult,
+    data: GeometryResult,
     seed: number,
     tone = 0.97,
     uvOffset: {u: number; v: number} = {u: cm(2), v: cm(8)}

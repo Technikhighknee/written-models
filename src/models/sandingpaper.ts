@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { mm, cm } from "../toolbox/units/length";
 import { boxMesh } from "../toolbox/geometry/construction/boxMesh";
 import { deformVertices } from "../toolbox/geometry/edit/geometryEdits";
+import { geometryResult } from "../toolbox/geometry/kernel/GeometryResult";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 
 export default {
@@ -27,7 +28,7 @@ export function buildSandingPaperGeometry() {
         depthSegments: 16
     });
 
-    return deformVertices(sheet, point => {
+    return deformVertices(geometryResult(sheet), point => {
         const u = point.x / WIDTH;
         const v = point.z / DEPTH;
 

@@ -17,20 +17,11 @@ import {
     type GeometryPrecision
 } from "../kernel/precision";
 
-type GeometrySource = MeshData | GeometryResult;
-
-function isResult(source: GeometrySource): source is GeometryResult {
-    return "geometry" in source;
-}
-
 function copy(
-    source: GeometrySource,
+    source: GeometryResult,
     precision?: GeometryPrecision
 ): GeometryResult {
-    return geometryResult(
-        isResult(source) ? source.geometry : source,
-        precision
-    );
+    return geometryResult(source.geometry, precision);
 }
 
 function validated(
@@ -51,14 +42,12 @@ function validated(
 }
 
 function remap(
-    source: GeometrySource,
+    source: GeometryResult,
     snapshot: GeometryResult,
     patches: "keep" | "drop",
     chartTransform?: (chart: SurfaceChart) => SurfaceChart,
     reverseBoundaries = false
 ): GeometryResult {
-    if (!isResult(source)) return snapshot;
-
     const boundaries: Record<string, BoundaryRef[]> = Object.create(null);
     for (const [name, loops] of Object.entries(source.boundaries)) {
         const mapped = loops.flatMap(loop =>
@@ -123,7 +112,7 @@ function transformedChart(
 
 /** Applies an invertible affine transform without changing the source geometry. */
 export function transformGeometry(
-    source: GeometrySource,
+    source: GeometryResult,
     localToDestination: THREE.Matrix4,
     precision?: GeometryPrecision
 ): GeometryResult {
@@ -164,7 +153,7 @@ export type DeformationField = (
 
 /** Changes each authored vertex once; parameterized patches are invalidated. */
 export function deformVertices(
-    source: GeometrySource,
+    source: GeometryResult,
     field: DeformationField,
     precision?: GeometryPrecision
 ): GeometryResult {
@@ -188,7 +177,7 @@ export function deformVertices(
 
 /** Offsets authored per-face-corner UVs, preserving topology and patch charts. */
 export function offsetMeshUvs(
-    source: GeometrySource,
+    source: GeometryResult,
     u: number,
     v: number,
     precision?: GeometryPrecision

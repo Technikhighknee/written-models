@@ -75,7 +75,7 @@ test("nonplanar authored quads use their two triangle areas", () => {
         }]
     };
     let seen;
-    classifyAuthoredFaces(mesh, face => {
+    classifyAuthoredFaces(geometryResult(mesh), face => {
         seen = face;
         return { surface: "new" };
     });

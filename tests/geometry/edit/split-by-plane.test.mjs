@@ -172,7 +172,7 @@ test("uncapped cut has paired open rims; an open input cannot request caps", () 
     const raw = boxMesh({width: 1, height: 1, depth: 1});
     raw.quads.pop();
     assert.throws(
-        () => splitByPlane(raw, plane([0, 1, 0]), options(true)),
+        () => splitByPlane(geometryResult(raw), plane([0, 1, 0]), options(true)),
         error => error.reason === "unsupported-topology"
     );
 });

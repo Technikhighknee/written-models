@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { MeshData, QuadFace, TriangleFace } from "../mesh/MeshData";
+import type { QuadFace, TriangleFace } from "../mesh/MeshData";
 import {
     assertSelectionOwner,
     geometryResult,
@@ -41,7 +41,7 @@ function invalid(message: string): never {
  * have different charts without breaking welded construction topology.
  */
 export function projectAuthoredUvs(
-    source: MeshData | GeometryResult,
+    source: GeometryResult,
     project: AuthoredUvProjector,
     options: AuthoredUvProjectionOptions = {}
 ): GeometryResult {
@@ -51,8 +51,7 @@ export function projectAuthoredUvs(
     }
 
     const policy = resolvePrecision(options.precision);
-    const owned = "geometry" in source;
-    const input = geometryResult(owned ? source.geometry : source, policy);
+    const input = geometryResult(source.geometry, policy);
     const keys = new Set<string>();
     const surfaces = options.surfaces === undefined
         ? undefined : new Set(options.surfaces);
@@ -111,8 +110,6 @@ export function projectAuthoredUvs(
     }, policy);
 
     if (!projected) invalid("UV selection contains no authored faces");
-    if (!owned) return result;
-
     const boundaries: Record<string, BoundaryRef[]> = Object.create(null);
     for (const [name, refs] of Object.entries(source.boundaries)) {
         const surviving = refs.flatMap(ref =>

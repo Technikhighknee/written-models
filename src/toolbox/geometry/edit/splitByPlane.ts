@@ -181,7 +181,7 @@ function asResult(
  * Cutting surfaces retain their source UVs; planar caps use metres.
  */
 export function splitByPlane(
-    source: MeshData | GeometryResult,
+    source: GeometryResult,
     plane: Plane3,
     options: SplitOptions
 ): PartitionResult {
@@ -201,7 +201,7 @@ export function splitByPlane(
     }
     normal.normalize();
     const origin = new THREE.Vector3().copy(plane.point);
-    const input = "geometry" in source ? source : geometryResult(source, policy);
+    const input = source;
     const mesh = input.geometry;
     const index = topologyOf(input);
     const open = index.openBoundaries();

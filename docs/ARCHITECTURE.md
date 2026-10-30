@@ -56,7 +56,7 @@ Frames and transforms must be explicit when fitting, joining or placing independ
 
 ## Rendering, Quad View and export
 
-`surfaceMesh()` maps authored surface labels to Three.js materials and delegates geometry compilation to `toBufferGeometry()`. That conversion triangulates as needed for the GPU, while retaining the authored control representation and triangle provenance for tooling. Quad View and triangle wireframe answer different questions.
+`surfaceMesh()` requires an owned `GeometryResult`, maps its authored surface labels to Three.js materials, and delegates geometry compilation to `toBufferGeometry()`. Raw `MeshData` is a construction payload, not an alternative rendering input. That conversion triangulates as needed for the GPU, while retaining the authored control representation and triangle provenance for tooling. Quad View and triangle wireframe answer different questions.
 
 `src/core/exportGlb.ts` and `src/core/export/prepareRuntimeModel.ts` prepare and export runtime assets, including supported textures, vertex tints, geometry and morph data. This is a separate representation from authored geometry. Runtime batching/atlas choices must not corrupt exported appearance or behavior.
 

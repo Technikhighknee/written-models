@@ -1,12 +1,11 @@
 import * as THREE from "three";
-import type { MeshData } from "./MeshData";
 import type { GeometryResult } from "../kernel/GeometryResult";
 import { toBufferGeometry } from "./toBufferGeometry";
 import { tintVertices } from "../materials/tintVertices";
 
 export interface SurfaceMeshOptions {
     name: string;
-    geometry: MeshData | GeometryResult;
+    geometry: GeometryResult;
     /** A uniform material, or an explicit map from surface to material. */
     materials: THREE.Material | Readonly<Record<string, THREE.Material>>;
     /** Fallback for loft cap-start / cap-end only. */
@@ -23,7 +22,7 @@ export interface SurfaceMeshOptions {
 export function surfaceMesh({
     name, geometry, materials, capMaterial, tint
 }: SurfaceMeshOptions): THREE.Mesh {
-    const authored = "geometry" in geometry ? geometry.geometry : geometry;
+    const authored = geometry.geometry;
     const palette: THREE.Material[] = [];
     const indices: Record<string, number> = {};
     const bySurface = materials instanceof THREE.Material
