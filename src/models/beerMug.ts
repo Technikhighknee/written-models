@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { GeometryResult } from "../toolbox/geometry/kernel/GeometryResult";
 import { cm, mm } from "../toolbox/units/length";
 import { cooperedStaves } from "./components/cooperedStaves";
-import { bandAroundProfileData } from "../toolbox/geometry/construction/bandAroundProfile";
+import { forgedBand } from "./components/forgedBand";
 import { cylinderMesh } from "../toolbox/geometry/construction/cylinderMesh";
 import { geometryResult } from "../toolbox/geometry/kernel/GeometryResult";
 import { tankardHandle } from "./components/tankardHandle";
@@ -60,10 +60,10 @@ export function buildTankardGeometry(): TankardGeometry {
     const bandWidth = cm(1.05);
     const upperBandCenter = cm(14.05);
     const bands = [cm(1.0), upperBandCenter].map(y =>
-        geometryResult(bandAroundProfileData(TANKARD_PROFILE, {
+        forgedBand(TANKARD_PROFILE, {
             y, width: bandWidth, thickness: mm(2.1),
             clearance: mm(0.25), radialSegments: 24, angleOffset
-        }))
+        })
     );
 
     const handle = tankardHandle(

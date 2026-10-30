@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { mm } from "../../toolbox/units/length";
-import { bandAroundProfileData } from "../../toolbox/geometry/construction/bandAroundProfile";
+import { forgedBand } from "./forgedBand";
 import { cylinderMesh } from "../../toolbox/geometry/construction/cylinderMesh";
 import {
     geometryResult, type GeometryResult
@@ -36,7 +36,7 @@ export function buildBarrelHoopGeometry(
     const thickness = mm(3.8);
     const clearance = mm(1.0);
 
-    const band = geometryResult(bandAroundProfileData(profile, {
+    const band = forgedBand(profile, {
         y,
         width,
         thickness,
@@ -44,7 +44,7 @@ export function buildBarrelHoopGeometry(
         bevel: mm(0.75),
         radialSegments,
         angleOffset: 0
-    }));
+    });
 
     const lapThickness = mm(1.2);
     const lapClearance = mm(0.22);
@@ -62,7 +62,7 @@ export function buildBarrelHoopGeometry(
         point.y
     ));
 
-    const lap = geometryResult(bandAroundProfileData(lapProfile, {
+    const lap = forgedBand(lapProfile, {
         y,
         width: width - mm(4),
         thickness: lapThickness,
@@ -70,7 +70,7 @@ export function buildBarrelHoopGeometry(
         bevel: mm(0.3),
         radialSegments: lapSegments,
         arc
-    }));
+    });
 
     function radiusAt(height: number): number {
         for (let i = 1; i < lapProfile.length; i++) {

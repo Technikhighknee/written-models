@@ -9,7 +9,7 @@ import { offsetMeshUvs as offsetAuthoredUvs } from "../toolbox/geometry/edit/geo
 import { cooperedHead } from "./components/cooperedHead";
 import { buildBarrelHoopGeometry } from "./components/barrelHardware";
 import { coherentVariation } from "../toolbox/spatial/layout/coherentVariation";
-import { oakVariant, oakBoardFace, oakGrooveFace } from "../materials/wood/oak";
+import { oakVariant, oakBoardFace } from "../materials/wood/oak";
 import { wroughtIron } from "../materials/metal/wroughtIron";
 
 type BarrelHeadSide = "top" | "bottom";
@@ -148,32 +148,8 @@ function createHead(
     const boards = cooperedHead(radius, {
         planks: 5,
         thickness,
-        // Only the outward-facing head gets the fitted grain and relief.
-        // The inward-facing solid surface remains closed but deliberately
-        // sparse. Top head faces +Y; bottom head faces -Y.
-        detailedFace: isTop ? "top" : "bottom",
-        // The stave-built rim has 24 facets; 36 segments retain a
-        // smooth enough wooden head without excessive cut-line loops.
         radialSegments: 36,
-        // These boards were fitted and trimmed as one circular head,
-        // but their widths don't look machine-divided into fifths.
-        widthWeights: [0.94, 1.08, 1.03, 0.92, 1.03],
-        // Sloped wooden shoulders, a narrow shadowed groove floor,
-        // and a continuous solid contact below it on BOTH faces.
-        shoulderWidth: mm(4.2),
-        recessDepth: mm(2.4),
-        grooveFloorWidth: mm(0.95),
-        // Fitted joinery, not five identical machine-cut strips.
-        // Adjacent edges wander TOGETHER; shallow wear never opens the head.
-        handFitted: {
-            seed: isTop ? 181 : 293,
-            edgeWander: mm(1.9),
-            crown: mm(1.1),
-            edgeWear: mm(0.65),
-            // Follow surface curvature instead of creating nine loops
-            // through every perfectly good flat piece of oak.
-            maxDeviation: mm(0.7)
-        }
+        widthWeights: [0.94, 1.08, 1.03, 0.92, 1.03]
     });
 
     // Heads are linear rows of timber, not random swatch arrangements.
@@ -192,9 +168,9 @@ function createHead(
             name: `HeadBoard${i + 1}`,
             geometry: boards[i]!,
             materials: {
-                face: oakBoardFace(seed),
-                cut: wood.tinted.endGrain,
-                recess: oakGrooveFace(seed)
+                outer: wood.tinted.endGrain,
+                "cap-start": oakBoardFace(seed),
+                "cap-end": oakBoardFace(seed)
             },
             tint: new THREE.Color(tone, tone, tone)
         }));
