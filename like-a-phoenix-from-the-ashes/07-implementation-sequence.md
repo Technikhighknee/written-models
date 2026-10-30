@@ -873,6 +873,9 @@ operations, with no live consumers of superseded specialized logic.
       now use `attachAtFrames` directly. Named-anchor attachment
       remains supported through `attachByAnchors` because it applies
       its own contact-frame relationship.
+      The render-dependent `MeshSurfaceQuery` is retired; geometric
+      fitting and surface hits use the authored-face
+      `raycastSurface` / `surfaceTriangles` path instead.
 - [ ] **7.2** Remove duplicate render material classification
       paths, stale exports and compatibility adapters once their
       consumers have migrated. Removed `assignMaterialsByNormal`,
