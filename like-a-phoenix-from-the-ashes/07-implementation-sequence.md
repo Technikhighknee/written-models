@@ -828,6 +828,10 @@ operations, with no live consumers of superseded specialized logic.
       (`fitBetweenSupports`, `fitBoundaryToSurface`,
       `supportFacePlane`), the stale `profiledMesh` wrapper and
       the unused rectangle-specific corner-mount generator.
+      Fitted timbers in the table/trestle assembly now construct both
+      plane-cut and surface-fitted ends through the same authored
+      `loftSectionWalls` and `capBoundary` path, without the model's
+      earlier `beamBetweenPlanes`/`loftSections` dependency.
       Still active in the model-test corpus: older board, stave,
       vessel and loft constructors. Migrate those consumers before
       removing their implementations.

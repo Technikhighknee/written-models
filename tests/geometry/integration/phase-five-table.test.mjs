@@ -224,6 +224,43 @@ test("table trestle's rectangular members retain cut faces and group transforms"
     }
 });
 
+test("plane-cut timbers retain closed quad faces and exact support cuts", () => {
+    const start = new THREE.Vector3(0, 0, 0);
+    const end = new THREE.Vector3(0, 1, 0);
+    const startNormal = new THREE.Vector3(0.2, 1, 0).normalize();
+    const endNormal = new THREE.Vector3(0, -1, 0);
+    const member = tableTimberGeometry(start, end, 0.12, 0.08, {
+        startNormal, endNormal
+    });
+    const mesh = member.geometry.geometry;
+
+    assert.equal(member.fitted, true);
+    assert.deepEqual(member.localToParent.elements,
+        new THREE.Matrix4().elements);
+    assert.equal(mesh.quads.length, 6);
+    assert.equal(mesh.triangles?.length ?? 0, 0);
+    assert.equal(topologyOf(member.geometry).openBoundaries().length, 0);
+    assert.equal(topologyOf(member.geometry).connectedComponents().length, 1);
+    assert.deepEqual(new Set(mesh.quads.map(face => face.surface)),
+        new Set(["side-0", "side-1", "side-2", "side-3",
+            "cap-start", "cap-end"]));
+
+    for (const [surface, plane, normal] of [
+        ["cap-start", start, startNormal],
+        ["cap-end", end, endNormal]
+    ]) {
+        const cap = mesh.quads.find(face => face.surface === surface);
+        assert.ok(cap);
+        for (const vertex of cap.corners) {
+            const point = mesh.vertices[vertex];
+            almost(point.clone().sub(plane).dot(normal), 0);
+        }
+        for (const uv of cap.uvs) {
+            assert.ok(Number.isFinite(uv.x) && Number.isFinite(uv.y));
+        }
+    }
+});
+
 test("finite trestle contacts fit both braces and the longitudinal tie", () => {
     const v = (x, y, z) => new THREE.Vector3(x, y, z);
     const target = (part, parent = new THREE.Matrix4()) => ({

@@ -6,7 +6,7 @@ import { loftSectionWalls } from "../../toolbox/geometry/build/loftSectionWalls"
 import { capBoundary } from "../../toolbox/geometry/build/finishBoundaries";
 import type { Section3 } from "../../toolbox/geometry/definitions/geometry";
 import { boxMesh } from "../../toolbox/geometry/construction/boxMesh";
-import { beamBetweenPlanes } from "../../toolbox/geometry/construction/beamBetweenPlanes";
+import { sectionsBetweenPlanes } from "../../toolbox/geometry/construction/sectionsBetweenPlanes";
 import {
     geometryResult, type GeometryResult
 } from "../../toolbox/geometry/kernel/GeometryResult";
@@ -46,12 +46,21 @@ export function tableTimberGeometry(
     }
 
     if (contacts) {
+        const sections = sectionsBetweenPlanes({
+            start: { point: from, normal: contacts.startNormal },
+            end: { point: to, normal: contacts.endNormal },
+            section: [
+                new THREE.Vector2(-width / 2, -depth / 2),
+                new THREE.Vector2(-width / 2, depth / 2),
+                new THREE.Vector2(width / 2, depth / 2),
+                new THREE.Vector2(width / 2, -depth / 2)
+            ]
+        });
+
         return {
-            geometry: geometryResult(beamBetweenPlanes({
-                start: { point: from, normal: contacts.startNormal },
-                end: { point: to, normal: contacts.endNormal },
-                width, depth
-            })),
+            geometry: closeTimberSections(sections.map(points => ({
+                outer: { points, closed: true }
+            }))),
             localToParent: new THREE.Matrix4(),
             fitted: true
         };
@@ -94,6 +103,31 @@ function endFrame(section: Section3): THREE.Matrix4 {
     return new THREE.Matrix4().makeBasis(x, y, normal).setPosition(a);
 }
 
+/** Close the authored sections for both plane- and surface-fitted timbers. */
+function closeTimberSections(sections: readonly Section3[]): GeometryResult {
+    let geometry = loftSectionWalls(sections, {
+        uvMode: "edge",
+        surfaceAt: ({edge}) => `side-${edge}`
+    });
+
+    for (const [name, section] of [
+        ["start", sections[0]!],
+        ["end", sections[sections.length - 1]!]
+    ] as const) {
+        geometry = capBoundary(
+            geometry,
+            geometry.boundaries[`${name}-outer`]![0]!,
+            {
+                region: `cap-${name}`,
+                uvFrame: endFrame(section),
+                tessellation: "quad-if-planar"
+            }
+        );
+    }
+
+    return geometry;
+}
+
 /**
  * Fit an entire rectangular section, not just its centerline, between
  * two finite authored contact patches. Each end is capped on its actual
@@ -124,28 +158,8 @@ export function tableTimberBetweenSurfaces({
         },
         referenceDirection
     });
-    let geometry = loftSectionWalls(result.sections, {
-        uvMode: "edge",
-        surfaceAt: ({edge}) => `side-${edge}`
-    });
-
-    for (const [name, section] of [
-        ["start", result.sections[0]],
-        ["end", result.sections[1]]
-    ] as const) {
-        geometry = capBoundary(
-            geometry,
-            geometry.boundaries[`${name}-outer`]![0]!,
-            {
-                region: `cap-${name}`,
-                uvFrame: endFrame(section),
-                tessellation: "quad-if-planar"
-            }
-        );
-    }
-
     return {
-        geometry,
+        geometry: closeTimberSections(result.sections),
         localToParent: new THREE.Matrix4(),
         fitted: true
     };
