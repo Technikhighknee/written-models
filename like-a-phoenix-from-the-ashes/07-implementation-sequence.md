@@ -929,17 +929,11 @@ operations, with no live consumers of superseded specialized logic.
       deleted API names.
 - [ ] **7.5** Verify all eight models in Quad View and GLB export,
       with the mug's active morph and other supported runtime paths.
-- [x] **7.6** Construct another cross-category geometric assembly
+- [ ] **7.6** Construct another cross-category geometric assembly
       through existing toolbox functions to demonstrate reuse.
-      A pierced wall-mounted candle sconce now composes
-      `extrudeContour` (including hole walls and bevel layers),
-      `sweepSection` (transported frames and varying cross-section)
-      and `revolveProfile` (a hollow cup). The integration proof
-      checks manifold topology, authored quads, region UVs,
-      actual plate contact, Quad View and exported GLB.
-      The assembly is also available as the `candle-sconce` viewer
-      model. The same authored geometry feeds both the interactive
-      preview and the integration proof.
+      The experimental candle-sconce asset and its model-specific
+      integration test were discarded; this proof still needs an
+      independent replacement that does not ship an unwanted model.
 
 **Gate:** The permanent toolbox code and documentation embody
 the architecture, and all model-specific capabilities remain.

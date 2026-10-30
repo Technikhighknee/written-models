@@ -8,7 +8,6 @@ import dagger from "./dagger";
 import beerMug from "./beerMug";
 import tavernChair from "./tavernChair";
 import tavernBench from "./tavernBench";
-import candleSconce from "./candleSconce";
 
 export interface ModelDefinition {
     slug: string;
@@ -25,6 +24,5 @@ export const models: readonly ModelDefinition[] = [
     dagger,
     beerMug,
     tavernChair,
-    tavernBench,
-    candleSconce
+    tavernBench
 ];
