@@ -36,6 +36,12 @@ class TestCanvas {
                     data: new Uint8ClampedArray(width * height * 4)
                 };
             },
+            getImageData(x, y, width, height) {
+                return {
+                    width, height,
+                    data: new Uint8ClampedArray(width * height * 4)
+                };
+            },
             putImageData() {},
             drawImage() {},
             clearRect() {},
