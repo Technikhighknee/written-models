@@ -3,8 +3,8 @@ import * as THREE from "three";
 import { cm, mm } from "../../toolbox/units/length";
 import { geometryResult, type GeometryResult } from
     "../../toolbox/geometry/kernel/GeometryResult";
-import { cutBoard } from "../../toolbox/geometry/construction/cutBoard";
-import { loftBoard, type BoardSection } from "../../toolbox/geometry/construction/loftBoard";
+import { layeredGridSolid } from "../../toolbox/geometry/build/layeredGridSolid";
+import { loftPairedSurfaceRows, type PairedSurfaceSection } from "../../toolbox/geometry/build/loftPairedSurfaceRows";
 import { sampleAdaptiveStations } from "../../toolbox/geometry/topology/adaptiveStations";
 import { findFacingPatch } from "../../toolbox/geometry/queries/findFacingPatch";
 import {
@@ -286,27 +286,46 @@ export function buildChairRearSeatGeometry(): GeometryResult {
     const frontOfStile = (height: number) =>
         chairRearZ(height) + CHAIR.backPostSize / 2 + clearance;
 
-    return geometryResult(cutBoard({
-        width: CHAIR.seatWidth,
-        depth: CHAIR.rearBoardFront - CHAIR.seatBack,
-        centerZ: (CHAIR.seatBack + CHAIR.rearBoardFront) / 2,
-        thickness: CHAIR.seatThickness,
-        crown: mm(0.6),
+    // The chair owns its two raked housings. The toolbox only builds
+    // the shared, independently positioned upper/lower cell topology.
+    const rear = CHAIR.seatBack;
+    const front = CHAIR.rearBoardFront;
+    const top = frontOfStile(CHAIR.seatHeight);
+    const bottom = frontOfStile(underside);
+    const columns = [
+        -half, -cheek, -cheek / 2, 0, cheek / 2, cheek, half
+    ];
+    const rows = [
+        { upper: rear, lower: rear },
+        { upper: top, lower: bottom },
+        { upper: front, lower: front }
+    ];
+    const filled = columns.slice(1).map((_, index) =>
+        [index > 0 && index < columns.length - 2, true]
+    );
+    const thickness = CHAIR.seatThickness;
+
+    return geometryResult(layeredGridSolid({
+        columns,
+        rows,
+        filled,
+        upperY: x =>
+            thickness / 2 + mm(0.6) * (1 - (x / half) ** 2),
+        lowerY: () => -thickness / 2,
         bevel: mm(1.25),
-        cuts: [
-            {
-                minX: -half,
-                maxX: -cheek,
-                topZ: [CHAIR.seatBack, frontOfStile(CHAIR.seatHeight)],
-                bottomZ: [CHAIR.seatBack, frontOfStile(underside)]
-            },
-            {
-                minX: cheek,
-                maxX: half,
-                topZ: [CHAIR.seatBack, frontOfStile(CHAIR.seatHeight)],
-                bottomZ: [CHAIR.seatBack, frontOfStile(underside)]
-            }
-        ]
+        surfaceAt: side =>
+            side === "upper" ? "outer" :
+            side === "lower" ? "inner" :
+            side === "left" || side === "right" ? "cap-start" :
+            "edge-left",
+        faceUv: point => new THREE.Vector2(
+            point.z - rear, point.x + half
+        ),
+        wallUv: (point, side) => new THREE.Vector2(
+            side === "left" || side === "right"
+                ? point.z - rear : point.x + half,
+            point.y + thickness / 2
+        )
     }));
 }
 
@@ -320,7 +339,7 @@ export function buildChairCrestGeometry(): GeometryResult {
     const endWear = [mm(1.6), mm(1.2)] as const;
     const cornerExtent = 0.045;
 
-    const sectionAt = (progress: number): BoardSection => {
+    const sectionAt = (progress: number): PairedSurfaceSection => {
         const nearStart = Math.max(0, 1 - progress / cornerExtent) ** 2;
         const nearEnd = Math.max(0, 1 - (1 - progress) / cornerExtent) ** 2;
         const left = -cm(4.7) + mm(0.45) * Math.sin(Math.PI * progress) +
@@ -367,7 +386,7 @@ export function buildChairCrestGeometry(): GeometryResult {
         knots: [cornerExtent, 1 - cornerExtent]
     }).stations;
 
-    return geometryResult(loftBoard(stations.map(sectionAt)));
+    return geometryResult(loftPairedSurfaceRows(stations.map(sectionAt)));
 }
 
 /** Preserve the chosen rake and assembly placement of the back infill. */

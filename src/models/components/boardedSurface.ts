@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-import { loftBoard } from "../../toolbox/geometry/construction/loftBoard";
+import { loftPairedSurfaceRows } from "../../toolbox/geometry/build/loftPairedSurfaceRows";
 import {
     geometryResult, type GeometryResult
 } from "../../toolbox/geometry/kernel/GeometryResult";
@@ -200,6 +200,6 @@ export function boardedSurface({
     ))].sort((a, b) => a - b);
 
     return shapes.map(shape => geometryResult(
-        loftBoard(shared.map(shape.sectionAt))
+        loftPairedSurfaceRows(shared.map(shape.sectionAt))
     ));
 }

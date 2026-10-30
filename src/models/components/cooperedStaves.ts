@@ -1,7 +1,7 @@
 import * as THREE from "three";
 
 import { samplePolarStripSections } from "../../toolbox/geometry/build/samplePolarStripSections";
-import { loftBoard } from "../../toolbox/geometry/construction/loftBoard";
+import { loftPairedSurfaceRows } from "../../toolbox/geometry/build/loftPairedSurfaceRows";
 import {
     geometryResult,
     type GeometryResult
@@ -59,7 +59,7 @@ export function cooperedStaves(
         innerRadiusAt: radius => radius - thickness
     });
 
-    return sections.map(piece => geometryResult(loftBoard(
+    return sections.map(piece => geometryResult(loftPairedSurfaceRows(
         piece.map(section => ({
             outer: section.outer.points.slice(0, outerStations.length),
             inner: section.outer.points.slice(outerStations.length).reverse()

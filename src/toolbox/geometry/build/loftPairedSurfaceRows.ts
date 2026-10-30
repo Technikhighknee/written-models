@@ -1,30 +1,29 @@
 import * as THREE from "three";
 import type { MeshData, TriangleFace } from "../mesh/MeshData";
-import { loftSideQuads } from "../build/loftSideQuads";
+import { loftSideQuads } from "./loftSideQuads";
 import { stitchPolylines } from "../topology/stitchPolylines";
 
 /**
- * A cross-section of one closed board, viewed across its width.
+ * Two independently sampled surface rows forming a closed cross-section.
  * Outer and inner run in the SAME left-to-right direction but may have
  * different numbers of support points. Longitudinal sections must agree
  * within each surface, so every shared edge joins without T-junctions.
  */
-export interface BoardSection {
+export interface PairedSurfaceSection {
     outer: readonly THREE.Vector3Like[];
     inner: readonly THREE.Vector3Like[];
 }
 
 /**
- * Loft a watertight board from independently sampled surface rows.
+ * Loft a closed volume from independently sampled surface rows.
  *
- * The visible face can retain a detailed edge bevel while a hidden face
- * uses a single broad quad. Sidewalls remain quads, and end caps are
+ * One surface may have dense construction edges while the other uses broad quads. Sidewalls remain quads, and end caps are
  * stitched without inventing hidden subdivisions of the inner surface.
  * Caps with matching rows preserve the original quad strips; caps with
  * mismatched rows use genuine authored transition triangles.
  */
-export function loftBoard(
-    sections: readonly BoardSection[]
+export function loftPairedSurfaceRows(
+    sections: readonly PairedSurfaceSection[]
 ): MeshData {
     const outerPoints = sections[0]?.outer.length ?? 0;
     const innerPoints = sections[0]?.inner.length ?? 0;
@@ -37,7 +36,7 @@ export function loftBoard(
         )
     ) {
         throw new RangeError(
-            "Board needs at least two matching longitudinal sections, " +
+            "Paired surfaces need at least two matching longitudinal sections, " +
             "with at least two points on each independent surface"
         );
     }
@@ -139,13 +138,13 @@ export function loftBoard(
         const depth = ring[ringSize - 1]!.clone().sub(origin);
 
         if (across.lengthSq() === 0) {
-            throw new RangeError("Collapsed board cap width");
+            throw new RangeError("Collapsed paired-strip cap width");
         }
         across.normalize();
         depth.addScaledVector(across, -depth.dot(across));
 
         if (depth.lengthSq() === 0) {
-            throw new RangeError("Collapsed board cap thickness");
+            throw new RangeError("Collapsed paired-strip cap thickness");
         }
         depth.normalize();
 
