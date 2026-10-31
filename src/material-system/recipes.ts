@@ -99,8 +99,8 @@ function barrel(): PaintedAtlas {
         "#563623", "#63412b", "#764b2f", "#6c452d",
         "#60402c", "#805337", "#4f3424"
     ]);
-    // Two nearly black wrought-iron hoops with restrained rivet heads.
-    for (const y of [0.21, 0.76]) {
+    // The end hoops sit just below the barrel heads; two more bind the body.
+    for (const y of [0.055, 0.21, 0.76, 0.945]) {
         side.stroke([[0, y - 0.008], [1, y - 0.008]], 0.049, {
             color: "#161713", roughness: 0.75, height: 0.002
         });
