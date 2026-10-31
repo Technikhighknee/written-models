@@ -85,10 +85,15 @@ export function forgedBand(
     ];
 
     // A zero-bevel rectangle must retain its four separate corners.
+    // The contour is authored from lower inside -> lower outside ->
+    // upper outside -> upper inside: clockwise in the sweep's (radial,
+    // down) frame. loftSideQuads expects a counter-clockwise outline
+    // for outward-facing wall normals. Reverse the section rather than
+    // disabling culling or flipping the shared sweep for other callers.
     const outline = section.map(corner => new THREE.Vector2(
         clearanceRadius(corner.height) - centerRadius + corner.offset,
         y - corner.height
-    ));
+    )).reverse();
 
     const closed = !arc;
     const stations = Array.from(
