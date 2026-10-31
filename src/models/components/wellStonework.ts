@@ -5,7 +5,6 @@ import { surfaceMesh } from "../../toolbox/geometry/mesh/surfaceMesh";
 import { limestoneVariant } from "../../materials/stone/limestone";
 
 export const WELL_OPENING_RADIUS = 0.46;
-export const WELL_RIM_HEIGHT = 0.92;
 
 interface RingCourse {
     count: number;
@@ -70,10 +69,7 @@ function stoneCourse(
     }
 }
 
-/**
- * A low, genuinely hollow, coursed stone wellhead; the raised coping is
- * made of separate broad stones, not a texture painted over a cylinder.
- */
+/** A low, hollow stone wellhead made only of its four lower courses. */
 export function wellStonework(): THREE.Group {
     const stones = new THREE.Group();
     stones.name = "StoneWellhead";
@@ -92,19 +88,6 @@ export function wellStonework(): THREE.Group {
         });
         stones.add(row);
     }
-
-    const coping = new THREE.Group();
-    coping.name = "WornCopingStones";
-    stoneCourse(coping, {
-        count: 18,
-        innerRadius: WELL_OPENING_RADIUS - 0.018,
-        outerRadius: 0.795,
-        bottom: 0.763,
-        height: WELL_RIM_HEIGHT - 0.763,
-        offset: Math.PI / 18,
-        seed: 13
-    });
-    stones.add(coping);
 
     return stones;
 }
