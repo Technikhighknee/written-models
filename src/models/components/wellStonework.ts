@@ -1,12 +1,13 @@
 import * as THREE from "three";
 
-import { extrudeContour } from "../../toolbox/geometry/build/extrudeContour";
-import { surfaceMesh } from "../../toolbox/geometry/mesh/surfaceMesh";
-import { limestoneVariant } from "../../materials/stone/limestone";
+import { AuthoredMeshBuilder } from "../../toolbox/geometry/mesh/AuthoredMeshBuilder";
+import { geometryResult, type GeometryResult } from "../../toolbox/geometry/kernel/GeometryResult";
+import { seededVariation } from "../../toolbox/spatial/layout/seededVariation";
+import { weightedCuts } from "../../toolbox/spatial/layout/weightedCuts";
 
-export const WELL_OPENING_RADIUS = 0.46;
+export const WELL_OPENING_RADIUS = 0.466;
 
-interface RingCourse {
+interface StoneCourse {
     count: number;
     innerRadius: number;
     outerRadius: number;
@@ -14,80 +15,142 @@ interface RingCourse {
     height: number;
     offset: number;
     seed: number;
+    coping: boolean;
 }
 
-/** Independent wedge-shaped masonry units with real mortar joints. */
-function stoneCourse(
-    parent: THREE.Group,
-    {
-        count, innerRadius, outerRadius, bottom, height, offset, seed
-    }: RingCourse
+/**
+ * One low-poly stone block. The visible joints and outer contour are real;
+ * fine chips, cracks and weathering can live in the material later.
+ */
+function addStone(
+    mesh: AuthoredMeshBuilder,
+    course: StoneCourse,
+    index: number,
+    from: number,
+    to: number
 ): void {
-    const step = Math.PI * 2 / count;
-    const frame = new THREE.Matrix4().makeBasis(
-        new THREE.Vector3(1, 0, 0),
-        new THREE.Vector3(0, 0, -1),
-        new THREE.Vector3(0, 1, 0)
-    ).setPosition(new THREE.Vector3(0, bottom, 0));
+    const variation = (channel: number) =>
+        seededVariation(course.seed, index, channel);
+    const bottom = course.bottom + variation(1) * 0.003;
+    const top = course.bottom + course.height + variation(2) * 0.009;
+    const outer = course.outerRadius + variation(3) * 0.012;
+    const inner = course.innerRadius + variation(4) * 0.006;
+    const gap = 0.006 / outer;
+    const start = from + course.offset + gap;
+    const end = to + course.offset - gap;
 
-    for (let i = 0; i < count; i++) {
-        const variation = Math.sin((seed + i * 17) * 8.123);
-        const radius = outerRadius + variation * 0.004;
-        const start = offset + step * i + 0.004;
-        const end = offset + step * (i + 1) - 0.004;
-        const arc = (r: number, from: number, to: number) =>
-            [0, 0.5, 1].map(t => {
-                const angle = from + (to - from) * t;
-                return new THREE.Vector2(
-                    Math.cos(angle) * r,
-                    -Math.sin(angle) * r
-                );
-            });
+    // The coping has a single chamfer at its exposed upper edge.
+    // Lower courses need only their block silhouettes.
+    const levels = [
+        { y: bottom, inset: 0, endInset: 0 },
+        ...(course.coping
+            ? [{ y: top - 0.024, inset: 0, endInset: 0 }]
+            : []),
+        {
+            y: top,
+            inset: course.coping ? 0.016 : 0,
+            endInset: course.coping ? 0.012 : 0
+        }
+    ];
 
-        const outline = [
-            ...arc(radius, start, end),
-            ...arc(innerRadius, end, start)
+    const positions: THREE.Vector3[] = [];
+
+    for (const level of levels) {
+        const angles = [
+            start + level.endInset,
+            (start + end) / 2,
+            end - level.endInset
         ];
-        const geometry = extrudeContour({
-            outer: { points: outline, closed: true }
-        }, {
-            frame,
-            depth: height,
-            caps: true
-        });
+        const polar = (angle: number, radius: number) =>
+            new THREE.Vector3(
+                Math.sin(angle) * radius,
+                level.y,
+                Math.cos(angle) * radius
+            );
 
-        const tone = Math.abs((i * 7 + seed * 3) % 11);
-        const finish = bottom < 0.21 && tone % 4 === 0
-            ? 5 + (tone % 2)
-            : tone % 5;
-
-        parent.add(surfaceMesh({
-            name: "Stone" + String(i + 1).padStart(2, "0"),
-            geometry,
-            materials: limestoneVariant(finish)
-        }));
+        for (const angle of angles) {
+            positions.push(polar(angle, outer - level.inset));
+        }
+        for (const angle of [...angles].reverse()) {
+            positions.push(polar(angle, inner + level.inset));
+        }
     }
+
+    const ids = positions.map(point => mesh.addVertex(point));
+    const face = (corners: readonly number[], uvs: readonly THREE.Vector2[]) =>
+        mesh.addIndexedFace(corners.map(i => ids[i]!), uvs, "stone");
+    const cap = (corners: readonly number[]) =>
+        face(corners, corners.map(i => new THREE.Vector2(
+            positions[i]!.x, positions[i]!.z
+        )));
+
+    const perimeter = [0];
+    for (let edge = 0; edge < 6; edge++) {
+        const a = positions[edge]!;
+        const b = positions[(edge + 1) % 6]!;
+        perimeter.push(perimeter[edge]! + Math.hypot(
+            b.x - a.x, b.z - a.z
+        ));
+    }
+
+    for (let level = 0; level < levels.length - 1; level++) {
+        for (let edge = 0; edge < 6; edge++) {
+            const next = (edge + 1) % 6;
+            const a = level * 6 + edge;
+            const b = level * 6 + next;
+            const c = (level + 1) * 6 + next;
+            const d = (level + 1) * 6 + edge;
+            const u0 = perimeter[edge]!;
+            const u1 = perimeter[edge + 1]!;
+
+            face([a, b, c, d], [
+                new THREE.Vector2(u0, positions[a]!.y),
+                new THREE.Vector2(u1, positions[b]!.y),
+                new THREE.Vector2(u1, positions[c]!.y),
+                new THREE.Vector2(u0, positions[d]!.y)
+            ]);
+        }
+    }
+
+    const crown = (levels.length - 1) * 6;
+    cap([crown, crown + 1, crown + 4, crown + 5]);
+    cap([crown + 1, crown + 2, crown + 3, crown + 4]);
+    cap([5, 4, 1, 0]);
+    cap([4, 3, 2, 1]);
 }
 
-/** A low, hollow stone wellhead made only of its four lower courses. */
-export function wellStonework(): THREE.Group {
-    const stones = new THREE.Group();
-    stones.name = "StoneWellhead";
+/** Three staggered courses, compiled into a single authored mesh. */
+export function buildWellStonework(): GeometryResult {
+    const mesh = new AuthoredMeshBuilder({ weld: "none" });
+    const courses: StoneCourse[] = [
+        {
+            count: 12, innerRadius: 0.482, outerRadius: 0.755,
+            bottom: 0.003, height: 0.18, offset: 0, seed: 9,
+            coping: false
+        },
+        {
+            count: 14, innerRadius: 0.478, outerRadius: 0.767,
+            bottom: 0.182, height: 0.185, offset: Math.PI / 14,
+            seed: 23, coping: false
+        },
+        {
+            count: 18, innerRadius: WELL_OPENING_RADIUS, outerRadius: 0.796,
+            bottom: 0.364, height: 0.242, offset: Math.PI / 18,
+            seed: 41, coping: true
+        }
+    ];
 
-    for (let course = 0; course < 4; course++) {
-        const row = new THREE.Group();
-        row.name = "MasonryCourse" + (course + 1);
-        stoneCourse(row, {
-            count: 16,
-            innerRadius: WELL_OPENING_RADIUS,
-            outerRadius: 0.755,
-            bottom: course * 0.19 + 0.003,
-            height: 0.187,
-            offset: course % 2 ? Math.PI / 16 : 0,
-            seed: course + 2
-        });
-        stones.add(row);
+    for (const course of courses) {
+        const weights = Array.from(
+            { length: course.count },
+            (_, i) => 1 + seededVariation(course.seed, i, 0) * 0.16
+        );
+        const cuts = weightedCuts(0, Math.PI * 2, course.count, weights);
+
+        for (let i = 0; i < course.count; i++) {
+            addStone(mesh, course, i, cuts[i]!, cuts[i + 1]!);
+        }
     }
 
-    return stones;
+    return geometryResult(mesh.build());
 }
