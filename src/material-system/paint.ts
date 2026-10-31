@@ -197,7 +197,7 @@ function place(
         [w - 1, 0, x + p + w, y],
         [0, h - 1, x, y + p + h],
         [w - 1, h - 1, x + p + w, y + p + h]
-    ]) {
+    ] as const) {
         target.drawImage(source, sx, sy, 1, 1, dx, dy, p, p);
     }
 }
