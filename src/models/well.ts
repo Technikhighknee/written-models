@@ -11,10 +11,7 @@ const WATER_HEIGHT = 0.30;
 // Mortar joints, stone courses and weathering belong in the texture.
 const PROFILE = [
     { radius: 0.748, height: 0.01 },
-    { radius: 0.748, height: 0.37 },
-    { radius: 0.782, height: 0.37 },
-    { radius: 0.782, height: 0.58 },
-    { radius: 0.765, height: 0.607 },
+    { radius: 0.748, height: 0.607 },
     { radius: 0.473, height: 0.607 },
     { radius: 0.473, height: WATER_HEIGHT }
 ] as const;
