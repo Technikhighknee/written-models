@@ -100,8 +100,8 @@ function barrel(): PaintedAtlas {
         "#60402c", "#805337", "#4f3424"
     ]);
 
-    // The two body hoops are painted on the staves. The end hoops sit
-    // flat on the annular outer edges of the top and bottom faces.
+    // The two body hoops are painted on the staves; end bands belong to
+    // the circular head texture, not the cylindrical wall.
     for (const y of [0.21, 0.76]) {
         side.stroke([[0, y - 0.008], [1, y - 0.008]], 0.049, {
             color: "#161713", roughness: 0.75, height: 0.002
@@ -123,36 +123,46 @@ function barrel(): PaintedAtlas {
         });
     }
 
-    const endHoop = new PaintedSurface(
-        768, 192, 2.33, 0.027, "#1b1b18", 0.82, true
-    );
-    endHoop.stroke([[0, 0.13], [1, 0.13]], 0.028, {
-        color: "#565348", opacity: 0.60, roughness: 0.76,
-        height: 0.0004
-    });
-    endHoop.stroke([[0, 0.36], [1, 0.36]], 0.024, {
-        color: "#59594d", opacity: 0.42, height: 0.0005
-    });
-    endHoop.stroke([[0, 0.90], [1, 0.90]], 0.026, {
-        color: "#49483e", opacity: 0.5, height: 0.0005
-    });
-    const endRivets: Mark[] = Array.from({ length: 15 }, (_, i) => ({
-        x: (i + 0.5) / 15,
-        y: 0.60,
-        rx: 0.0029,
-        ry: 0.019
-    }));
-    endHoop.marks(endRivets, {
-        color: "#766d55", roughness: 0.67, height: 0.001
-    });
-
-    const head = new PaintedSurface(512, 512, 0.686, 0.686, "#28170e", 0.92);
+    const head = new PaintedSurface(512, 512, 0.740, 0.740, "#28170e", 0.92);
     timberBoards(head, 88, true, 5, [
         "#6b462b", "#583823", "#7e5233", "#603e29"
     ]);
+
+    // disk() maps the outer circumference to radius 0.48 in UV space.
+    // Paint the end hoop as a narrow annulus ON that circular surface.
+    const ring = (radius: number): Point[] =>
+        Array.from({ length: 97 }, (_, i) => {
+            const angle = i * Math.PI * 2 / 96;
+            return [
+                0.5 + Math.sin(angle) * radius,
+                0.5 + Math.cos(angle) * radius
+            ];
+        });
+    head.stroke(ring(0.461), 0.038, {
+        color: "#1b1c19", roughness: 0.76, height: 0.002
+    });
+    head.stroke(ring(0.468), 0.003, {
+        color: "#6b6250", opacity: 0.52, roughness: 0.68,
+        height: 0.0025
+    });
+    head.stroke(ring(0.441), 0.004, {
+        color: "#10110f", roughness: 0.85, height: 0.001
+    });
+    const rimRivets: Mark[] = Array.from({ length: 16 }, (_, i) => {
+        const angle = (i + 0.5) * Math.PI * 2 / 16;
+        return {
+            x: 0.5 + Math.sin(angle) * 0.461,
+            y: 0.5 + Math.cos(angle) * 0.461,
+            rx: 0.0027,
+            ry: 0.0027
+        };
+    });
+    head.marks(rimRivets, {
+        color: "#766b54", roughness: 0.63, height: 0.003
+    });
+
     return assemblePaintedAtlas("Painted · Coopered barrel", [
         { name: "staves", surface: side },
-        { name: "endHoop", surface: endHoop },
         { name: "head", surface: head }
     ]);
 }
