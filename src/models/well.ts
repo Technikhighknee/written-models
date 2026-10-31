@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { AuthoredMeshBuilder } from "../toolbox/geometry/mesh/AuthoredMeshBuilder";
 import { geometryResult } from "../toolbox/geometry/kernel/GeometryResult";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
-import { wellFinish } from "../material-system/recipes";
+import { wellFinish } from "../material-system/weatheredWell";
 
 const SIDES = 18;
 const OUTER_RADIUS = 0.70;

@@ -1,24 +1,19 @@
 # Material System
 
-The material system is a painting toolkit, not a collection of mesh generators.
-Geometry still defines silhouettes and real openings. Materials paint what the
-viewer perceives on those surfaces.
+Materials here are authored in TypeScript. The village well uses a painted
+color, roughness and normal atlas for its stonework; geometry defines the
+shape and edges.
 
-- `paint.ts`: authored paths and marks, masked layers, direct pixel-level
-  composition, aligned color/roughness/normal-map atlases.
-- `pigmentFields.ts`: repeatable, seamless, multi-scale pigment variation.
-  These fields are supporting brushes, not finished textures.
-- `weatheredWell.ts`: the first material built primarily by layered
-  raster painting. Each stone has its own irregular proportions, large stains,
-  mineral variation, worn edges, crevices and localized dampness. Stone courses
-  match across the outer wall and coping. The water is also painted.
-- `recipes.ts`: separate painted material recipes for wooden containers
-  and wicker. Those are still earlier drafts awaiting visual refinement.
+- `paint.ts`: authored paths and marks, masked painting, raster composition
+  and aligned PBR texture atlases.
+- `pigmentFields.ts`: repeatable multi-scale pigment variation.
+- `brushwork.ts`: reusable painted marks and washes.
+- `weatheredWell.ts`: the well's limestone, with per-stone wear, stains,
+  mineral variation and joints aligned between its wall and coping.
 
-`../models/components/paintedForms.ts` connects these panels to deliberately
-simple authored meshes with explicit UVs and a GLB-compatible PBR material.
-The new well is one mesh and one material, including its water.
+The geometry lives in `../models/well.ts`. Its water is a separate,
+solid-blue `WellWater` material so Godot can replace it with a water shader.
+It is **not** part of the painted stone atlas.
 
-Do not confuse a passing build with a successful material. Judge results in
-the actual viewer at gameplay scale, compare them with the reference,
-and revise the art direction instead of automatically adding more noise.
+Judge material quality in the viewer and in Godot, not by whether a build
+passes.

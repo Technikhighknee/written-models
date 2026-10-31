@@ -10,10 +10,6 @@ import beerMug from "./beerMug";
 import tavernChair from "./tavernChair";
 import tavernBench from "./tavernBench";
 import well from "./well";
-import crate from "./crate";
-import paintedBarrel from "./paintedBarrel";
-import woodenBucket from "./woodenBucket";
-import wickerBasket from "./wickerBasket";
 
 export interface ModelDefinition {
     slug: string;
@@ -32,9 +28,5 @@ export const models: readonly ModelDefinition[] = [
     beerMug,
     tavernChair,
     tavernBench,
-    well,
-    crate,
-    paintedBarrel,
-    woodenBucket,
-    wickerBasket
+    well
 ];
