@@ -34,7 +34,6 @@ interface Course {
     stones: readonly Stone[];
 }
 
-const TAU = Math.PI * 2;
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -300,38 +299,6 @@ function masonryPanel(
     return surface;
 }
 
-function waterPanel(): PaintedSurface {
-    const panel = new PaintedSurface(
-        384, 384, 1.06, 1.06, "#396176", 0.31
-    );
-    panel.raster((u, v) => {
-        const x = u - 0.5;
-        const y = v - 0.5;
-        const radius = Math.hypot(x, y);
-        const drift = layeredField(u, v, 200);
-        const flow = periodicField(u + drift * 0.033, v, 9, 6, 407);
-        const detail = periodicField(u, v, 26, 19, 523);
-        const ripples = Math.sin(
-            (u * 7.2 + v * 2.1 + flow * 0.48 + drift * 0.25) * TAU
-        ) * 0.5 + 0.5;
-        const reflection = smoothRange(0.12, 0.62,
-            flow * 0.58 + drift * 0.34 + ripples * 0.28);
-        const shade = smoothRange(0.30, 0.52, radius);
-        return {
-            color: [
-                48 + 33 * reflection - 13 * shade + detail * 5,
-                82 + 33 * reflection - 15 * shade + detail * 6,
-                101 + 34 * reflection - 17 * shade + detail * 7
-            ],
-            roughness: 0.31 + detail * 0.035,
-            height: 0.00045 * flow + 0.00024 * Math.sin(
-                (u * 15 + v * 7 + drift * 2.1) * TAU
-            )
-        };
-    });
-    return panel;
-}
-
 let cached: PaintedAtlas | undefined;
 
 /** Old limestone, layered by hand-authored stone courses and weather. */
@@ -367,8 +334,7 @@ export function wellFinish(): PaintedAtlas {
     cached = assemblePaintedAtlas("Hand-painted · weathered well", [
         { name: "wall", surface: wall },
         { name: "rim", surface: top },
-        { name: "inside", surface: interior },
-        { name: "water", surface: waterPanel() }
+        { name: "inside", surface: interior }
     ]);
     return cached;
 }

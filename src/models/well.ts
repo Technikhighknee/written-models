@@ -83,7 +83,7 @@ function create(): THREE.Mesh {
             const radius = 0.48 * (
                 INNER_RADIUS + EDGE_VARIATION[index]! * 0.4
             ) / INNER_RADIUS;
-            return atlas.uv("water",
+            return new THREE.Vector2(
                 0.5 + Math.sin(angle) * radius,
                 0.5 + Math.cos(angle) * radius
             );
@@ -94,15 +94,23 @@ function create(): THREE.Mesh {
             vertices[3]![i]!,
             vertices[3]![next]!
         ], [
-            atlas.uv("water", 0.5, 0.5),
+            new THREE.Vector2(0.5, 0.5),
             uv(i),
             uv(next)
-        ], "well");
+        ], "water");
     }
 
     return surfaceMesh({
         name: "VillageWell",
         geometry: geometryResult(mesh.build()),
-        materials: atlas.material
+        materials: {
+            well: atlas.material,
+            water: new THREE.MeshStandardMaterial({
+                name: "WellWater",
+                color: "#167ed5",
+                roughness: 1,
+                metalness: 0
+            })
+        }
     });
 }
