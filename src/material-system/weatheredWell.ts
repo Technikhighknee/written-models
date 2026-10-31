@@ -302,7 +302,7 @@ function masonryPanel(
 
 function waterPanel(): PaintedSurface {
     const panel = new PaintedSurface(
-        384, 384, 0.946, 0.946, "#396176", 0.31
+        384, 384, 1.06, 1.06, "#396176", 0.31
     );
     panel.raster((u, v) => {
         const x = u - 0.5;
@@ -353,15 +353,14 @@ export function wellFinish(): PaintedAtlas {
     };
 
     const wall = masonryPanel(
-        1024, 576, 4.7, 0.597, 1023, wallRows
+        1024, 576, 2 * Math.PI * 0.70, 0.49, 1023, wallRows
     );
     const top = masonryPanel(
-        1024, 320, 4.7, 0.275, 2104, [coping], false, true
+        1024, 320, 2 * Math.PI * 0.70, 0.17, 2104, [coping], false, true
     );
     const interior = masonryPanel(
-        768, 384, 2.97, 0.307, 3301, [
-            course(18, 3329, 0, 0.54, 0, WALL_COLORS),
-            course(16, 3328, 0.54, 1, 0.025, WALL_COLORS)
+        768, 256, 2 * Math.PI * 0.53, 0.08, 3301, [
+            course(18, 3329, 0, 1, 0, WALL_COLORS)
         ], true
     );
 
