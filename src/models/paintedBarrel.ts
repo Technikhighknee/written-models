@@ -16,14 +16,12 @@ function create() {
     const sides = 24;
     turnedSurface(builder, [
         { radius: 0.325, y: 0.025 },
-        { radius: 0.393, y: 0.25 },
-        { radius: 0.421, y: 0.55 },
-        { radius: 0.39, y: 0.86 },
+        { radius: 0.405, y: 0.25 },
+        { radius: 0.405, y: 0.855 },
         { radius: 0.325, y: 1.08 }
     ], [
         { panel: "staves", fromV: 0, toV: 0.21 },
-        { panel: "staves", fromV: 0.21, toV: 0.49 },
-        { panel: "staves", fromV: 0.49, toV: 0.79 },
+        { panel: "staves", fromV: 0.21, toV: 0.79 },
         { panel: "staves", fromV: 0.79, toV: 1 }
     ], sides, atlas);
     disk(builder, 1.08, 0.325, sides, atlas, "head");
