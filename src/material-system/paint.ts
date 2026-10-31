@@ -44,6 +44,7 @@ export class PaintedSurface {
     readonly color: HTMLCanvasElement;
     readonly roughness: HTMLCanvasElement;
     private readonly relief: HTMLCanvasElement;
+    private readonly masks: (readonly Point[])[] = [];
     readonly width: number;
     readonly height: number;
     readonly physicalWidth: number;
@@ -89,11 +90,31 @@ export class PaintedSurface {
             const ctx = context(surface);
             ctx.save();
             ctx.setTransform(this.width, 0, 0, this.height, 0, 0);
+            for (const polygon of this.masks) {
+                ctx.beginPath();
+                ctx.moveTo(polygon[0]![0], polygon[0]![1]);
+                for (const [x, y] of polygon.slice(1)) ctx.lineTo(x, y);
+                ctx.closePath();
+                ctx.clip();
+            }
             ctx.globalAlpha = clamp(ink.opacity ?? 1);
             ctx.fillStyle = pigment;
             ctx.strokeStyle = pigment;
             draw(ctx);
             ctx.restore();
+        }
+    }
+
+    /** Limit a sequence of authored paint operations to a material region. */
+    within(points: readonly Point[], paint: () => void): void {
+        if (points.length < 3) {
+            throw new RangeError("Painting mask needs at least three points");
+        }
+        this.masks.push(points);
+        try {
+            paint();
+        } finally {
+            this.masks.pop();
         }
     }
 
