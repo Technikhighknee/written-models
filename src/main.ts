@@ -41,6 +41,7 @@ function renderModelList(entries: readonly ModelDefinition[]): string {
 
 function categoryIcon(slug: ModelCategorySlug): string {
   const paths: Record<ModelCategorySlug, string> = {
+    architecture: '<path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-7h6v7"/>',
     furniture: '<path d="M5 11V6a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v5"/><path d="M4 11h16a2 2 0 0 1 2 2v5H2v-5a2 2 0 0 1 2-2Z"/><path d="M5 18v3m14-3v3"/>',
     vessels: '<path d="M7 3h10l2 5v8l-2 5H7l-2-5V8l2-5Z"/><path d="M6 8h12M6 16h12M9 3v18m6-18v18"/>',
     weapons: '<path d="m14 10 6-6 1-3-3 1-6 6M4 20l8-8M2 15l7 7M10 14l4-4"/>',
