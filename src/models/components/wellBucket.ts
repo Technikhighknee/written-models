@@ -112,7 +112,7 @@ export function wellBucket(): THREE.Group {
 
     const startingFrame = new THREE.Matrix4()
         .makeRotationFromQuaternion(new THREE.Quaternion().setFromUnitVectors(
-            new THREE.Vector3(0, 0, 1), tangent(0)
+            new THREE.Vector3(0, 0, 1), tangent(0).normalize()
         ))
         .setPosition(at(0));
 
