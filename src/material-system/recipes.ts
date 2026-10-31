@@ -99,8 +99,10 @@ function barrel(): PaintedAtlas {
         "#563623", "#63412b", "#764b2f", "#6c452d",
         "#60402c", "#805337", "#4f3424"
     ]);
-    // The end hoops sit just below the barrel heads; two more bind the body.
-    for (const y of [0.055, 0.21, 0.76, 0.945]) {
+
+    // Only the two body hoops are painted onto the staves. The end hoops
+    // need real corners to wrap over, so they use their own atlas panel.
+    for (const y of [0.21, 0.76]) {
         side.stroke([[0, y - 0.008], [1, y - 0.008]], 0.049, {
             color: "#161713", roughness: 0.75, height: 0.002
         });
@@ -121,12 +123,36 @@ function barrel(): PaintedAtlas {
         });
     }
 
-    const head = new PaintedSurface(512, 512, 0.85, 0.85, "#28170e", 0.92);
+    const endHoop = new PaintedSurface(
+        768, 192, 2.35, 0.105, "#1b1b18", 0.82, true
+    );
+    endHoop.stroke([[0, 0.13], [1, 0.13]], 0.028, {
+        color: "#565348", opacity: 0.60, roughness: 0.76,
+        height: 0.0004
+    });
+    endHoop.stroke([[0, 0.36], [1, 0.36]], 0.024, {
+        color: "#59594d", opacity: 0.42, height: 0.0005
+    });
+    endHoop.stroke([[0, 0.90], [1, 0.90]], 0.026, {
+        color: "#49483e", opacity: 0.5, height: 0.0005
+    });
+    const endRivets: Mark[] = Array.from({ length: 15 }, (_, i) => ({
+        x: (i + 0.5) / 15,
+        y: 0.60,
+        rx: 0.0029,
+        ry: 0.019
+    }));
+    endHoop.marks(endRivets, {
+        color: "#766d55", roughness: 0.67, height: 0.001
+    });
+
+    const head = new PaintedSurface(512, 512, 0.686, 0.686, "#28170e", 0.92);
     timberBoards(head, 88, true, 5, [
         "#6b462b", "#583823", "#7e5233", "#603e29"
     ]);
     return assemblePaintedAtlas("Painted · Coopered barrel", [
         { name: "staves", surface: side },
+        { name: "endHoop", surface: endHoop },
         { name: "head", surface: head }
     ]);
 }
