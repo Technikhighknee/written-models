@@ -52,6 +52,8 @@ export class PaintedSurface {
     readonly color: HTMLCanvasElement;
     readonly roughness: HTMLCanvasElement;
     private readonly relief: HTMLCanvasElement;
+    // Unquantized raster heights for physically stable normal baking.
+    private preciseRelief: Float32Array | undefined;
     private readonly masks: (readonly Point[])[] = [];
     readonly width: number;
     readonly height: number;
@@ -85,6 +87,7 @@ export class PaintedSurface {
     }
 
     private paint(ink: Ink, draw: (ctx: CanvasRenderingContext2D) => void): void {
+        if (ink.height !== undefined) this.preciseRelief = undefined;
         const channels: readonly (readonly [HTMLCanvasElement, string | undefined])[] = [
             [this.color, ink.color],
             [this.roughness, ink.roughness === undefined
@@ -126,6 +129,7 @@ export class PaintedSurface {
         const colors = channels[0]!.image.data;
         const roughness = channels[1]!.image.data;
         const relief = channels[2]!.image.data;
+        const exactRelief = new Float32Array(this.width * this.height);
 
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
@@ -137,6 +141,7 @@ export class PaintedSurface {
                 const b = byte(pigment.color[2]);
                 const rough = byte(clamp(pigment.roughness) * 255);
                 const height = byte(128 + pigment.height * HEIGHT_SCALE);
+                exactRelief[y * this.width + x] = pigment.height;
 
                 colors[position] = r;
                 colors[position + 1] = g;
@@ -155,6 +160,7 @@ export class PaintedSurface {
         for (const channel of channels) {
             channel.ctx.putImageData(channel.image, 0, 0);
         }
+        this.preciseRelief = exactRelief;
     }
 
     /** Limit a sequence of authored paint operations to a material region. */
@@ -217,20 +223,31 @@ export class PaintedSurface {
         const normal = canvas(this.width, this.height);
         const ctx = context(normal);
         const image = ctx.createImageData(this.width, this.height);
+        const precise = this.preciseRelief;
         const at = (x: number, y: number): number => {
             const column = this.tileX
-                ? (x + this.width) % this.width
+                ? ((x % this.width) + this.width) % this.width
                 : Math.min(this.width - 1, Math.max(0, x));
             const row = Math.min(this.height - 1, Math.max(0, y));
-            return (pixels[(row * this.width + column) * 4]! - 128) / HEIGHT_SCALE;
+            const index = row * this.width + column;
+            return precise
+                ? precise[index]!
+                : (pixels[index * 4]! - 128) / HEIGHT_SCALE;
         };
+        // Filter before differentiation, not after quantizing the normals.
+        // This suppresses hard, one-pixel lighting artifacts in mipmapped GLBs.
+        const filtered = (x: number, y: number): number => (
+            at(x - 1, y - 1) + 2 * at(x, y - 1) + at(x + 1, y - 1) +
+            2 * at(x - 1, y) + 4 * at(x, y) + 2 * at(x + 1, y) +
+            at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1)
+        ) / 16;
         const dx = this.physicalWidth / this.width;
         const dy = this.physicalHeight / this.height;
 
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
-                const nx = (at(x - 1, y) - at(x + 1, y)) / (2 * dx);
-                const ny = (at(x, y + 1) - at(x, y - 1)) / (2 * dy);
+                const nx = (filtered(x - 1, y) - filtered(x + 1, y)) / (2 * dx);
+                const ny = (filtered(x, y + 1) - filtered(x, y - 1)) / (2 * dy);
                 const scale = 1 / Math.hypot(nx, ny, 1);
                 const i = (y * this.width + x) * 4;
                 image.data[i] = byte((nx * scale * 0.5 + 0.5) * 255);

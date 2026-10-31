@@ -71,7 +71,9 @@ function create(): THREE.Mesh {
                 atlas.uv(panel, (i + 1) / SIDES, v0),
                 atlas.uv(panel, (i + 1) / SIDES, v1),
                 atlas.uv(panel, i / SIDES, v1)
-            ], "well");
+            ], "well", layer === 0
+                ? "well-outer-wall"
+                : layer === 2 ? "well-inner-wall" : undefined);
         }
     }
 

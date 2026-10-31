@@ -199,8 +199,8 @@ function stonePixel(
         global * 0.8 + coarse * 0.9 + granular * 0.3);
     const paleMineral = smoothRange(0.18, 0.51,
         -coarse * 0.5 + granular * 0.8 + pores * 0.3);
-    const weather = global * 18 + coarse * 16 + granular * 11 +
-        pores * 3.5 + stain + stone.shade - 15 * crust +
+    const weather = global * 18 + coarse * 16 + granular * 7 +
+        pores * 1.2 + stain + stone.shade - 15 * crust +
         9 * paleMineral;
     const warm = (coarse - global) * 3.5;
     const age = context.inside ? 0.83 : 1;
@@ -263,11 +263,13 @@ function stonePixel(
     green = mix(mortar[1], green, joint);
     blue = mix(mortar[2], blue, joint);
 
-    const physicalRelief = 0.0005 * global +
-        0.0008 * coarse + 0.0005 * granular +
-        0.00028 * pores - 0.0006 * Math.max(0, pitting) -
-        0.005 * (1 - exposed) - 0.006 * (1 - joint) -
-        fracture * 0.0015 + moss * 0.0008;
+    // Fine color variation is not automatically physical relief:
+    // centimeter-scale normal bumps made directional light look unnatural.
+    const physicalRelief = 0.00020 * global +
+        0.00024 * coarse + 0.00009 * granular -
+        0.00015 * Math.max(0, pitting) -
+        0.0016 * (1 - exposed) - 0.0021 * (1 - joint) -
+        fracture * 0.0003 + moss * 0.00012;
     const roughness = clamp(
         0.92 + 0.045 * pores + 0.028 * granular +
         0.04 * moss - 0.06 * moisture
@@ -320,13 +322,13 @@ export function wellFinish(): PaintedAtlas {
     };
 
     const wall = masonryPanel(
-        1024, 576, 2 * Math.PI * 0.70, 0.49, 1023, wallRows
+        1536, 768, 2 * Math.PI * 0.70, 0.49, 1023, wallRows
     );
     const top = masonryPanel(
-        1024, 320, 2 * Math.PI * 0.70, 0.17, 2104, [coping], false, true
+        1536, 384, 2 * Math.PI * 0.70, 0.17, 2104, [coping], false, true
     );
     const interior = masonryPanel(
-        768, 256, 2 * Math.PI * 0.53, 0.08, 3301, [
+        1024, 256, 2 * Math.PI * 0.53, 0.08, 3301, [
             course(18, 3329, 0, 1, 0, WALL_COLORS)
         ], true
     );
@@ -336,5 +338,7 @@ export function wellFinish(): PaintedAtlas {
         { name: "rim", surface: top },
         { name: "inside", surface: interior }
     ]);
+    // Keep relief subtle: the color map carries mineral variation.
+    cached.material.normalScale.set(0.38, 0.38);
     return cached;
 }
