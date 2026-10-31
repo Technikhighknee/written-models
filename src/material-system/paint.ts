@@ -17,6 +17,14 @@ export interface Mark {
     rotation?: number;
 }
 
+export interface RasterSample {
+    /** RGB values in the authored sRGB color space, 0..255. */
+    color: readonly [number, number, number];
+    roughness: number;
+    /** Physical relief in metres, shared with the baked normal map. */
+    height: number;
+}
+
 const HEIGHT_SCALE = 5000;
 const TAU = Math.PI * 2;
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
@@ -102,6 +110,50 @@ export class PaintedSurface {
             ctx.strokeStyle = pigment;
             draw(ctx);
             ctx.restore();
+        }
+    }
+
+    /**
+     * Compose a whole painted image directly, without a stack of opaque
+     * vector shapes. Material-specific art direction stays with the recipe.
+     */
+    raster(sample: (u: number, v: number) => RasterSample): void {
+        const channels = [this.color, this.roughness, this.relief]
+            .map(surface => {
+                const ctx = context(surface);
+                return { ctx, image: ctx.createImageData(this.width, this.height) };
+            });
+        const colors = channels[0]!.image.data;
+        const roughness = channels[1]!.image.data;
+        const relief = channels[2]!.image.data;
+
+        for (let y = 0; y < this.height; y++) {
+            for (let x = 0; x < this.width; x++) {
+                const pigment = sample((x + 0.5) / this.width,
+                    (y + 0.5) / this.height);
+                const position = (y * this.width + x) * 4;
+                const r = byte(pigment.color[0]);
+                const g = byte(pigment.color[1]);
+                const b = byte(pigment.color[2]);
+                const rough = byte(clamp(pigment.roughness) * 255);
+                const height = byte(128 + pigment.height * HEIGHT_SCALE);
+
+                colors[position] = r;
+                colors[position + 1] = g;
+                colors[position + 2] = b;
+                colors[position + 3] = 255;
+                for (const data of [roughness, relief]) {
+                    const value = data === roughness ? rough : height;
+                    data[position] = value;
+                    data[position + 1] = value;
+                    data[position + 2] = value;
+                    data[position + 3] = 255;
+                }
+            }
+        }
+
+        for (const channel of channels) {
+            channel.ctx.putImageData(channel.image, 0, 0);
         }
     }
 

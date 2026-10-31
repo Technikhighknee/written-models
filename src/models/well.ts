@@ -28,14 +28,7 @@ function create(): THREE.Mesh {
         { panel: "inside", fromV: 1, toV: 0 }
     ], sides, atlas);
 
-    disk(builder, 0.30, 0.473, sides, undefined, "water");
+    disk(builder, 0.30, 0.473, sides, atlas, "water");
 
-    return paintedMesh("VillageWell", builder, atlas, {
-        water: new THREE.MeshStandardMaterial({
-            name: "Well water",
-            color: "#467b89",
-            roughness: 0.28,
-            metalness: 0
-        })
-    });
+    return paintedMesh("VillageWell", builder, atlas);
 }

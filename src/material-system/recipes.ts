@@ -2,7 +2,6 @@ import {
     PaintedSurface, assemblePaintedAtlas, seededRandom,
     type Mark, type PaintedAtlas, type Point
 } from "./paint";
-import { brokenLine, cluster, fleck, wash } from "./brushwork";
 
 const choose = <T>(items: readonly T[], random: () => number): T =>
     items[Math.floor(random() * items.length)]!;
@@ -25,218 +24,6 @@ function freckles(
         rotation: random() * 3.14
     }));
     surface.marks(marks, { color, opacity, roughness: 0.96 });
-}
-
-function stoneCourses(
-    surface: PaintedSurface, seed: number,
-    courses: number, stones: number,
-    colors: readonly string[]
-): void {
-    const random = seededRandom(seed);
-    const mortar = [
-        { color: "#746b5f", opacity: 0.10 },
-        { color: "#37372f", opacity: 0.11 },
-        { color: "#777163", opacity: 0.09 }
-    ];
-    wash(surface, { left: 0, top: 0, right: 1, bottom: 1 },
-        seed + 5, mortar, 50);
-
-    const stoneWashes = [
-        { color: "#cabca5", opacity: 0.14 },
-        { color: "#393933", opacity: 0.15 },
-        { color: "#a39a86", opacity: 0.16 },
-        { color: "#565748", opacity: 0.12 },
-        { color: "#a17c62", opacity: 0.09 }
-    ];
-    const mineralFlecks = [
-        { color: "#342f2a", opacity: 0.16 },
-        { color: "#d1bda5", opacity: 0.18 },
-        { color: "#55594b", opacity: 0.13 },
-        { color: "#c3b19c", opacity: 0.13 }
-    ];
-    const algae = [
-        { color: "#3c482e", opacity: 0.36 },
-        { color: "#687451", opacity: 0.20 },
-        { color: "#303c2c", opacity: 0.26 }
-    ];
-
-    // Authored courses describe where stone exists. Their interior shading
-    // and weathering are masked to each irregular block, not applied as a
-    // globally repeated noise pattern.
-    for (let row = 0; row < courses; row++) {
-        const width = Array.from({ length: stones },
-            () => 0.65 + random() * 0.75);
-        const sum = width.reduce((total, value) => total + value, 0);
-        const cuts = [0];
-        for (const weight of width) {
-            cuts.push(cuts[cuts.length - 1]! + weight / sum);
-        }
-        const stagger = row % 2 ? (0.35 + random() * 0.3) / stones : 0;
-        const top = row / courses;
-        const bottom = (row + 1) / courses;
-
-        for (let i = 0; i < stones; i++) {
-            const x0 = cuts[i]! + stagger;
-            const x1 = cuts[i + 1]! + stagger;
-            const span = x1 - x0;
-            const inset = 0.0016 + random() * 0.0018;
-            const irregular = 0.003 + random() * 0.007;
-            const topLeft = top + 0.004 + random() * 0.008;
-            const topRight = top + 0.004 + random() * 0.008;
-            const bottomLeft = bottom - 0.004 - random() * 0.009;
-            const bottomRight = bottom - 0.004 - random() * 0.009;
-            const seedStone = Math.floor(random() * 10000000);
-            const color = choose(colors, random);
-
-            // Worn corners have different losses; neither every stone nor
-            // every edge receives a decorative outline.
-            const chipTL = (random() ** 2) * Math.min(0.022, span * 0.19);
-            const chipTR = (random() ** 2) * Math.min(0.025, span * 0.2);
-            const chipBL = (random() ** 2) * Math.min(0.024, span * 0.17);
-            const chipBR = (random() ** 2) * Math.min(0.026, span * 0.22);
-            const local: Point[] = [
-                [x0 + inset + chipTL, topLeft],
-                [x0 + span * 0.32, top + irregular * random()],
-                [x0 + span * 0.72, top + irregular * random()],
-                [x1 - inset - chipTR, topRight],
-                [x1 - inset, topRight + chipTR * 0.8],
-                [x1 - inset + (random() - 0.5) * 0.003,
-                    top + (bottom - top) * 0.51],
-                [x1 - inset, bottomRight - chipBR],
-                [x1 - inset - chipBR, bottomRight],
-                [x0 + span * 0.46, bottom - irregular * random()],
-                [x0 + inset + chipBL, bottomLeft],
-                [x0 + inset, bottomLeft - chipBL * 0.8],
-                [x0 + inset + (random() - 0.5) * 0.003,
-                    top + (bottom - top) * 0.47]
-            ];
-            const bounding = {
-                left: x0, top: topLeft, right: x1, bottom: bottomLeft
-            };
-
-            // Repeated shifted copies make a seamless cylindrical wall.
-            for (const shift of [-1, 0, 1]) {
-                if (x1 + shift < 0 || x0 + shift > 1) continue;
-                const outline = local.map(([x, y]) => [x + shift, y] as Point);
-                const region = {
-                    left: bounding.left + shift,
-                    right: bounding.right + shift,
-                    top: bounding.top,
-                    bottom: bounding.bottom
-                };
-
-                surface.polygon(outline, {
-                    color, roughness: 0.94, height: 0.00045
-                });
-
-                surface.within(outline, () => {
-                    const detail = seededRandom(seedStone + 991);
-                    wash(surface, region, seedStone + 1,
-                        stoneWashes, 18);
-                    fleck(surface, region, seedStone + 2,
-                        mineralFlecks, 110, 1.35);
-
-                    // Fractures and runoff originate at damaged edges.
-                    if (seedStone % 5 === 0) {
-                        const from: Point = [
-                            x0 + shift + span * (0.28 + detail() * 0.4),
-                            topLeft + 0.003
-                        ];
-                        const to: Point = [
-                            from[0] + (detail() - 0.5) * span * 0.5,
-                            topLeft + (bottom - top) * (0.25 + detail() * 0.42)
-                        ];
-                        surface.stroke(
-                            brokenLine(from, to, seedStone + 3, 7, 0.005),
-                            0.0012 + detail() * 0.0014, {
-                                color: "#35342e", opacity: 0.48,
-                                height: -0.001, roughness: 0.99
-                            }
-                        );
-                    }
-
-                    if (seedStone % 3 !== 0) {
-                        // Localized exposed light mineral along a chipped edge.
-                        const along = x0 + shift + span * (0.2 + detail() * 0.35);
-                        surface.stroke(brokenLine(
-                            [along, topLeft + 0.004],
-                            [along + span * (0.12 + detail() * 0.25),
-                                topLeft + 0.005],
-                            seedStone + 4, 5, 0.002
-                        ), 0.002 + detail() * 0.002, {
-                            color: "#c2ae96", opacity: 0.25,
-                            height: 0.0007
-                        });
-                    }
-
-                    if (row > 0 && seedStone % 4 === 0) {
-                        cluster(surface, [
-                            x0 + shift + span * (0.2 + detail() * 0.6),
-                            bottomLeft - 0.01
-                        ], [0.015 + detail() * 0.012, 0.021],
-                        seedStone + 6, algae, 32);
-                    }
-
-                    if (seedStone % 9 === 0) {
-                        cluster(surface, [
-                            x0 + shift + span * 0.6,
-                            topLeft + (bottom - top) * 0.45
-                        ], [0.014, 0.026], seedStone + 7, [
-                            { color: "#b9b5a0", opacity: 0.16 },
-                            { color: "#d0cab8", opacity: 0.11 }
-                        ], 23);
-                    }
-                });
-            }
-        }
-    }
-
-    // Uneven grime follows the lower edge where splashes and soil accumulate.
-    if (courses > 1) {
-        const randomDamp = seededRandom(seed + 9031);
-        for (let i = 0; i < 23; i++) {
-            cluster(surface,
-                [randomDamp(), 0.75 + randomDamp() * 0.25],
-                [0.014 + randomDamp() * 0.045, 0.016 + randomDamp() * 0.06],
-                seed + 4000 + i, algae, 25);
-        }
-    }
-}
-
-function limestone(): PaintedAtlas {
-    const outside = new PaintedSurface(
-        768, 384, 4.7, 0.61, "#514b43", 0.97, true
-    );
-    stoneCourses(outside, 101, 3, 14, [
-        "#796f62", "#8f8071", "#81766b", "#988675",
-        "#716b61", "#887b70", "#776d62"
-    ]);
-    freckles(outside, 403, 650, "#352f29", 0.17);
-
-    const rim = new PaintedSurface(
-        768, 192, 4.7, 0.275, "#595248", 0.97, true
-    );
-    stoneCourses(rim, 210, 1, 18, [
-        "#958776", "#81786e", "#a19787", "#81766a", "#938677"
-    ]);
-    freckles(rim, 491, 200, "#342f28", 0.18);
-
-    const inside = new PaintedSurface(
-        768, 256, 3.0, 0.31, "#45463f", 0.97, true
-    );
-    stoneCourses(inside, 123, 2, 13, [
-        "#655f54", "#716c61", "#766e63", "#595b52", "#797365"
-    ]);
-    inside.stroke([
-        [0.02, 0.18], [0.06, 0.52], [0.07, 0.96]
-    ], 0.06, { color: "#364437", opacity: 0.28 });
-    freckles(inside, 303, 170, "#424838", 0.2);
-
-    return assemblePaintedAtlas("Painted · Old well masonry", [
-        { name: "wall", surface: outside },
-        { name: "rim", surface: rim },
-        { name: "inside", surface: inside }
-    ]);
 }
 
 function timberBoards(
@@ -427,14 +214,11 @@ function wicker(): PaintedAtlas {
     ]);
 }
 
-let wellAtlas: PaintedAtlas | undefined;
 let crateAtlas: PaintedAtlas | undefined;
 let barrelAtlas: PaintedAtlas | undefined;
 let bucketAtlas: PaintedAtlas | undefined;
 let basketAtlas: PaintedAtlas | undefined;
 
-export const wellFinish = (): PaintedAtlas =>
-    wellAtlas ??= limestone();
 export const crateFinish = (): PaintedAtlas =>
     crateAtlas ??= crate();
 export const barrelFinish = (): PaintedAtlas =>
@@ -443,3 +227,5 @@ export const bucketFinish = (): PaintedAtlas =>
     bucketAtlas ??= bucket();
 export const basketFinish = (): PaintedAtlas =>
     basketAtlas ??= wicker();
+
+export { wellFinish } from "./weatheredWell";

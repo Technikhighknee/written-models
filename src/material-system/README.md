@@ -1,31 +1,24 @@
 # Material System
 
-A painting workspace, separate from the geometry toolbox and the older
-procedural material recipes.
+The material system is a painting toolkit, not a collection of mesh generators.
+Geometry still defines silhouettes and real openings. Materials paint what the
+viewer perceives on those surfaces.
 
-`paint.ts` owns **painting operations**: polygons, brush strokes, marks,
-aligned PBR channels and atlas assembly. The same authored stroke changes
-color, roughness and height; the latter is converted to tangent-space normals
-at the panel's physical scale.
+- `paint.ts`: authored paths and marks, masked layers, direct pixel-level
+  composition, aligned color/roughness/normal-map atlases.
+- `pigmentFields.ts`: repeatable, seamless, multi-scale pigment variation.
+  These fields are supporting brushes, not finished textures.
+- `weatheredWell.ts`: the first material built primarily by layered
+  raster painting. Each stone has its own irregular proportions, large stains,
+  mineral variation, worn edges, crevices and localized dampness. Stone courses
+  match across the outer wall and coping. The water is also painted.
+- `recipes.ts`: separate painted material recipes for wooden containers
+  and wicker. Those are still earlier drafts awaiting visual refinement.
 
-`recipes.ts` owns **art direction**. It composes irregular stonework, timber
-boards, forged hoops and interwoven reeds from explicit visual structures and
-deterministic variation. Detail belongs on the images rather than in the model
-mesh. These recipes are works in progress, not universal stone/wood presets.
+`../models/components/paintedForms.ts` connects these panels to deliberately
+simple authored meshes with explicit UVs and a GLB-compatible PBR material.
+The new well is one mesh and one material, including its water.
 
-`../models/components/paintedForms.ts` contains minimal authored 3D shapes
-with per-face atlas UVs, still compatible with Quad View and GLB compilation.
-
-The first family is Village Well, Wooden Crate, Painted Barrel, Wooden Bucket
-and Wicker Basket. The old geometrically detailed barrel remains available
-as a separate model for comparison. Each new model uses one authored mesh;
-the well additionally uses a separate water material within that mesh.
-
-Painted atlases are created lazily and cached. Padded panels prevent sampling
-into neighbors. The resulting material is an ordinary Three.js
-MeshStandardMaterial with aligned canvas-backed color, roughness and normal
-textures; no custom runtime shader is required.
-
-A finished texture requires inspection at game-camera scale and in the target
-engine. This system enables authored materials; compilation alone cannot
-certify visual quality.
+Do not confuse a passing build with a successful material. Judge results in
+the actual viewer at gameplay scale, compare them with the reference,
+and revise the art direction instead of automatically adding more noise.
