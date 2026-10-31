@@ -1,19 +1,17 @@
 # Material System
 
-Materials here are authored in TypeScript. The village well uses a painted
-color, roughness and normal atlas for its stonework; geometry defines the
-shape and edges.
+Materials are authored in TypeScript. The village well uses painted stone
+pigment and subtle roughness/normal detail; its individual blocks, worn edges,
+masonry joints and projecting coping are real geometry.
 
-- `paint.ts`: authored paths and marks, masked painting, raster composition
-  and aligned PBR texture atlases.
-- `pigmentFields.ts`: repeatable multi-scale pigment variation.
-- `brushwork.ts`: reusable painted marks and washes.
-- `weatheredWell.ts`: the well's limestone, with per-stone wear, stains,
-  mineral variation and joints aligned between its wall and coping.
+- `paint.ts`: authored paths, raster painting, masks and aligned PBR atlases.
+- `pigmentFields.ts`: repeatable, tileable pigment variation.
+- `brushwork.ts`: reusable painting operations.
+- `weatheredWell.ts`: understated limestone and mortar appearance without
+  painted brick outlines or fake stone-course geometry.
 
-The geometry lives in `../models/well.ts`. Its water is a separate,
-solid-blue `WellWater` material so Godot can replace it with a water shader.
-It is **not** part of the painted stone atlas.
+The masonry geometry is authored in `../models/well.ts`. A recessed mortar
+ring fills the gaps between its blocks. Water is a separate, solid-blue
+`WellWater` material for replacement with a Godot water shader.
 
-Judge material quality in the viewer and in Godot, not by whether a build
-passes.
+Judge appearance in the viewer and in Godot, not by whether a build passes.
