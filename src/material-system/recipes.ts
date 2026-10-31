@@ -100,8 +100,8 @@ function barrel(): PaintedAtlas {
         "#60402c", "#805337", "#4f3424"
     ]);
 
-    // Only the two body hoops are painted onto the staves. The end hoops
-    // need real corners to wrap over, so they use their own atlas panel.
+    // The two body hoops are painted on the staves. The end hoops sit
+    // flat on the annular outer edges of the top and bottom faces.
     for (const y of [0.21, 0.76]) {
         side.stroke([[0, y - 0.008], [1, y - 0.008]], 0.049, {
             color: "#161713", roughness: 0.75, height: 0.002
@@ -124,7 +124,7 @@ function barrel(): PaintedAtlas {
     }
 
     const endHoop = new PaintedSurface(
-        768, 192, 2.35, 0.105, "#1b1b18", 0.82, true
+        768, 192, 2.33, 0.027, "#1b1b18", 0.82, true
     );
     endHoop.stroke([[0, 0.13], [1, 0.13]], 0.028, {
         color: "#565348", opacity: 0.60, roughness: 0.76,
