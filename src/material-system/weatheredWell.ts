@@ -21,6 +21,8 @@ interface Stone {
     right: number;
     seed: number;
     base: Rgb;
+    shade: number;
+    chips: readonly [number, number, number, number];
     stains: readonly Stain[];
     crack?: readonly (readonly [number, number])[];
 }
@@ -90,6 +92,13 @@ function course(
         stones.push({
             left, right, seed: stoneSeed,
             base: palette[Math.floor(random() * palette.length)]!,
+            shade: (random() - 0.52) * 28,
+            chips: [
+                0.009 + random() ** 2 * 0.032,
+                0.009 + random() ** 2 * 0.038,
+                0.009 + random() ** 2 * 0.029,
+                0.009 + random() ** 2 * 0.036
+            ],
             stains,
             ...(crack ? { crack } : {})
         });
@@ -155,15 +164,24 @@ function stonePixel(
 
     // Seams are measured in metres. Small changes in the boundary position
     // make the joint follow the actual worn stone, rather than a straight grid.
-    const xWarp = (coarse * 0.0016 + granular * 0.0013);
-    const yWarp = (global * 0.0026 + granular * 0.0007);
+    const xWarp = coarse * 0.0065 + granular * 0.0025 +
+        periodicField(u, v, 13, 23, stone.seed + 91) * 0.004;
+    const yWarp = global * 0.005 + granular * 0.002 +
+        periodicField(u, v, 31, 17, stone.seed + 92) * 0.0025;
     const toLeft = (x - stone.left) * context.circumference + xWarp;
     const toRight = (stone.right - x) * context.circumference - xWarp;
     const toTop = (v - course.start) * context.height + yWarp;
     const toBottom = (course.end - v) * context.height - yWarp;
+    const cornerWear = Math.max(
+        stone.chips[0] - Math.hypot(toLeft, toTop),
+        stone.chips[1] - Math.hypot(toRight, toTop),
+        stone.chips[2] - Math.hypot(toLeft, toBottom),
+        stone.chips[3] - Math.hypot(toRight, toBottom),
+        0
+    );
     const distance = Math.min(toLeft, toRight, toTop, toBottom) +
-        0.0015 * warp;
-    const mortarWidth = 0.0023 + (granular + 1) * 0.0014;
+        0.0025 * warp - cornerWear;
+    const mortarWidth = 0.0026 + (granular + 1) * 0.0018;
     const joint = smoothRange(mortarWidth, mortarWidth + 0.007, distance);
     const edge = smoothRange(0.002, 0.022, distance);
     const exposed = smoothRange(0.004, 0.038, distance);
@@ -178,8 +196,13 @@ function stonePixel(
         stain += patch.tint * (1 - smoothRange(0.42, 1.15, shape));
     }
 
-    const weather = global * 15 + coarse * 12 + granular * 8 +
-        pores * 3.5 + stain;
+    const crust = smoothRange(0.06, 0.32,
+        global * 0.8 + coarse * 0.9 + granular * 0.3);
+    const paleMineral = smoothRange(0.18, 0.51,
+        -coarse * 0.5 + granular * 0.8 + pores * 0.3);
+    const weather = global * 18 + coarse * 16 + granular * 11 +
+        pores * 3.5 + stain + stone.shade - 15 * crust +
+        9 * paleMineral;
     const warm = (coarse - global) * 3.5;
     const age = context.inside ? 0.83 : 1;
     const borderShadow = (1 - exposed) * 17;
@@ -320,8 +343,8 @@ export function wellFinish(): PaintedAtlas {
     const rim = course(19, 702, 0, 1, 0, RIM_COLORS);
     const wallRows = [
         course(19, 702, 0, 0.35, 0, RIM_COLORS),
-        course(16, 1811, 0.35, 0.71, 0.026, WALL_COLORS),
-        course(15, 2206, 0.71, 1, 0.007, WALL_COLORS)
+        course(13, 1811, 0.35, 0.71, 0.033, WALL_COLORS),
+        course(11, 2206, 0.71, 1, 0.014, WALL_COLORS)
     ];
     // Same cut sequence, separate physical weathering on the horizontal face.
     const coping: Course = {
