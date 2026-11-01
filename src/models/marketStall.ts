@@ -549,6 +549,89 @@ function create(): THREE.Group {
         }
     }
 
+    // Three enclosed sides below the counter, with the merchant's back
+    // opening left clear. The vertical oak boards remain separate pieces.
+    // Low rails connect the posts behind them; the boards stop short of
+    // the established apron and counter rails.
+    const lowerWallRailHeight = 0.135;
+    const lowerWallRailSize = 0.043;
+    addBetween(
+        "LowerFrontRail",
+        postAt(-HALF_WIDTH, HALF_DEPTH),
+        postAt(HALF_WIDTH, HALF_DEPTH),
+        point(-HALF_WIDTH, lowerWallRailHeight, HALF_DEPTH),
+        point(HALF_WIDTH, lowerWallRailHeight, HALF_DEPTH),
+        lowerWallRailSize, lowerWallRailSize
+    );
+    for (const sideX of SIDES) {
+        const x = sideX * HALF_WIDTH;
+        addBetween(
+            `LowerSideRail-${sideX}`,
+            postAt(x, -HALF_DEPTH),
+            postAt(x, HALF_DEPTH),
+            point(x, lowerWallRailHeight, -HALF_DEPTH),
+            point(x, lowerWallRailHeight, HALF_DEPTH),
+            lowerWallRailSize, lowerWallRailSize
+        );
+    }
+
+    const wallBottom = 0.035;
+    const frontWallTop = FRAME_TOP - apronHeight - 0.003;
+    const frontBoards = oakPlankPanel({
+        name: "LowerFrontBoards",
+        length: frontWallTop - wallBottom,
+        depth: 2 * (HALF_WIDTH - POST_SIZE / 2) - 0.012,
+        thickness: 0.024,
+        planks: 9,
+        widthWeights: [0.94, 1.07, 0.97, 1.03, 1.09, 0.93, 1.04, 1.02, 0.95],
+        seed: 638,
+        gap: 0.0025,
+        wear: 0.42,
+        crown: 0.00045
+    });
+    // The panel's original long X axis is vertical, its across-plank Z
+    // axis spans the opening, and its thickness points toward customers.
+    frontBoards.quaternion.setFromRotationMatrix(
+        new THREE.Matrix4().makeBasis(
+            point(0, 1, 0),
+            point(0, 0, 1),
+            point(1, 0, 0)
+        )
+    );
+    frontBoards.position.set(
+        0,
+        (wallBottom + frontWallTop) / 2,
+        HALF_DEPTH + lowerWallRailSize / 2 + 0.001 + 0.012
+    );
+    stall.add(frontBoards);
+
+    const sideWallTop = COUNTER_FRAME_HEIGHT - RAIL_SIZE / 2 - 0.004;
+    for (const sideX of SIDES) {
+        const sideBoards = oakPlankPanel({
+            name: `LowerSideBoards-${sideX}`,
+            length: sideWallTop - wallBottom,
+            depth: 2 * (HALF_DEPTH - POST_SIZE / 2) - 0.012,
+            thickness: 0.024,
+            planks: 5,
+            widthWeights: [1.04, 0.92, 1.09, 0.98, 1.03],
+            seed: sideX === -1 ? 271 : 714,
+            gap: 0.0025,
+            wear: 0.42,
+            crown: 0.00045
+        });
+        // Rotating X up preserves the planks' vertical grain; Z runs
+        // between the rear and front posts.
+        sideBoards.rotation.z = Math.PI / 2;
+        sideBoards.position.set(
+            sideX * (
+                HALF_WIDTH + lowerWallRailSize / 2 + 0.001 + 0.012
+            ),
+            (wallBottom + sideWallTop) / 2,
+            0
+        );
+        stall.add(sideBoards);
+    }
+
     const apron = oakPlankPanel({
         name: "CounterFrontApron",
         length: COUNTER_APRON_LENGTH,
