@@ -217,7 +217,7 @@ function create(): THREE.Group {
     // Every rafter meets the ridge on its side face and bears on the
     // upper long rail's top face. Their actual end cuts follow the
     // contacted surfaces; no beam is sunk into its support.
-    for (const x of [-0.82, 0, 0.82]) {
+    for (const x of [-0.96, -0.48, 0, 0.48, 0.96]) {
         for (const sideZ of SIDES) {
             const z = sideZ * HALF_DEPTH;
             addBetween(
