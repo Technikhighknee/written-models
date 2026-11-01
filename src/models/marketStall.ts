@@ -14,7 +14,9 @@ const POST_HEIGHT = 2.25;
 const COUNTER_FRAME_HEIGHT = 0.85;
 const RAIL_SIZE = 0.095;
 const FRAME_TOP = COUNTER_FRAME_HEIGHT + RAIL_SIZE / 2;
-const COUNTER_DEPTH = 0.60;
+const COUNTER_DEPTH = 0.66;
+const COUNTER_LENGTH = 1.975;
+const COUNTER_CENTER_Z = 0.43;
 const SIDES = [-1, 1] as const;
 
 const point = (x: number, y: number, z: number) =>
@@ -130,11 +132,11 @@ function create(): THREE.Group {
         backHeight, 0.075
     );
 
-    // The two joists run from rear bearer to front rail, providing
-    // real support across the entire depth of every transverse plank.
+    // Three joists carry the countertop almost to its end grain.
+    // Their upper faces share the same elevation as both supporting rails.
     const joistHeight = 0.079;
     const joistY = FRAME_TOP - joistHeight / 2;
-    for (const x of [-0.65, 0.65]) {
+    for (const x of [-0.83, 0, 0.83]) {
         addBetween(
             `CounterJoist-${x}`,
             backBearer, frontBearer,
@@ -146,10 +148,11 @@ function create(): THREE.Group {
 
     const planks = oakPlankPanel({
         name: "SalesCounterBoards",
-        length: 1.94,
+        length: COUNTER_LENGTH,
         depth: COUNTER_DEPTH,
         thickness: 0.044,
         planks: 5,
+        widthWeights: [1.07, 0.94, 1.03, 0.96, 1.00],
         seed: 1402,
         gap: 0.003,
         wear: 0.50,
@@ -158,9 +161,33 @@ function create(): THREE.Group {
     planks.position.set(
         0,
         FRAME_TOP + 0.044 / 2,
-        0.37
+        COUNTER_CENTER_Z
     );
     stall.add(planks);
+
+    // A single vertical apron closes the otherwise exposed front framing.
+    // Its rear face meets the front rail; the counter overhangs it toward
+    // the customer. It terminates short of the post faces, like the top.
+    const apronHeight = 0.15;
+    const apronThickness = 0.028;
+    const apron = oakPlankPanel({
+        name: "CounterFrontApron",
+        length: COUNTER_LENGTH,
+        depth: apronHeight,
+        thickness: apronThickness,
+        planks: 1,
+        seed: 321,
+        gap: 0,
+        wear: 0.25,
+        crown: 0.0003
+    });
+    apron.rotation.x = Math.PI / 2;
+    apron.position.set(
+        0,
+        FRAME_TOP - apronHeight / 2,
+        HALF_DEPTH + RAIL_SIZE / 2 + apronThickness / 2
+    );
+    stall.add(apron);
 
     return stall;
 }
