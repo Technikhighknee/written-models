@@ -21,7 +21,7 @@ const point = (x: number, y: number, z: number) =>
 export default {
     slug: "market-stall",
     title: "Medieval Market Stall",
-    description: "The joined oak post-and-rail frame of a market stall.",
+    description: "An open-backed oak market stall frame with a customer-facing counter.",
     category: "architecture" as const,
     create
 };
@@ -87,16 +87,15 @@ function create(): THREE.Group {
         stall.add(workshop.timberFromGeometry(name, member));
     }
 
-    // Four posts and four face-fitted rails form one coherent frame.
-    // The sales planks, lower shelf and roof will follow in later stages.
-    for (const sideZ of SIDES) {
-        const z = sideZ * HALF_DEPTH;
-        addRail(
-            `CounterLongRail-${sideZ}`,
-            [-HALF_WIDTH, z],
-            [HALF_WIDTH, z]
-        );
-    }
+    // +Z faces customers; -Z is the merchant's entrance.
+    // Leave the entire rear span open from the ground upward.
+    // The counter will occupy only the front part of this U-shaped frame,
+    // preserving standing and working space behind the future tabletop.
+    addRail(
+        "CounterFrontRail",
+        [-HALF_WIDTH, HALF_DEPTH],
+        [HALF_WIDTH, HALF_DEPTH]
+    );
     for (const sideX of SIDES) {
         const x = sideX * HALF_WIDTH;
         addRail(
