@@ -16,6 +16,9 @@ const POST_SIZE = 0.115;
 const POST_HEIGHT = 2.25;
 const COUNTER_FRAME_HEIGHT = 0.85;
 const RAIL_SIZE = 0.095;
+const UPPER_FRAME_HEIGHT = 2.14;
+const UPPER_RAIL_SIZE = 0.11;
+const BRACE_START_HEIGHT = 1.75;
 const FRAME_TOP = COUNTER_FRAME_HEIGHT + RAIL_SIZE / 2;
 const COUNTER_DEPTH = 0.66;
 const COUNTER_LENGTH = 2 * HALF_WIDTH + POST_SIZE;
@@ -42,6 +45,8 @@ function create(): THREE.Group {
     const workshop = oakTimberShop(3);
     const posts = new Map<string, TableTimberGeometry>();
     const sideRails = new Map<number, TableTimberGeometry>();
+    const upperLongRails = new Map<number, TableTimberGeometry>();
+    const upperEndRails = new Map<number, TableTimberGeometry>();
 
     const key = (x: number, z: number) => `${x}:${z}`;
     const postAt = (x: number, z: number) => {
@@ -79,14 +84,15 @@ function create(): THREE.Group {
         from: THREE.Vector3,
         to: THREE.Vector3,
         height: number,
-        depth: number
+        depth: number,
+        referenceDirection = point(0, 1, 0)
     ): TableTimberGeometry {
         const member = tableTimberBetweenSurfaces({
             first: { target: surfaceOf(first), near: from },
             last: { target: surfaceOf(last), near: to },
             width: height,
             depth,
-            referenceDirection: point(0, 1, 0)
+            referenceDirection
         });
         stall.add(workshop.timberFromGeometry(name, member));
         return member;
@@ -95,13 +101,15 @@ function create(): THREE.Group {
     function addRail(
         name: string,
         from: readonly [number, number],
-        to: readonly [number, number]
+        to: readonly [number, number],
+        height = COUNTER_FRAME_HEIGHT,
+        size = RAIL_SIZE
     ): TableTimberGeometry {
         return addBetween(
             name, postAt(...from), postAt(...to),
-            point(from[0], COUNTER_FRAME_HEIGHT, from[1]),
-            point(to[0], COUNTER_FRAME_HEIGHT, to[1]),
-            RAIL_SIZE, RAIL_SIZE
+            point(from[0], height, from[1]),
+            point(to[0], height, to[1]),
+            size, size
         );
     }
 
@@ -122,6 +130,63 @@ function create(): THREE.Group {
             [x, HALF_DEPTH]
         );
         sideRails.set(sideX, rail);
+    }
+
+    // The upper ring terminates on the actual post faces. None of the
+    // four rails passes through a post or through another rail.
+    for (const sideZ of SIDES) {
+        const z = sideZ * HALF_DEPTH;
+        const member = addRail(
+            `UpperLongRail-${sideZ}`,
+            [-HALF_WIDTH, z],
+            [HALF_WIDTH, z],
+            UPPER_FRAME_HEIGHT,
+            UPPER_RAIL_SIZE
+        );
+        upperLongRails.set(sideZ, member);
+    }
+    for (const sideX of SIDES) {
+        const x = sideX * HALF_WIDTH;
+        const member = addRail(
+            `UpperEndRail-${sideX}`,
+            [x, -HALF_DEPTH],
+            [x, HALF_DEPTH],
+            UPPER_FRAME_HEIGHT,
+            UPPER_RAIL_SIZE
+        );
+        upperEndRails.set(sideX, member);
+    }
+
+    // Both directions are braced. Each knee is cut against the inner
+    // face of its post and the real lower face of the corresponding rail.
+    const braceEndHeight = UPPER_FRAME_HEIGHT - UPPER_RAIL_SIZE / 2;
+    for (const sideX of SIDES) {
+        for (const sideZ of SIDES) {
+            const x = sideX * HALF_WIDTH;
+            const z = sideZ * HALF_DEPTH;
+            const post = postAt(x, z);
+
+            addBetween(
+                `LongKnee-${sideX}-${sideZ}`,
+                post,
+                upperLongRails.get(sideZ)!,
+                point(x - sideX * POST_SIZE / 2, BRACE_START_HEIGHT, z),
+                point(sideX * 0.70, braceEndHeight, z),
+                0.062,
+                0.068,
+                point(0, 0, 1)
+            );
+            addBetween(
+                `EndKnee-${sideX}-${sideZ}`,
+                post,
+                upperEndRails.get(sideX)!,
+                point(x, BRACE_START_HEIGHT, z - sideZ * POST_SIZE / 2),
+                point(x, braceEndHeight, sideZ * 0.27),
+                0.062,
+                0.068,
+                point(1, 0, 0)
+            );
+        }
     }
 
     // A rear bearer joins the existing side rails; the customer's
