@@ -5,7 +5,10 @@ import {
     tableTimberBetweenSurfaces,
     type TableTimberGeometry
 } from "./components/tableTimberGeometry";
-import { oakPlankPanel, oakTimberShop } from "./components/oakSeating";
+import {
+    oakPanelGeometry, oakPlank, oakPlankPanel, oakTimberShop
+} from "./components/oakSeating";
+import { transformGeometry } from "../toolbox/geometry/edit/geometryEdits";
 
 const HALF_WIDTH = 1.05;
 const HALF_DEPTH = 0.62;
@@ -15,7 +18,8 @@ const COUNTER_FRAME_HEIGHT = 0.85;
 const RAIL_SIZE = 0.095;
 const FRAME_TOP = COUNTER_FRAME_HEIGHT + RAIL_SIZE / 2;
 const COUNTER_DEPTH = 0.66;
-const COUNTER_LENGTH = 2.12;
+const COUNTER_LENGTH = 2 * HALF_WIDTH + POST_SIZE;
+const COUNTER_FRONT_BOARD_LENGTH = 1.975;
 const COUNTER_APRON_LENGTH = 1.975;
 const COUNTER_CENTER_Z = 0.365;
 const SIDES = [-1, 1] as const;
@@ -147,9 +151,7 @@ function create(): THREE.Group {
         );
     }
 
-    // Every board reaches the side supports; the entire countertop stays
-    // set back from the customer-facing edge.
-    const planks = oakPlankPanel({
+    const boards = oakPanelGeometry({
         name: "SalesCounterBoards",
         length: COUNTER_LENGTH,
         depth: COUNTER_DEPTH,
@@ -161,6 +163,25 @@ function create(): THREE.Group {
         wear: 0.50,
         crown: 0.00055
     });
+    const planks = new THREE.Group();
+    planks.name = "SalesCounterBoards";
+
+    boards.forEach((board, index) => {
+        const geometry = index === 4
+            ? transformGeometry(
+                board,
+                new THREE.Matrix4().makeScale(
+                    COUNTER_FRONT_BOARD_LENGTH / COUNTER_LENGTH, 1, 1
+                )
+            )
+            : board;
+        const seed = (1402 + index * 3 + 2) % 8;
+        const tone = 0.96 + 0.012 * ((1402 + index * 5) % 5);
+        planks.add(oakPlank(
+            `SalesCounterBoard${index + 1}`, geometry, seed, tone
+        ));
+    });
+
     planks.position.set(0, FRAME_TOP + 0.044 / 2, COUNTER_CENTER_Z);
     stall.add(planks);
 
