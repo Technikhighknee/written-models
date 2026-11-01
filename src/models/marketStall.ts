@@ -5,7 +5,7 @@ import {
     tableTimberBetweenSurfaces,
     type TableTimberGeometry
 } from "./components/tableTimberGeometry";
-import { oakTimberShop } from "./components/oakSeating";
+import { oakPlankPanel, oakTimberShop } from "./components/oakSeating";
 
 const HALF_WIDTH = 1.05;
 const HALF_DEPTH = 0.62;
@@ -13,6 +13,8 @@ const POST_SIZE = 0.115;
 const POST_HEIGHT = 2.25;
 const COUNTER_FRAME_HEIGHT = 0.85;
 const RAIL_SIZE = 0.095;
+const FRAME_TOP = COUNTER_FRAME_HEIGHT + RAIL_SIZE / 2;
+const COUNTER_DEPTH = 0.60;
 const SIDES = [-1, 1] as const;
 
 const point = (x: number, y: number, z: number) =>
@@ -21,7 +23,7 @@ const point = (x: number, y: number, z: number) =>
 export default {
     slug: "market-stall",
     title: "Medieval Market Stall",
-    description: "An open-backed oak market stall frame with a customer-facing counter.",
+    description: "An oak sales counter supported by a fitted frame, open to the merchant behind.",
     category: "architecture" as const,
     create
 };
@@ -32,6 +34,7 @@ function create(): THREE.Group {
 
     const workshop = oakTimberShop(3);
     const posts = new Map<string, TableTimberGeometry>();
+    const sideRails = new Map<number, TableTimberGeometry>();
 
     const key = (x: number, z: number) => `${x}:${z}`;
     const postAt = (x: number, z: number) => {
@@ -62,48 +65,102 @@ function create(): THREE.Group {
         }
     }
 
+    function addBetween(
+        name: string,
+        first: TableTimberGeometry,
+        last: TableTimberGeometry,
+        from: THREE.Vector3,
+        to: THREE.Vector3,
+        height: number,
+        depth: number
+    ): TableTimberGeometry {
+        const member = tableTimberBetweenSurfaces({
+            first: { target: surfaceOf(first), near: from },
+            last: { target: surfaceOf(last), near: to },
+            width: height,
+            depth,
+            referenceDirection: point(0, 1, 0)
+        });
+        stall.add(workshop.timberFromGeometry(name, member));
+        return member;
+    }
+
     function addRail(
         name: string,
         from: readonly [number, number],
         to: readonly [number, number]
-    ): void {
-        const near = (position: readonly [number, number]) =>
-            point(position[0], COUNTER_FRAME_HEIGHT, position[1]);
-
-        const member = tableTimberBetweenSurfaces({
-            first: {
-                target: surfaceOf(postAt(...from)),
-                near: near(from)
-            },
-            last: {
-                target: surfaceOf(postAt(...to)),
-                near: near(to)
-            },
-            width: RAIL_SIZE,
-            depth: RAIL_SIZE,
-            referenceDirection: point(0, 1, 0)
-        });
-
-        stall.add(workshop.timberFromGeometry(name, member));
+    ): TableTimberGeometry {
+        return addBetween(
+            name, postAt(...from), postAt(...to),
+            point(from[0], COUNTER_FRAME_HEIGHT, from[1]),
+            point(to[0], COUNTER_FRAME_HEIGHT, to[1]),
+            RAIL_SIZE, RAIL_SIZE
+        );
     }
 
     // +Z faces customers; -Z is the merchant's entrance.
     // Leave the entire rear span open from the ground upward.
-    // The counter will occupy only the front part of this U-shaped frame,
-    // preserving standing and working space behind the future tabletop.
-    addRail(
+    // The counter occupies only the front part of this U-shaped frame,
+    // preserving working space behind the boards.
+    const frontBearer = addRail(
         "CounterFrontRail",
         [-HALF_WIDTH, HALF_DEPTH],
         [HALF_WIDTH, HALF_DEPTH]
     );
     for (const sideX of SIDES) {
         const x = sideX * HALF_WIDTH;
-        addRail(
+        const rail = addRail(
             `CounterEndRail-${sideX}`,
             [x, -HALF_DEPTH],
             [x, HALF_DEPTH]
         );
+        sideRails.set(sideX, rail);
     }
+
+    // A rear bearer joins the existing side rails; the customer's
+    // front bearer is already part of the U-shaped post frame.
+    const backZ = 0.115;
+    const backHeight = 0.087;
+    const backY = FRAME_TOP - backHeight / 2;
+    const backBearer = addBetween(
+        "CounterRearBearer",
+        sideRails.get(-1)!, sideRails.get(1)!,
+        point(-HALF_WIDTH, backY, backZ),
+        point(HALF_WIDTH, backY, backZ),
+        backHeight, 0.075
+    );
+
+    // The two joists run from rear bearer to front rail, providing
+    // real support across the entire depth of every transverse plank.
+    const joistHeight = 0.079;
+    const joistY = FRAME_TOP - joistHeight / 2;
+    for (const x of [-0.65, 0.65]) {
+        addBetween(
+            `CounterJoist-${x}`,
+            backBearer, frontBearer,
+            point(x, joistY, backZ),
+            point(x, joistY, HALF_DEPTH),
+            joistHeight, 0.075
+        );
+    }
+
+    const planks = oakPlankPanel({
+        name: "SalesCounterBoards",
+        length: 1.94,
+        depth: COUNTER_DEPTH,
+        thickness: 0.044,
+        planks: 5,
+        seed: 1402,
+        gap: 0.003,
+        wear: 0.50,
+        crown: 0.00055
+    });
+    planks.position.set(
+        0,
+        FRAME_TOP + 0.044 / 2,
+        0.37
+    );
+    stall.add(planks);
 
     return stall;
 }
