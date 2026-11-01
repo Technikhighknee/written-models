@@ -72,14 +72,20 @@ function addStripedCanopy(
 
     function height(x: number, z: number, seam: number): number {
         const distance = Math.abs(z);
-        const heightAtSlope = distance <= HALF_DEPTH
-            ? THREE.MathUtils.lerp(
-                ridgeTop, roofOverRail, distance / HALF_DEPTH
-            )
-            : THREE.MathUtils.lerp(
-                roofOverRail, eaveTop,
-                (distance - HALF_DEPTH) / (EAVE_RAIL_Z - HALF_DEPTH)
-            );
+        // Cross the ridge on top of the actual timber before the pitched
+        // fabric begins; otherwise the sloping cloth cuts through its sides.
+        const ridgeEdge = ridgeSize / 2;
+        const heightAtSlope = distance <= ridgeEdge
+            ? ridgeTop
+            : distance <= HALF_DEPTH
+                ? THREE.MathUtils.lerp(
+                    ridgeTop, roofOverRail,
+                    (distance - ridgeEdge) / (HALF_DEPTH - ridgeEdge)
+                )
+                : THREE.MathUtils.lerp(
+                    roofOverRail, eaveTop,
+                    (distance - HALF_DEPTH) / (EAVE_RAIL_Z - HALF_DEPTH)
+                );
         const base = distance <= EAVE_RAIL_Z
             ? heightAtSlope
             : THREE.MathUtils.lerp(
