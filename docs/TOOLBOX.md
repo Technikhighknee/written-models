@@ -12,6 +12,7 @@ Start with `src/toolbox/geometry/kernel/index.ts` for the shared geometry-operat
 | --- | --- |
 | Construct a box, cylinder or authored board | `construction/boxMesh.ts`, `cylinderMesh.ts`, `build/loftPairedSurfaceRows.ts` |
 | Extrude, loft, sweep or revolve | `build/extrudeContour.ts`, `loftSectionWalls.ts`, `sweepSection.ts`, `revolveProfile.ts` |
+| Author a continuous open quad sheet (e.g. a canopy) | `build/loftSideQuads.ts` with `closedSection: false`, then `projectAuthoredUvs` |
 | Make profiles agree across adjoining pieces | `sampleAdaptiveStations`, `sampleProfile`, `partitionContour`, `samplePartition`, `correspondContours` |
 | Close, bridge or weld boundaries | `capBoundary`, `capSectionEnd`, `bridgeBoundaries`, `joinGeometry` |
 | Create charted surfaces and local detail | `fillSurfacePatch`, `shapeSurfaceRelief`, `openPatch`, `recessPatch` |
@@ -52,6 +53,15 @@ The board recipe generates individual cross-sections, samples each with `sampleA
 `tableTimberBetweenSurfaces()` uses `fitBetweenSurfaces()` to find contact-fitted sections, `loftSectionWalls()` to construct them and `capBoundary()` to close their actual ends. The model owns member dimensions and surface placement; the toolbox owns fitting and loft construction.
 
 The fitting operation checks finite contact geometry, not just whether the member centerline hits an infinite plane.
+
+### A sewn canopy: `src/models/marketStall.ts`
+
+The cloth is one connected, open section-row loft using
+`loftSideQuads({ closedSection: false })`. `weightedCuts()` defines
+shared panel seams and stitch positions, while `projectAuthoredUvs()`
+preserves physical fabric coordinates even where the front valance folds.
+The model chooses its sag, scallops, colors, and thread placement;
+the toolbox owns quad connectivity, UV edits, and spacing.
 
 ### A real opening rather than a visual trick
 

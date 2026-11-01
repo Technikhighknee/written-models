@@ -10,6 +10,10 @@ import {
 } from "./components/oakSeating";
 import { transformGeometry } from "../toolbox/geometry/edit/geometryEdits";
 import { AuthoredMeshBuilder } from "../toolbox/geometry/mesh/AuthoredMeshBuilder";
+import { loftSideQuads } from "../toolbox/geometry/build/loftSideQuads";
+import { projectAuthoredUvs } from "../toolbox/geometry/uv/projectAuthoredUvs";
+import { weightedCuts } from "../toolbox/spatial/layout/weightedCuts";
+import { seededVariation } from "../toolbox/spatial/layout/seededVariation";
 import { geometryResult } from "../toolbox/geometry/kernel/GeometryResult";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { wovenCanvas } from "../materials/fabric/wovenCanvas";
@@ -34,7 +38,7 @@ const EAVE_RAIL_Z = 0.845;
 const EAVE_RAIL_HEIGHT = 2.13;
 const EAVE_RAIL_SIZE = 0.075;
 const CANOPY_HALF_WIDTH = 1.22;
-const RAFTER_POSITIONS = [-0.96, -0.48, 0, 0.48, 0.96] as const;
+const RAFTER_POSITIONS = weightedCuts(-0.96, 0.96, 4);
 const SIDES = [-1, 1] as const;
 
 const point = (x: number, y: number, z: number) =>
@@ -48,17 +52,12 @@ export default {
     create
 };
 
-/**
- * Ten sewn, alternating cloth panels. The shared grid uses real authored
- * quads and includes each valance station, so every scallop meets the
- * roof along the same edge instead of forming a T-junction.
- */
+/** A continuous roof with ten sewn cloth bands and a scalloped front. */
 function addStripedCanopy(
     stall: THREE.Group,
     ridgeHeight: number,
     ridgeSize: number
 ): void {
-    const mesh = new AuthoredMeshBuilder({ weld: "position" });
     const stitches = new AuthoredMeshBuilder({ weld: "none" });
     const stripeCount = 10;
     const ridgeTop = ridgeHeight + ridgeSize / 2 + 0.020;
@@ -112,64 +111,72 @@ function addStripedCanopy(
     }
 
     const scallops = [0.115, 0.182, 0.198, 0.182, 0.115];
-    const left = -CANOPY_HALF_WIDTH;
-    const width = 2 * CANOPY_HALF_WIDTH;
+    const segments = scallops.length - 1;
+    const stripeEdges = weightedCuts(
+        -CANOPY_HALF_WIDTH, CANOPY_HALF_WIDTH, stripeCount
+    );
+    const xs = stripeEdges.slice(0, -1).flatMap((from, index) =>
+        weightedCuts(from, stripeEdges[index + 1]!, segments)
+            .slice(0, -1)
+    );
+    xs.push(stripeEdges.at(-1)!);
 
-    for (let stripe = 0; stripe < stripeCount; stripe++) {
-        const x0 = left + width * stripe / stripeCount;
-        const x1 = left + width * (stripe + 1) / stripeCount;
-        const material = stripe % 2 === 0 ? "red" : "linen";
-        const xs = scallops.map((_, col) =>
-            THREE.MathUtils.lerp(x0, x1, col / (scallops.length - 1))
-        );
-        const rows = zStations.map(z => xs.map((x, col) =>
-            point(x, height(x, z, col / (xs.length - 1)), z)
-        ));
+    // One continuous, open quad loft includes the hanging front valance.
+    // Adjacent color panels now share construction vertices by identity,
+    // not by repeated coordinates that happen to weld afterward.
+    const roofRows = zStations.map(z => xs.map((x, col) =>
+        point(x, height(x, z, (col % segments) / segments), z)
+    ));
+    const valanceEdge = xs.map((x, col) =>
+        point(
+            x,
+            roofRows[0]![col]!.y - scallops[col % segments]!,
+            CANOPY_EDGE_Z + 0.035
+        )
+    );
+    const { vertices, quads } = loftSideQuads({
+        rings: [valanceEdge, ...roofRows],
+        closedSection: false,
+        uvMode: "edge",
+        travelMode: "first",
+        surface: col =>
+            Math.floor(col / segments) % 2 === 0 ? "red" : "linen",
+        smoothingGroup: (_, row) =>
+            row === 0 ? "cloth-valance" : "roof-cloth"
+    });
 
-        for (let row = 0; row < rows.length - 1; row++) {
-            const z0 = zStations[row]!;
-            const z1 = zStations[row + 1]!;
-            for (let col = 0; col < xs.length - 1; col++) {
-                const a = xs[col]!;
-                const b = xs[col + 1]!;
-                mesh.addFace([
-                    rows[row]![col]!, rows[row]![col + 1]!,
-                    rows[row + 1]![col + 1]!,
-                    rows[row + 1]![col]!
-                ], [
-                    new THREE.Vector2(a, z0),
-                    new THREE.Vector2(b, z0),
-                    new THREE.Vector2(b, z1),
-                    new THREE.Vector2(a, z1)
-                ], material, "roof-cloth");
-            }
+    // Cloth UVs use the original physical x/z coordinates. The valance
+    // continues the weave along its actual drop, not its projected depth.
+    const cellWidth = 2 * CANOPY_HALF_WIDTH / (stripeCount * segments);
+    const canopyFaces = quads.map((face, index) =>
+        index < xs.length - 1 ? {
+            ...face,
+            corners: [
+                face.corners[3], face.corners[2],
+                face.corners[1], face.corners[0]
+            ] as typeof face.corners,
+            uvs: [
+                face.uvs[3], face.uvs[2],
+                face.uvs[1], face.uvs[0]
+            ] as typeof face.uvs
+        } : face
+    );
+    const canopyGeometry = projectAuthoredUvs(
+        geometryResult({ vertices, quads: canopyFaces }),
+        position => {
+            const stitchCol = Math.round(
+                (position.x + CANOPY_HALF_WIDTH) / cellWidth
+            ) % segments;
+            const v = position.z > CANOPY_EDGE_Z
+                ? CANOPY_EDGE_Z + scallops[stitchCol]!
+                : position.z;
+            return new THREE.Vector2(position.x, v);
         }
-
-        const hem = rows[0]!;
-        const lower = xs.map((x, col) =>
-            point(
-                x,
-                hem[col]!.y - scallops[col]!,
-                CANOPY_EDGE_Z + 0.035
-            )
-        );
-
-        for (let col = 0; col < xs.length - 1; col++) {
-            mesh.addFace([
-                hem[col]!, hem[col + 1]!,
-                lower[col + 1]!, lower[col]!
-            ], [
-                new THREE.Vector2(xs[col]!, CANOPY_EDGE_Z),
-                new THREE.Vector2(xs[col + 1]!, CANOPY_EDGE_Z),
-                new THREE.Vector2(xs[col + 1]!, CANOPY_EDGE_Z + scallops[col + 1]!),
-                new THREE.Vector2(xs[col]!, CANOPY_EDGE_Z + scallops[col]!)
-            ], material, "cloth-valance");
-        }
-    }
+    );
 
     stall.add(surfaceMesh({
         name: "SewnStripedCanvas",
-        geometry: geometryResult(mesh.build()),
+        geometry: canopyGeometry,
         materials: {
             red: wovenCanvas("madder-red"),
             linen: wovenCanvas("unbleached")
@@ -179,13 +186,14 @@ function addStripedCanopy(
     // Short running stitches make the nine panel joins legible without
     // laying another coplanar sheet over the canopy.
     for (let seam = 1; seam < stripeCount; seam++) {
-        const x = left + width * seam / stripeCount;
+        const x = stripeEdges[seam]!;
         for (let i = 0; i < 28; i++) {
-            if ((i * 7 + seam * 3) % 41 === 0) continue;
+            const stitch = seam * 28 + i;
+            if (seededVariation(1402, stitch, 0) > 0.96) continue;
             const z0 = -0.86 + i * 0.062 +
-                0.0012 * Math.sin(i * 2.1 + seam);
+                0.0012 * seededVariation(1402, stitch, 1);
             const z1 = z0 + 0.020 +
-                0.002 * Math.sin(i * 1.7 + seam);
+                0.002 * seededVariation(1402, stitch, 2);
             const halfThread = 0.0025;
             const lift = 0.004;
             const threadPoint = (dx: number, z: number) =>

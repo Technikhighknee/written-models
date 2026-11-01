@@ -3,6 +3,8 @@ import type { QuadFace } from "../mesh/MeshData";
 
 export interface LoftSideOptions {
     rings: readonly (readonly THREE.Vector3Like[])[];
+    /** Open rows form a sheet; closed sections retain the usual ring walls. */
+    closedSection?: boolean;
     /** Each face uses its own edge width, or a continuous contour distance. */
     uvMode: "edge" | "perimeter";
     /** The longitudinal UV distance follows section centers or the first corner. */
@@ -29,6 +31,7 @@ export interface LoftSides {
  */
 export function loftSideQuads({
     rings,
+    closedSection = true,
     uvMode,
     travelMode = "center",
     surface,
@@ -37,10 +40,12 @@ export function loftSideQuads({
     minimumTravel = 0
 }: LoftSideOptions): LoftSides {
     const sides = rings[0]?.length ?? 0;
+    const edges = closedSection ? sides : sides - 1;
 
     if (
         rings.length < 2 ||
-        sides < 3 ||
+        sides < (closedSection ? 3 : 2) ||
+        typeof closedSection !== "boolean" ||
         rings.some(ring => ring.length !== sides) ||
         !["edge", "perimeter"].includes(uvMode) ||
         !["center", "first"].includes(travelMode) ||
@@ -70,9 +75,10 @@ export function loftSideQuads({
         const center = new THREE.Vector3();
         const cumulative = [0];
 
-        for (let side = 0; side < sides; side++) {
+        for (let side = 0; side < edges; side++) {
             const first = vertices[row * sides + side]!;
-            const second = vertices[row * sides + (side + 1) % sides]!;
+            const next = closedSection ? (side + 1) % sides : side + 1;
+            const second = vertices[row * sides + next]!;
             const length = first.distanceTo(second);
 
             if (!(length > minimumEdgeLength)) {
@@ -83,6 +89,7 @@ export function loftSideQuads({
             center.add(first);
         }
 
+        if (!closedSection) center.add(vertices[row * sides + sides - 1]!);
         center.multiplyScalar(1 / sides);
         centers.push(center);
         perimeter.push(cumulative);
@@ -105,8 +112,8 @@ export function loftSideQuads({
     const quads: QuadFace[] = [];
 
     for (let row = 0; row < rings.length - 1; row++) {
-        for (let side = 0; side < sides; side++) {
-            const next = (side + 1) % sides;
+        for (let side = 0; side < edges; side++) {
+            const next = closedSection ? (side + 1) % sides : side + 1;
             const base = row * sides;
             const above = (row + 1) * sides;
 

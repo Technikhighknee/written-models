@@ -89,3 +89,40 @@ test("open ends remain real, uncapped boundary loops", () => {
     assert.equal(solid.geometry.triangles?.length ?? 0, 0);
     assert.equal(topologyOf(solid).openBoundaries().length, 2);
 });
+
+test("open section rows form a sheet, never a wrapping fourth wall", async () => {
+    const { loftSideQuads } = await toolbox(
+        "geometry/build/loftSideQuads.ts"
+    );
+    const sheet = loftSideQuads({
+        rings: [
+            [
+                new THREE.Vector3(-1, 0, 0),
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(1, 0, 0)
+            ],
+            [
+                new THREE.Vector3(-1, 0, 1),
+                new THREE.Vector3(0, 0, 1),
+                new THREE.Vector3(1, 0, 1)
+            ]
+        ],
+        closedSection: false,
+        uvMode: "perimeter",
+        surface: side => `panel-${side}`
+    });
+
+    assert.equal(sheet.vertices.length, 6);
+    assert.equal(sheet.quads.length, 2);
+    assert.deepEqual(sheet.quads.map(face => face.corners), [
+        [0, 1, 4, 3],
+        [1, 2, 5, 4]
+    ]);
+    assert.deepEqual(sheet.quads.map(face => face.surface), [
+        "panel-0", "panel-1"
+    ]);
+    assert.deepEqual(sheet.quads[1].uvs.map(uv => uv.toArray()), [
+        [1, 0], [2, 0], [2, 1], [1, 1]
+    ]);
+    assert.equal(sheet.centers[0].x, 0);
+});
