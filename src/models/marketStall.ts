@@ -63,7 +63,7 @@ function buildFrame(stall: THREE.Group): void {
         for (const z of [-POST_Z, POST_Z]) {
             timber(
                 `Upright-${x}-${z}`,
-                at(x, 0.045, z), at(x, 2.20, z), 0.095
+                at(x, 0.045, z), at(x, 2.26, z), 0.095
             );
         }
     }
@@ -90,7 +90,7 @@ function buildFrame(stall: THREE.Group): void {
     // The ridge and rafter pairs genuinely support the pitched canvas.
     for (const z of [-0.77, 0.77]) {
         timber(`EaveRail-${z}`,
-            at(-1.18, 2.191, z), at(1.18, 2.191, z), 0.085);
+            at(-1.18, 2.245, z), at(1.18, 2.245, z), 0.085);
     }
     timber("RidgeBeam",
         at(-1.19, 2.625, 0), at(1.19, 2.625, 0), 0.095);
@@ -98,7 +98,7 @@ function buildFrame(stall: THREE.Group): void {
     for (const x of [-1.05, 0, 1.05]) {
         for (const side of [-1, 1]) {
             timber(`Rafter-${x}-${side}`,
-                at(x, 2.191, side * 0.78),
+                at(x, 2.26, side * 0.78),
                 at(x, 2.625, 0), 0.066);
         }
     }
@@ -107,10 +107,10 @@ function buildFrame(stall: THREE.Group): void {
         for (const z of [-POST_Z, POST_Z]) {
             timber(`CrossKnee-${x}-${z}`,
                 at(x, 1.80, z),
-                at(x - Math.sign(x) * 0.30, 2.185, z), 0.060);
+                at(x - Math.sign(x) * 0.30, 2.215, z), 0.060);
             timber(`SideKnee-${x}-${z}`,
                 at(x, 1.78, z),
-                at(x, 2.18, z - Math.sign(z) * 0.28), 0.056);
+                at(x, 2.21, z - Math.sign(z) * 0.28), 0.056);
         }
     }
 }
@@ -185,7 +185,7 @@ function buildCanopy(stall: THREE.Group): void {
 
         for (const z of roofStations) {
             const ids: number[] = [];
-            for (const j of [0, 0.5, 1]) {
+            for (const j of [0, 0.25, 0.5, 0.75, 1]) {
                 ids.push(canopy.addVertex(
                     roofPoint(a + (b - a) * j, z, j)
                 ));
@@ -196,9 +196,9 @@ function buildCanopy(stall: THREE.Group): void {
         for (let k = 0; k < rows.length - 1; k++) {
             const z0 = roofStations[k]!;
             const z1 = roofStations[k + 1]!;
-            for (let col = 0; col < 2; col++) {
-                const x0 = a + (b - a) * col / 2;
-                const x1 = a + (b - a) * (col + 1) / 2;
+            for (let col = 0; col < 4; col++) {
+                const x0 = a + (b - a) * col / 4;
+                const x1 = a + (b - a) * (col + 1) / 4;
                 canopy.addIndexedFace([
                     rows[k]![col]!, rows[k]![col + 1]!,
                     rows[k + 1]![col + 1]!, rows[k + 1]![col]!
