@@ -189,6 +189,50 @@ function create(): THREE.Group {
         }
     }
 
+    // The ridge bears on the gable ties through two short king posts.
+    // All three pieces are constructed from actual support surfaces.
+    const ridgeHeight = 2.62;
+    const ridgeSize = 0.105;
+    const ridge = tableTimberGeometry(
+        point(-1.125, ridgeHeight, 0),
+        point(1.125, ridgeHeight, 0),
+        ridgeSize, ridgeSize
+    );
+    stall.add(workshop.timberFromGeometry("RidgeBeam", ridge));
+
+    for (const sideX of SIDES) {
+        const x = sideX * HALF_WIDTH;
+        addBetween(
+            `RidgeSupport-${sideX}`,
+            upperEndRails.get(sideX)!,
+            ridge,
+            point(x, UPPER_FRAME_HEIGHT + UPPER_RAIL_SIZE / 2, 0),
+            point(x, ridgeHeight - ridgeSize / 2, 0),
+            0.075,
+            0.075,
+            point(1, 0, 0)
+        );
+    }
+
+    // Every rafter meets the ridge on its side face and bears on the
+    // upper long rail's top face. Their actual end cuts follow the
+    // contacted surfaces; no beam is sunk into its support.
+    for (const x of [-0.82, 0, 0.82]) {
+        for (const sideZ of SIDES) {
+            const z = sideZ * HALF_DEPTH;
+            addBetween(
+                `Rafter-${x}-${sideZ}`,
+                ridge,
+                upperLongRails.get(sideZ)!,
+                point(x, ridgeHeight, sideZ * ridgeSize / 2),
+                point(x, UPPER_FRAME_HEIGHT + UPPER_RAIL_SIZE / 2, z),
+                0.064,
+                0.054,
+                point(1, 0, 0)
+            );
+        }
+    }
+
     // A rear bearer joins the existing side rails; the customer's
     // front bearer is already part of the U-shaped post frame.
     const backZ = 0.115;
