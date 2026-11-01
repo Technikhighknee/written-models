@@ -9,9 +9,10 @@ import {
     oakPanelGeometry, oakPlank, oakPlankPanel, oakTimberShop
 } from "./components/oakSeating";
 import { transformGeometry } from "../toolbox/geometry/edit/geometryEdits";
-import { loftPairedSurfaceRows } from "../toolbox/geometry/build/loftPairedSurfaceRows";
+import { AuthoredMeshBuilder } from "../toolbox/geometry/mesh/AuthoredMeshBuilder";
+import { geometryResult } from "../toolbox/geometry/kernel/GeometryResult";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
-import { heavyCanvas } from "../materials/fabric/heavyCanvas";
+import { wovenCanvas } from "../materials/fabric/wovenCanvas";
 
 const HALF_WIDTH = 1.05;
 const HALF_DEPTH = 0.62;
@@ -28,6 +29,12 @@ const COUNTER_LENGTH = 2 * HALF_WIDTH + POST_SIZE;
 const COUNTER_FRONT_BOARD_LENGTH = 1.975;
 const COUNTER_APRON_LENGTH = 1.975;
 const COUNTER_CENTER_Z = 0.365;
+const CANOPY_EDGE_Z = 0.91;
+const EAVE_RAIL_Z = 0.845;
+const EAVE_RAIL_HEIGHT = 2.13;
+const EAVE_RAIL_SIZE = 0.075;
+const CANOPY_HALF_WIDTH = 1.22;
+const RAFTER_POSITIONS = [-0.96, -0.48, 0, 0.48, 0.96] as const;
 const SIDES = [-1, 1] as const;
 
 const point = (x: number, y: number, z: number) =>
@@ -40,6 +47,128 @@ export default {
     category: "architecture" as const,
     create
 };
+
+/**
+ * Ten sewn, alternating cloth panels. The shared grid uses real authored
+ * quads and includes each valance station, so every scallop meets the
+ * roof along the same edge instead of forming a T-junction.
+ */
+function addStripedCanopy(
+    stall: THREE.Group,
+    ridgeHeight: number,
+    ridgeSize: number
+): void {
+    const mesh = new AuthoredMeshBuilder({ weld: "position" });
+    const stripeCount = 10;
+    const ridgeTop = ridgeHeight + ridgeSize / 2 + 0.020;
+    const eaveTop = EAVE_RAIL_HEIGHT + EAVE_RAIL_SIZE / 2 + 0.028;
+    const roofOverRail = UPPER_FRAME_HEIGHT + UPPER_RAIL_SIZE / 2 + 0.041;
+    const zStations = [
+        CANOPY_EDGE_Z, EAVE_RAIL_Z, 0.72, HALF_DEPTH,
+        0.48, 0.32, 0.16, ridgeSize / 2, 0,
+        -ridgeSize / 2, -0.16, -0.32, -0.48,
+        -HALF_DEPTH, -0.72, -EAVE_RAIL_Z, -CANOPY_EDGE_Z
+    ];
+
+    function height(x: number, z: number, seam: number): number {
+        const distance = Math.abs(z);
+        const heightAtSlope = distance <= HALF_DEPTH
+            ? THREE.MathUtils.lerp(
+                ridgeTop, roofOverRail, distance / HALF_DEPTH
+            )
+            : THREE.MathUtils.lerp(
+                roofOverRail, eaveTop,
+                (distance - HALF_DEPTH) / (EAVE_RAIL_Z - HALF_DEPTH)
+            );
+        const base = distance <= EAVE_RAIL_Z
+            ? heightAtSlope
+            : THREE.MathUtils.lerp(
+                eaveTop, eaveTop - 0.014,
+                (distance - EAVE_RAIL_Z) /
+                    (CANOPY_EDGE_Z - EAVE_RAIL_Z)
+            );
+
+        const i = RAFTER_POSITIONS.findIndex((position, index) =>
+            index < RAFTER_POSITIONS.length - 1 &&
+            x >= position && x <= RAFTER_POSITIONS[index + 1]!
+        );
+        const betweenRafters = i < 0 ? 0 :
+            (x - RAFTER_POSITIONS[i]!) /
+            (RAFTER_POSITIONS[i + 1]! - RAFTER_POSITIONS[i]!);
+        const rafterSag = 0.006 *
+            Math.sin(Math.PI * betweenRafters) ** 2 *
+            Math.sin(Math.PI * distance / CANOPY_EDGE_Z) ** 2;
+        const panelSag = 0.007 * Math.sin(Math.PI * seam) ** 2 *
+            (0.35 + 0.65 * distance / CANOPY_EDGE_Z);
+
+        return base - rafterSag - panelSag;
+    }
+
+    const scallops = [0.115, 0.182, 0.198, 0.182, 0.115];
+    const left = -CANOPY_HALF_WIDTH;
+    const width = 2 * CANOPY_HALF_WIDTH;
+
+    for (let stripe = 0; stripe < stripeCount; stripe++) {
+        const x0 = left + width * stripe / stripeCount;
+        const x1 = left + width * (stripe + 1) / stripeCount;
+        const material = stripe % 2 === 0 ? "red" : "linen";
+        const xs = scallops.map((_, col) =>
+            THREE.MathUtils.lerp(x0, x1, col / (scallops.length - 1))
+        );
+        const rows = zStations.map(z => xs.map((x, col) =>
+            point(x, height(x, z, col / (xs.length - 1)), z)
+        ));
+
+        for (let row = 0; row < rows.length - 1; row++) {
+            const z0 = zStations[row]!;
+            const z1 = zStations[row + 1]!;
+            for (let col = 0; col < xs.length - 1; col++) {
+                const a = xs[col]!;
+                const b = xs[col + 1]!;
+                mesh.addFace([
+                    rows[row]![col]!, rows[row]![col + 1]!,
+                    rows[row + 1]![col + 1]!,
+                    rows[row + 1]![col]!
+                ], [
+                    new THREE.Vector2(a, z0),
+                    new THREE.Vector2(b, z0),
+                    new THREE.Vector2(b, z1),
+                    new THREE.Vector2(a, z1)
+                ], material, "roof-cloth");
+            }
+        }
+
+        const hem = rows[0]!;
+        const lower = xs.map((x, col) =>
+            point(
+                x,
+                hem[col]!.y - scallops[col]!,
+                CANOPY_EDGE_Z + 0.035
+            )
+        );
+
+        for (let col = 0; col < xs.length - 1; col++) {
+            mesh.addFace([
+                hem[col]!, hem[col + 1]!,
+                lower[col + 1]!, lower[col]!
+            ], [
+                new THREE.Vector2(xs[col]!, CANOPY_EDGE_Z),
+                new THREE.Vector2(xs[col + 1]!, CANOPY_EDGE_Z),
+                new THREE.Vector2(xs[col + 1]!, CANOPY_EDGE_Z + scallops[col + 1]!),
+                new THREE.Vector2(xs[col]!, CANOPY_EDGE_Z + scallops[col]!)
+            ], material, "cloth-valance");
+        }
+    }
+
+    stall.add(surfaceMesh({
+        name: "SewnStripedCanvas",
+        geometry: geometryResult(mesh.build()),
+        materials: {
+            red: wovenCanvas("madder-red"),
+            linen: wovenCanvas("unbleached")
+        }
+    }));
+}
 
 function create(): THREE.Group {
     const stall = new THREE.Group();
@@ -220,7 +349,7 @@ function create(): THREE.Group {
     // Every rafter meets the ridge on its side face and bears on the
     // upper long rail's top face. Their actual end cuts follow the
     // contacted surfaces; no beam is sunk into its support.
-    for (const x of [-0.96, -0.48, 0, 0.48, 0.96]) {
+    for (const x of RAFTER_POSITIONS) {
         for (const sideZ of SIDES) {
             const z = sideZ * HALF_DEPTH;
             addBetween(
@@ -236,71 +365,35 @@ function create(): THREE.Group {
         }
     }
 
-    // One continuous linen sheet folds over the ridge and sits just above
-    // the rafters. The closed edge folds are real thin geometry, not a
-    // double-sided plane. Slight slack between the five rafter positions
-    // gives the taut fabric a softer silhouette without clipping wood.
-    const roofTopAtRidge = ridgeHeight + ridgeSize / 2 + 0.008;
-    const roofTopAtRafters = ridgeHeight + 0.033;
-    const roofTopAtEaves = UPPER_FRAME_HEIGHT + UPPER_RAIL_SIZE / 2 + 0.034;
-    const rafterPositions = [-0.96, -0.48, 0, 0.48, 0.96];
-    const xStations = [-1.12, -0.96, -0.72, -0.48, -0.24, 0,
-        0.24, 0.48, 0.72, 0.96, 1.12];
-    const zStations = [-HALF_DEPTH, -0.48, -0.36, -0.24, -0.14,
-        -ridgeSize / 2, 0, ridgeSize / 2,
-        0.14, 0.24, 0.36, 0.48, HALF_DEPTH];
-
-    function clothHeight(x: number, z: number): number {
-        const distance = Math.abs(z);
-        const onSlope = distance > ridgeSize / 2;
-        const height = onSlope
-            ? THREE.MathUtils.lerp(
-                roofTopAtRafters,
-                roofTopAtEaves,
-                (distance - ridgeSize / 2) / (HALF_DEPTH - ridgeSize / 2)
-            )
-            : THREE.MathUtils.lerp(
-                roofTopAtRidge,
-                roofTopAtRafters,
-                distance / (ridgeSize / 2)
-            );
-
-        const index = rafterPositions.findIndex((position, i) =>
-            i < rafterPositions.length - 1 &&
-            x >= position && x <= rafterPositions[i + 1]!
+    // A light eave rail is fixed to each upper long rail with five
+    // fitted outriggers. The larger fabric overhang is not left floating.
+    for (const sideZ of SIDES) {
+        const eaveZ = sideZ * EAVE_RAIL_Z;
+        const rail = tableTimberGeometry(
+            point(-1.16, EAVE_RAIL_HEIGHT, eaveZ),
+            point(1.16, EAVE_RAIL_HEIGHT, eaveZ),
+            EAVE_RAIL_SIZE,
+            EAVE_RAIL_SIZE
         );
-        const between = index < 0 ? 0 :
-            (x - rafterPositions[index]!) /
-            (rafterPositions[index + 1]! - rafterPositions[index]!);
-        const slack = 0.007 *
-            Math.sin(Math.PI * between) ** 2 *
-            Math.sin(Math.PI * distance / HALF_DEPTH) ** 2;
+        stall.add(workshop.timberFromGeometry(
+            `EaveRail-${sideZ}`, rail
+        ));
 
-        return height - slack;
+        for (const x of RAFTER_POSITIONS) {
+            addBetween(
+                `EaveOutrigger-${x}-${sideZ}`,
+                upperLongRails.get(sideZ)!,
+                rail,
+                point(x, EAVE_RAIL_HEIGHT, sideZ * HALF_DEPTH),
+                point(x, EAVE_RAIL_HEIGHT, eaveZ),
+                0.053,
+                0.052,
+                point(0, 1, 0)
+            );
+        }
     }
 
-    const roofThickness = 0.004;
-    const roofGeometry = loftPairedSurfaceRows(xStations.map(x => ({
-        outer: zStations.map(z =>
-            point(x, clothHeight(x, z), z)
-        ),
-        inner: zStations.map(z =>
-            point(x, clothHeight(x, z) - roofThickness, z)
-        )
-    })));
-    const canvas = heavyCanvas();
-    stall.add(surfaceMesh({
-        name: "LinenRoof",
-        geometry: roofGeometry,
-        materials: {
-            outer: canvas.outside,
-            inner: canvas.inside,
-            "edge-left": canvas.hem,
-            "edge-right": canvas.hem,
-            "cap-start": canvas.hem,
-            "cap-end": canvas.hem
-        }
-    }));
+    addStripedCanopy(stall, ridgeHeight, ridgeSize);
 
     // A rear bearer joins the existing side rails; the customer's
     // front bearer is already part of the U-shaped post frame.
