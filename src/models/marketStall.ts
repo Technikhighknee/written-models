@@ -9,11 +9,14 @@ import {
     oakPanelGeometry, oakPlank, oakPlankPanel, oakTimberShop
 } from "./components/oakSeating";
 import { transformGeometry } from "../toolbox/geometry/edit/geometryEdits";
+import { loftPairedSurfaceRows } from "../toolbox/geometry/build/loftPairedSurfaceRows";
+import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
+import { heavyCanvas } from "../materials/fabric/heavyCanvas";
 
 const HALF_WIDTH = 1.05;
 const HALF_DEPTH = 0.62;
 const POST_SIZE = 0.115;
-const POST_HEIGHT = 2.25;
+const POST_HEIGHT = 2.21;
 const COUNTER_FRAME_HEIGHT = 0.85;
 const RAIL_SIZE = 0.095;
 const UPPER_FRAME_HEIGHT = 2.14;
@@ -232,6 +235,72 @@ function create(): THREE.Group {
             );
         }
     }
+
+    // One continuous linen sheet folds over the ridge and sits just above
+    // the rafters. The closed edge folds are real thin geometry, not a
+    // double-sided plane. Slight slack between the five rafter positions
+    // gives the taut fabric a softer silhouette without clipping wood.
+    const roofTopAtRidge = ridgeHeight + ridgeSize / 2 + 0.008;
+    const roofTopAtRafters = ridgeHeight + 0.033;
+    const roofTopAtEaves = UPPER_FRAME_HEIGHT + UPPER_RAIL_SIZE / 2 + 0.034;
+    const rafterPositions = [-0.96, -0.48, 0, 0.48, 0.96];
+    const xStations = [-1.12, -0.96, -0.72, -0.48, -0.24, 0,
+        0.24, 0.48, 0.72, 0.96, 1.12];
+    const zStations = [-HALF_DEPTH, -0.48, -0.36, -0.24, -0.14,
+        -ridgeSize / 2, 0, ridgeSize / 2,
+        0.14, 0.24, 0.36, 0.48, HALF_DEPTH];
+
+    function clothHeight(x: number, z: number): number {
+        const distance = Math.abs(z);
+        const onSlope = distance > ridgeSize / 2;
+        const height = onSlope
+            ? THREE.MathUtils.lerp(
+                roofTopAtRafters,
+                roofTopAtEaves,
+                (distance - ridgeSize / 2) / (HALF_DEPTH - ridgeSize / 2)
+            )
+            : THREE.MathUtils.lerp(
+                roofTopAtRidge,
+                roofTopAtRafters,
+                distance / (ridgeSize / 2)
+            );
+
+        const index = rafterPositions.findIndex((position, i) =>
+            i < rafterPositions.length - 1 &&
+            x >= position && x <= rafterPositions[i + 1]!
+        );
+        const between = index < 0 ? 0 :
+            (x - rafterPositions[index]!) /
+            (rafterPositions[index + 1]! - rafterPositions[index]!);
+        const slack = 0.007 *
+            Math.sin(Math.PI * between) ** 2 *
+            Math.sin(Math.PI * distance / HALF_DEPTH) ** 2;
+
+        return height - slack;
+    }
+
+    const roofThickness = 0.004;
+    const roofGeometry = loftPairedSurfaceRows(xStations.map(x => ({
+        outer: zStations.map(z =>
+            point(x, clothHeight(x, z), z)
+        ),
+        inner: zStations.map(z =>
+            point(x, clothHeight(x, z) - roofThickness, z)
+        )
+    })));
+    const canvas = heavyCanvas();
+    stall.add(surfaceMesh({
+        name: "LinenRoof",
+        geometry: roofGeometry,
+        materials: {
+            outer: canvas.outside,
+            inner: canvas.inside,
+            "edge-left": canvas.hem,
+            "edge-right": canvas.hem,
+            "cap-start": canvas.hem,
+            "cap-end": canvas.hem
+        }
+    }));
 
     // A rear bearer joins the existing side rails; the customer's
     // front bearer is already part of the U-shaped post frame.

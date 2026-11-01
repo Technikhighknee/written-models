@@ -11,6 +11,7 @@ to discover the underlying 3D shape.
   and end grain. `wood/oak.ts` bakes and caches physical-size PBR maps
   through `bakePbrMaps()`. `oakVariant(seed)` selects a repeatable cut.
   `oakBoardFace(seed)` is the quieter planed broad-face variant.
+- **Heavy linen:** `fabric/heavyCanvas.ts` provides a matte, undyed canopy cloth with distinct outer, inner and edge surfaces.
 - **Wrought iron:** `metal/wroughtIron.ts` supplies one shared
   `MeshStandardMaterial` for fittings and bands.
 - **Blade steel:** `metal/bladeSteel.ts` produces shared, restrained
