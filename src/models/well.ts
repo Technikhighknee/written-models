@@ -5,8 +5,7 @@ import { geometryResult } from "../toolbox/geometry/kernel/GeometryResult";
 import { surfaceMesh } from "../toolbox/geometry/mesh/surfaceMesh";
 import { weightedCuts } from "../toolbox/spatial/layout/weightedCuts";
 import { seededVariation } from "../toolbox/spatial/layout/seededVariation";
-import { wellFinish } from "../material-system/weatheredWell";
-import type { PaintedAtlas } from "../material-system/paint";
+import { limestoneVariant } from "../materials/stone/limestone";
 
 const TAU = 2 * Math.PI;
 const WATER_LEVEL = 0.42;
@@ -39,7 +38,6 @@ const point = (angle: number, radius: number, y: number) =>
  */
 function addStone(
     mesh: AuthoredMeshBuilder,
-    atlas: PaintedAtlas,
     course: StoneCourse,
     index: number,
     start: number,
@@ -60,7 +58,12 @@ function addStone(
     const top = course.top - 0.003 + vary(3) * 0.002;
     const chamfer = coping ? 0.009 : 0.012;
     const heights = [bottom, bottom + chamfer, top - chamfer, top];
-    const surface = coping ? "coping" : "stone";
+    // Each stone selects a shared limestone finish, not a unique texture.
+    // The coping is slightly lighter than the wall courses.
+    const finish = Math.min(4,
+        Math.floor((vary(20) + 1) * 2) + Number(coping)
+    );
+    const surface = `stone-${finish}`;
 
     const outer: number[][] = [];
     const inner: number[][] = [];
@@ -83,18 +86,19 @@ function addStone(
         inner.push(inside);
     }
 
-    // Offset the texture window per block so its pigment patterns never
-    // form artificial horizontal courses or repeat at the joints.
+    // Limestone UVs are authored in metres. Vary each block's texture
+    // window so the same mineral pattern does not repeat at every joint.
     const u0 = 0.09 + (vary(18) + 1) * 0.13;
     const v0 = 0.08 + (vary(19) + 1) * 0.13;
     const u = (col: number) => u0 +
-        (angles[col]! - from) * outerRadius / 0.92;
+        (angles[col]! - from) * outerRadius;
     const v = (row: number) => v0 +
-        (heights[row]! - bottom) / 0.48;
-    const radiusV = (outside: boolean) => v0 + (outside ? 0 : 0.36);
-    const texture = (uu: number, vv: number) => atlas.uv(surface, uu, vv);
+        (heights[row]! - bottom);
+    const radiusV = (outside: boolean) =>
+        v0 + (outside ? 0 : outerRadius - innerRadius);
+    const uv = (u: number, v: number) => new THREE.Vector2(u, v);
     const quad = (ids: number[], uv: readonly THREE.Vector2[]) => {
-        mesh.addIndexedFace(ids, uv, "well");
+        mesh.addIndexedFace(ids, uv, surface);
     };
 
     for (let row = 0; row < heights.length - 1; row++) {
@@ -103,15 +107,15 @@ function addStone(
                 outer[row]![col]!, outer[row]![col + 1]!,
                 outer[row + 1]![col + 1]!, outer[row + 1]![col]!
             ], [
-                texture(u(col), v(row)), texture(u(col + 1), v(row)),
-                texture(u(col + 1), v(row + 1)), texture(u(col), v(row + 1))
+                uv(u(col), v(row)), uv(u(col + 1), v(row)),
+                uv(u(col + 1), v(row + 1)), uv(u(col), v(row + 1))
             ]);
             quad([
                 inner[row + 1]![col]!, inner[row + 1]![col + 1]!,
                 inner[row]![col + 1]!, inner[row]![col]!
             ], [
-                texture(u(col), v(row + 1)), texture(u(col + 1), v(row + 1)),
-                texture(u(col + 1), v(row)), texture(u(col), v(row))
+                uv(u(col), v(row + 1)), uv(u(col + 1), v(row + 1)),
+                uv(u(col + 1), v(row)), uv(u(col), v(row))
             ]);
         }
     }
@@ -122,19 +126,19 @@ function addStone(
             outer[last]![col]!, outer[last]![col + 1]!,
             inner[last]![col + 1]!, inner[last]![col]!
         ], [
-            texture(u(col), radiusV(true)),
-            texture(u(col + 1), radiusV(true)),
-            texture(u(col + 1), radiusV(false)),
-            texture(u(col), radiusV(false))
+            uv(u(col), radiusV(true)),
+            uv(u(col + 1), radiusV(true)),
+            uv(u(col + 1), radiusV(false)),
+            uv(u(col), radiusV(false))
         ]);
         quad([
             inner[0]![col]!, inner[0]![col + 1]!,
             outer[0]![col + 1]!, outer[0]![col]!
         ], [
-            texture(u(col), radiusV(false)),
-            texture(u(col + 1), radiusV(false)),
-            texture(u(col + 1), radiusV(true)),
-            texture(u(col), radiusV(true))
+            uv(u(col), radiusV(false)),
+            uv(u(col + 1), radiusV(false)),
+            uv(u(col + 1), radiusV(true)),
+            uv(u(col), radiusV(true))
         ]);
     }
 
@@ -143,24 +147,24 @@ function addStone(
             inner[row]![0]!, outer[row]![0]!,
             outer[row + 1]![0]!, inner[row + 1]![0]!
         ], [
-            texture(u0, radiusV(false)), texture(u0 + 0.34, radiusV(false)),
-            texture(u0 + 0.34, radiusV(false) + (v(row + 1) - v0)),
-            texture(u0, radiusV(false) + (v(row + 1) - v0))
+            uv(u0, radiusV(false)), uv(u0 + outerRadius - innerRadius, radiusV(false)),
+            uv(u0 + outerRadius - innerRadius, radiusV(false) + (v(row + 1) - v0)),
+            uv(u0, radiusV(false) + (v(row + 1) - v0))
         ]);
         const endColumn = angles.length - 1;
         quad([
             outer[row]![endColumn]!, inner[row]![endColumn]!,
             inner[row + 1]![endColumn]!, outer[row + 1]![endColumn]!
         ], [
-            texture(u0, radiusV(false)), texture(u0 + 0.34, radiusV(false)),
-            texture(u0 + 0.34, radiusV(false) + (v(row + 1) - v0)),
-            texture(u0, radiusV(false) + (v(row + 1) - v0))
+            uv(u0, radiusV(false)), uv(u0 + outerRadius - innerRadius, radiusV(false)),
+            uv(u0 + outerRadius - innerRadius, radiusV(false) + (v(row + 1) - v0)),
+            uv(u0, radiusV(false) + (v(row + 1) - v0))
         ]);
     }
 }
 
 function addCourse(
-    mesh: AuthoredMeshBuilder, atlas: PaintedAtlas, course: StoneCourse
+    mesh: AuthoredMeshBuilder, course: StoneCourse
 ): void {
     const weights = Array.from({ length: course.count }, (_, index) =>
         1 + seededVariation(course.seed, index, 23) * 0.23
@@ -168,13 +172,13 @@ function addCourse(
     const cuts = weightedCuts(course.shift, course.shift + TAU,
         course.count, weights);
     for (let i = 0; i < course.count; i++) {
-        addStone(mesh, atlas, course, i, cuts[i]!, cuts[i + 1]!);
+        addStone(mesh, course, i, cuts[i]!, cuts[i + 1]!);
     }
 }
 
 /** A recessed mortar body supports the real stone gaps without fake grout lines. */
 function addMortarRing(
-    mesh: AuthoredMeshBuilder, atlas: PaintedAtlas,
+    mesh: AuthoredMeshBuilder,
     outerRadius: number, innerRadius: number,
     bottom: number, top: number
 ): void {
@@ -194,23 +198,23 @@ function addMortarRing(
         const next = (i + 1) % count;
         const u0 = i / count;
         const u1 = (i + 1) / count;
-        const uv = (u: number, v: number) => atlas.uv("mortar", u, v);
+        const uv = (u: number, v: number) => new THREE.Vector2(u, v);
         mesh.addIndexedFace([
             outerBottom[i]!, outerBottom[next]!,
             outerTop[next]!, outerTop[i]!
-        ], [uv(u0, 0), uv(u1, 0), uv(u1, 1), uv(u0, 1)], "well");
+        ], [uv(u0, 0), uv(u1, 0), uv(u1, 1), uv(u0, 1)], "mortar");
         mesh.addIndexedFace([
             innerTop[i]!, innerTop[next]!,
             innerBottom[next]!, innerBottom[i]!
-        ], [uv(u0, 1), uv(u1, 1), uv(u1, 0), uv(u0, 0)], "well");
+        ], [uv(u0, 1), uv(u1, 1), uv(u1, 0), uv(u0, 0)], "mortar");
         mesh.addIndexedFace([
             outerTop[i]!, outerTop[next]!,
             innerTop[next]!, innerTop[i]!
-        ], [uv(u0, 1), uv(u1, 1), uv(u1, 0), uv(u0, 0)], "well");
+        ], [uv(u0, 1), uv(u1, 1), uv(u1, 0), uv(u0, 0)], "mortar");
         mesh.addIndexedFace([
             innerBottom[i]!, innerBottom[next]!,
             outerBottom[next]!, outerBottom[i]!
-        ], [uv(u0, 0), uv(u1, 0), uv(u1, 1), uv(u0, 1)], "well");
+        ], [uv(u0, 0), uv(u1, 0), uv(u1, 1), uv(u0, 1)], "mortar");
     }
 }
 
@@ -245,19 +249,28 @@ export default {
 };
 
 function create(): THREE.Mesh {
-    const atlas = wellFinish();
     const mesh = new AuthoredMeshBuilder({ weld: "none" });
 
-    addMortarRing(mesh, atlas, 0.671, 0.558, 0.011, 0.476);
-    addMortarRing(mesh, atlas, 0.707, 0.527, 0.452, 0.515);
-    for (const course of COURSES) addCourse(mesh, atlas, course);
+    addMortarRing(mesh, 0.671, 0.558, 0.011, 0.476);
+    addMortarRing(mesh, 0.707, 0.527, 0.452, 0.515);
+    for (const course of COURSES) addCourse(mesh, course);
     addWater(mesh);
 
     return surfaceMesh({
         name: "VillageWell",
         geometry: geometryResult(mesh.build()),
         materials: {
-            well: atlas.material,
+            ...Object.fromEntries(
+                Array.from({ length: 5 }, (_, i) => [
+                    `stone-${i}`, limestoneVariant(i)
+                ])
+            ),
+            mortar: new THREE.MeshStandardMaterial({
+                name: "WellMortar",
+                color: "#3c3731",
+                roughness: 1,
+                metalness: 0
+            }),
             water: new THREE.MeshStandardMaterial({
                 name: "WellWater",
                 color: "#167ed5",

@@ -16,6 +16,8 @@ to discover the underlying 3D shape.
   `MeshStandardMaterial` for fittings and bands.
 - **Blade steel:** `metal/bladeSteel.ts` produces shared, restrained
   carbon-steel face and sharpened-edge materials, with baked PBR maps.
+- **Limestone:** `stone/limestone.ts` provides shared mineral PBR maps and
+  subtle tint variants used by the individual blocks of the village well.
 - **Stoneware:** `ceramic/paleStoneware.ts` contains a reusable
   unglazed-clay material family. No current model uses it.
 
