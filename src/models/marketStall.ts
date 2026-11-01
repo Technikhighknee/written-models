@@ -59,6 +59,7 @@ function addStripedCanopy(
     ridgeSize: number
 ): void {
     const mesh = new AuthoredMeshBuilder({ weld: "position" });
+    const stitches = new AuthoredMeshBuilder({ weld: "none" });
     const stripeCount = 10;
     const ridgeTop = ridgeHeight + ridgeSize / 2 + 0.020;
     const eaveTop = EAVE_RAIL_HEIGHT + EAVE_RAIL_SIZE / 2 + 0.028;
@@ -173,6 +174,41 @@ function addStripedCanopy(
             red: wovenCanvas("madder-red"),
             linen: wovenCanvas("unbleached")
         }
+    }));
+
+    // Short running stitches make the nine panel joins legible without
+    // laying another coplanar sheet over the canopy.
+    for (let seam = 1; seam < stripeCount; seam++) {
+        const x = left + width * seam / stripeCount;
+        for (let i = 0; i < 28; i++) {
+            if ((i * 7 + seam * 3) % 41 === 0) continue;
+            const z0 = -0.86 + i * 0.062 +
+                0.0012 * Math.sin(i * 2.1 + seam);
+            const z1 = z0 + 0.020 +
+                0.002 * Math.sin(i * 1.7 + seam);
+            const halfThread = 0.0025;
+            const lift = 0.004;
+            const threadPoint = (dx: number, z: number) =>
+                point(x + dx, height(x + dx, z, 0) + lift, z);
+
+            stitches.addFace([
+                threadPoint(-halfThread, z0),
+                threadPoint(halfThread, z0),
+                threadPoint(halfThread, z1),
+                threadPoint(-halfThread, z1)
+            ], [
+                new THREE.Vector2(x - halfThread, z0),
+                new THREE.Vector2(x + halfThread, z0),
+                new THREE.Vector2(x + halfThread, z1),
+                new THREE.Vector2(x - halfThread, z1)
+            ], "thread");
+        }
+    }
+
+    stall.add(surfaceMesh({
+        name: "CanopySeamStitches",
+        geometry: geometryResult(stitches.build()),
+        materials: wovenCanvas("unbleached")
     }));
 }
 
@@ -467,6 +503,52 @@ function create(): THREE.Group {
     // the customer. It terminates short of the post faces, like the top.
     const apronHeight = 0.15;
     const apronThickness = 0.028;
+    // Dowels secure the visible rail ends close to their post joints.
+    // Their heads sit proud of the timber faces, not on the canvas.
+    for (const sideX of SIDES) {
+        const x = sideX * (HALF_WIDTH - POST_SIZE / 2 - 0.075);
+        for (const sideZ of SIDES) {
+            const z = sideZ * HALF_DEPTH;
+            stall.add(workshop.peg(
+                `UpperLongDowel-${sideX}-${sideZ}`,
+                point(x, UPPER_FRAME_HEIGHT, z + sideZ * UPPER_RAIL_SIZE / 2),
+                point(0, 0, sideZ)
+            ));
+        }
+    }
+
+    for (const sideX of SIDES) {
+        const x = sideX * (HALF_WIDTH + UPPER_RAIL_SIZE / 2);
+        for (const sideZ of SIDES) {
+            const z = sideZ * (HALF_DEPTH - POST_SIZE / 2 - 0.075);
+            stall.add(workshop.peg(
+                `UpperEndDowel-${sideX}-${sideZ}`,
+                point(x, UPPER_FRAME_HEIGHT, z),
+                point(sideX, 0, 0)
+            ));
+        }
+    }
+
+    for (const sideX of SIDES) {
+        const x = sideX * (HALF_WIDTH - POST_SIZE / 2 - 0.075);
+        stall.add(workshop.peg(
+            `CounterFrontDowel-${sideX}`,
+            point(x, COUNTER_FRAME_HEIGHT, HALF_DEPTH + RAIL_SIZE / 2),
+            point(0, 0, 1)
+        ));
+    }
+    for (const sideX of SIDES) {
+        const x = sideX * (HALF_WIDTH + RAIL_SIZE / 2);
+        for (const sideZ of SIDES) {
+            const z = sideZ * (HALF_DEPTH - POST_SIZE / 2 - 0.075);
+            stall.add(workshop.peg(
+                `CounterSideDowel-${sideX}-${sideZ}`,
+                point(x, COUNTER_FRAME_HEIGHT, z),
+                point(sideX, 0, 0)
+            ));
+        }
+    }
+
     const apron = oakPlankPanel({
         name: "CounterFrontApron",
         length: COUNTER_APRON_LENGTH,
