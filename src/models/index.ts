@@ -10,6 +10,7 @@ import beerMug from "./beerMug";
 import tavernChair from "./tavernChair";
 import tavernBench from "./tavernBench";
 import well from "./well";
+import marketStall from "./marketStall";
 
 export interface ModelDefinition {
     slug: string;
@@ -28,5 +29,6 @@ export const models: readonly ModelDefinition[] = [
     beerMug,
     tavernChair,
     tavernBench,
-    well
+    well,
+    marketStall
 ];
