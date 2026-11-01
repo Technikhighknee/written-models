@@ -191,7 +191,7 @@ function buildFrame(stall: THREE.Group): void {
         for (const z of [-POST_Z, POST_Z]) {
             beam(name + "-LongRail-" + z,
                 at(-INNER_X, y, z), at(INNER_X, y, z),
-                size, 0.100);
+                size, name === "Counter" ? 0.110 : 0.100);
         }
     }
     for (const [name, y, height, xs] of [
@@ -281,9 +281,12 @@ function buildFrame(stall: THREE.Group): void {
     for (const x of [-POST_X, 0, POST_X]) {
         for (const sz of [-1, 1]) {
             beam("Rafter-" + x + "-" + sz,
-                at(x, roofHeight(0.085) - 0.048, sz * 0.085),
-                at(x, roofHeight(0.79) - 0.048, sz * 0.79),
-                0.065, 0.063);
+                at(x, roofHeight(0.043) - 0.050, sz * 0.043),
+                at(x, roofHeight(0.79) - 0.082, sz * 0.79),
+                0.065, 0.063, {
+                    startNormal: at(0, 0, sz),
+                    endNormal: at(0, 1, 0)
+                });
         }
     }
 
