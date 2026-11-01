@@ -586,7 +586,7 @@ function create(): THREE.Group {
         widthWeights: [0.94, 1.07, 0.97, 1.03, 1.09, 0.93, 1.04, 1.02, 0.95],
         seed: 638,
         gap: 0.0025,
-        wear: 0.42,
+        wear: 0,
         crown: 0.00045
     });
     // The panel's original long X axis is vertical, its across-plank Z
@@ -616,7 +616,7 @@ function create(): THREE.Group {
             widthWeights: [1.04, 0.92, 1.09, 0.98, 1.03],
             seed: sideX === -1 ? 271 : 714,
             gap: 0.0025,
-            wear: 0.42,
+            wear: 0,
             crown: 0.00045
         });
         // Rotating X up preserves the planks' vertical grain; Z runs
