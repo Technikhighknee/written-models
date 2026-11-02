@@ -41,7 +41,7 @@ export function buildBarrelHoopGeometry(
         width,
         thickness,
         clearance,
-        bevel: mm(0.75),
+        bevel: mm(2.6),
         radialSegments,
         angleOffset: 0
     });
@@ -67,7 +67,7 @@ export function buildBarrelHoopGeometry(
         width: width - mm(4),
         thickness: lapThickness,
         clearance: lapClearance,
-        bevel: mm(0.3),
+        bevel: mm(0.85),
         radialSegments: lapSegments,
         arc
     });

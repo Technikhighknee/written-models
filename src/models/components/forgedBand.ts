@@ -115,10 +115,14 @@ export function forgedBand(
         ...(!closed ? { ends: "cap" as const } : {}),
         wall: {
             outerRegion: "iron",
-            // Smooth around the hoop, not across the top, bevels, outside
-            // and inside. Sharing one group rounds the entire cross-section
-            // in shading and creates an unnaturally dark rim.
-            smoothingGroupAt: ({edge}) => `iron-section-${edge}`
+            // Beveled bands soften the visible upper/lower transitions,
+            // but the contact face against the wood must retain its edge.
+            // Unbeveled rectangles keep their genuinely sharp corners.
+            smoothingGroupAt: ({edge}) => bevel === 0
+                ? `iron-section-${edge}`
+                : edge === outline.length - 1
+                    ? "iron-inner"
+                    : "iron-outer"
         }
     });
 }
