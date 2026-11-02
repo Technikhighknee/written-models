@@ -112,6 +112,10 @@ test("iron bands shade smoothly around the hoop but not across their edges", asy
             ), "outer wall must be smooth around the hoop");
             assert.ok(side.some(n => n.y > 0.5),
                 "upper edge must keep a distinct cross-section normal");
+
+            const lowerCorner = bevel > 0 ? 4 : 2;
+            assert.ok(at(lowerCorner).some(n => n.y < -0.99),
+                "underside must face downward, not share the outer wall normal");
         } finally {
             rendered.dispose();
         }

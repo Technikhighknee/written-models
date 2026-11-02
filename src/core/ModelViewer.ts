@@ -80,6 +80,12 @@ export class ModelViewer {
         sun.position.set(3, 6, 4);
         this.scene.add(sun);
 
+        // A softer opposing fill keeps downward-facing metal and wood
+        // readable when inspecting a model from below. The key light
+        // remains above; this only prevents the underside from going black.
+        const undersideFill = new THREE.DirectionalLight(0xf1f2f5, 1.15);
+        undersideFill.position.set(-3, -4, -2);
+        this.scene.add(undersideFill);
 
         this.grid = new THREE.GridHelper(
             10, 20,
