@@ -11,6 +11,8 @@ interface ForgedBandOptions {
     width: number;
     thickness: number;
     clearance?: number;
+    /** How far the inside of the hoop seats into the wooden staves. */
+    seatDepth?: number;
     radialSegments?: number;
     angleOffset?: number;
     bevel?: number;
@@ -24,7 +26,8 @@ interface ForgedBandOptions {
 export function forgedBand(
     profile: readonly THREE.Vector2Like[],
     {
-        y, width, thickness, clearance = 0, radialSegments = 48,
+        y, width, thickness, clearance = 0, seatDepth = 0,
+        radialSegments = 48,
         angleOffset = 0, bevel = 0, arc
     }: ForgedBandOptions
 ): GeometryResult {
@@ -34,9 +37,11 @@ export function forgedBand(
             !Number.isFinite(p.x) || !Number.isFinite(p.y) ||
             p.x <= 0 || (i > 0 && p.y <= profile[i - 1]!.y)
         ) ||
-        ![y, width, thickness, clearance, angleOffset, bevel]
+        ![y, width, thickness, clearance, seatDepth, angleOffset, bevel]
             .every(Number.isFinite) ||
         width <= 0 || thickness <= 0 || clearance < 0 ||
+        seatDepth < 0 || seatDepth >= thickness ||
+        profile.some(p => p.x <= seatDepth) ||
         bevel < 0 || bevel >= Math.min(width / 2, thickness) ||
         !Number.isInteger(radialSegments) || radialSegments < 3 ||
         y - width / 2 < profile[0]!.y ||
@@ -54,8 +59,13 @@ export function forgedBand(
     const radiusAt = linearProfile(profile.map(p => ({
         x: p.y, y: p.x
     })));
+    // A positive radial clearance leaves a visible dark gap below the hoop:
+    // its inner and underside faces show between the iron and the staves.
+    // Seating the inner wall into the timber hides that contact instead.
+    // The visible outer wall stays outside the wood.
     const clearanceRadius = (height: number) =>
-        polygonalRadiusOutside(radiusAt(height), angularStep, clearance);
+        polygonalRadiusOutside(radiusAt(height), angularStep, clearance) -
+        seatDepth;
     const centerRadius = clearanceRadius(y);
     const centerAt = (t: number) => polarPoint(
         centerRadius, y, startAngle + t * sweepAngle

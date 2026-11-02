@@ -126,3 +126,51 @@ test("beveled iron bands soften both visible rims without smoothing the wood con
         }
     }
 });
+
+test("hoop lower lips seat into stave edges while outer walls stay exposed", () => {
+    const cases = [
+        {
+            radius: 0.275,
+            thickness: 0.0038,
+            seatDepth: 0.00305,
+            bevel: 0.0037,
+            segments: 48,
+            staveEdgeWear: 0.0022
+        },
+        {
+            radius: 0.05,
+            thickness: 0.0021,
+            seatDepth: 0.0015,
+            bevel: 0.002,
+            segments: 24,
+            staveEdgeWear: 0.0008
+        }
+    ];
+
+    for (const { radius, thickness, seatDepth, bevel, segments,
+        staveEdgeWear } of cases) {
+        const band = forgedBand([
+            new THREE.Vector2(radius, 0),
+            new THREE.Vector2(radius, 0.2)
+        ], {
+            y: 0.1,
+            width: 0.04,
+            thickness,
+            seatDepth,
+            bevel,
+            radialSegments: segments
+        });
+        const ring = band.geometry.vertices;
+        // The reversed section starts at the upper inner corner:
+        // lower outside = 4, lower bevel end / full outer wall = 3.
+        const lipRadius = Math.hypot(ring[4].x, ring[4].z);
+        const outsideRadius = Math.hypot(ring[3].x, ring[3].z);
+        const chordRadius = outsideRadius *
+            Math.cos(Math.PI / segments);
+
+        assert.ok(lipRadius < radius - staveEdgeWear,
+            "lower iron lip must be buried even at a worn stave seam");
+        assert.ok(chordRadius > radius,
+            "main outer wall must remain visible above the stave fronts");
+    }
+});

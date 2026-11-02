@@ -63,8 +63,9 @@ export function buildTankardGeometry(): TankardGeometry {
     const bands = [cm(1.0), upperBandCenter].map(y =>
         forgedBand(TANKARD_PROFILE, {
             y, width: bandWidth, thickness: mm(2.1),
-            clearance: mm(0.25), radialSegments: 24, angleOffset,
-            bevel: mm(1.55)
+            clearance: 0, seatDepth: mm(1.5),
+            radialSegments: 24, angleOffset,
+            bevel: mm(2.0)
         })
     );
 

@@ -34,20 +34,23 @@ export function buildBarrelHoopGeometry(
 ): BarrelHoopGeometry {
     const radialSegments = staveCount * 2;
     const thickness = mm(3.8);
-    const clearance = mm(1.0);
+    const clearance = 0;
+    const seatDepth = mm(3.05);
 
     const band = forgedBand(profile, {
         y,
         width,
         thickness,
         clearance,
-        bevel: mm(2.6),
+        seatDepth,
+        bevel: mm(3.7),
         radialSegments,
         angleOffset: 0
     });
 
     const lapThickness = mm(1.2);
-    const lapClearance = mm(0.22);
+    // The lap is seated into the main hoop rather than floating above it.
+    const lapSeatDepth = mm(0.65);
     const sweep = 0.26;
     const lapSegments = 8;
     const centerAngle = 0.57 + hoopIndex * 0.14;
@@ -58,7 +61,7 @@ export function buildBarrelHoopGeometry(
 
     const lapProfile = profile.map(point => new THREE.Vector2(
         point.x / Math.cos(Math.PI / radialSegments) +
-            clearance + thickness + mm(0.35),
+            thickness - seatDepth + mm(0.2),
         point.y
     ));
 
@@ -66,8 +69,9 @@ export function buildBarrelHoopGeometry(
         y,
         width: width - mm(4),
         thickness: lapThickness,
-        clearance: lapClearance,
-        bevel: mm(0.85),
+        clearance: 0,
+        seatDepth: lapSeatDepth,
+        bevel: mm(1.1),
         radialSegments: lapSegments,
         arc
     });
@@ -85,7 +89,8 @@ export function buildBarrelHoopGeometry(
     }
 
     const lapOuterRadius = radiusAt(y) /
-        Math.cos(sweep / (lapSegments * 2)) + lapClearance + lapThickness;
+        Math.cos(sweep / (lapSegments * 2)) - lapSeatDepth +
+        lapThickness;
     const rivetHeight = mm(1.6);
     const rivet = geometryResult(cylinderMesh({
         radiusTop: mm(3.1),
