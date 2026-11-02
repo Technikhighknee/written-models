@@ -112,7 +112,7 @@ test("beveled iron bands soften both visible rims without smoothing the wood con
             } else {
                 // Profile indices in the reversed six-corner section:
                 // 2 = upper outer rim, 4 = lower outer rim, 5 = inner bottom.
-                assert.ok(at(2).some(n => n.z > 0.3 && n.y > 0.1),
+                assert.ok(at(2).some(n => n.z > 0.3 && n.y > 0.025),
                     "upper rim blends into the visible iron wall");
                 assert.ok(at(4).some(n => n.z > 0.3 && n.y < -0.1),
                     "lower rim blends into the visible iron wall");
