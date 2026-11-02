@@ -115,7 +115,10 @@ export function forgedBand(
         ...(!closed ? { ends: "cap" as const } : {}),
         wall: {
             outerRegion: "iron",
-            smoothingGroupAt: () => "iron"
+            // Smooth around the hoop, not across the top, bevels, outside
+            // and inside. Sharing one group rounds the entire cross-section
+            // in shading and creates an unnaturally dark rim.
+            smoothingGroupAt: ({edge}) => `iron-section-${edge}`
         }
     });
 }
